@@ -1,0 +1,3 @@
+# Admin routes that bypass authentication
+/admin
+/admin/

@@ -1,0 +1,40 @@
+NovoMCP
+Copyright 2026 NovoMCP
+
+This product includes software developed by NovoMCP contributors.
+Licensing:
+  * The top-level tree is licensed under Apache License 2.0 (see LICENSE).
+  * The `novomcp/mcp/` orchestration core is licensed under Business
+    Source License 1.1 with a change date of 2029-07-12 to Apache-2.0
+    (see LICENSE.core).
+
+This product wraps or interacts with the following open-source components,
+each governed by its own license:
+
+  * RDKit (BSD-3-Clause)               — cheminformatics primitives
+  * GROMACS (LGPL-2.1+)                — molecular dynamics engine
+  * AutoDock-GPU (Apache-2.0)          — GPU molecular docking
+  * OpenFold (Apache-2.0)              — protein structure prediction
+  * Boltz (MIT)                        — protein co-folding
+  * Chai-1 (Apache-2.0)                — protein co-folding
+  * Gnina (Apache-2.0)                 — CNN-scored docking
+  * MDAnalysis / MDTraj (GPL-2.0)      — trajectory analysis
+  * PDBFixer (MIT)                     — protein preparation
+  * OpenMM (MIT)                       — MD toolkit
+  * xTB / CREST (LGPL-3.0)             — quantum-mechanical methods
+  * AIMNet2 / MACE / ANI-2x            — neural network potentials
+  * Chemprop (MIT)                     — message-passing property models
+  * CatBoost (Apache-2.0)              — gradient boosting
+  * FastAPI (MIT), httpx (BSD-3)       — HTTP surfaces
+  * Model Context Protocol (MIT)      — the MCP specification
+
+These components are NOT redistributed in this repository; they are
+declared as runtime dependencies and installed via `pip install -r
+requirements.txt` (Python) or their upstream distribution channels.
+
+--------------------------------------------------------------------------
+
+Attribution and provenance for pre-trained model artifacts released
+alongside this project are recorded in the individual model manifests
+(e.g., `novoexpert1-tdc-benchmark/README.md`). Model weights ship under
+the MIT license unless noted otherwise in the model repo.

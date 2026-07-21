@@ -1,0 +1,115 @@
+# NovoMCP, turnkey local stack.
+#
+# Runs the engine in local-only mode. No AWS, no external services, no
+# GPU required. Boot with:
+#
+#   docker compose up
+#
+# The engine will be reachable at http://localhost:8018.
+#
+# To add compute services (docking, MD, protein structure, quantum, etc.),
+# uncomment the corresponding section below and run `docker compose up`
+# again. See docs/deploying-services/ for per-service setup + GPU
+# requirements. Each service is env-var-wired to the engine.
+
+services:
+  engine:
+    build:
+      context: ./orchestrator
+      dockerfile: Dockerfile
+    image: novomcp/engine:latest
+    container_name: novomcp-engine
+    ports:
+      - "8018:8018"
+    volumes:
+      # Persist the local audit sink across container restarts.
+      - novomcp-audit:/root/.novo
+    environment:
+      # Spine defaults, all local; no external state required.
+      NOVO_AUTH: local
+      NOVO_METER: local
+      NOVO_AUDIT: local
+      NOVO_AUDIT_PATH: /root/.novo/audit.jsonl
+
+      # Uncomment to wire in compute services (each one is optional).
+      # CHEM_PROPS_URL: http://chem-props:8003
+      # AUTODOCK_GPU_URL: http://autodock-gpu:8022
+      # GROMACS_MD_URL: http://gromacs-md:8021
+      # OPENFOLD3_URL: http://openfold3:8025
+      # NOVOMCP_QM_URL: http://novomcp-qm:8031
+      # NOVOMCP_NNP_URL: http://novomcp-nnp:8032
+      # ADDIE_MODELS_URL: http://addie-models:8033
+
+      # Uncomment for persistent OAuth (survive restarts):
+      # REDIS_URL: redis://redis:6379/0
+    restart: unless-stopped
+
+  # Persistent OAuth store, optional. Uncomment REDIS_URL above too.
+  # redis:
+  #   image: redis:7-alpine
+  #   container_name: novomcp-redis
+  #   ports:
+  #     - "6379:6379"
+  #   volumes:
+  #     - novomcp-redis-data:/data
+  #   restart: unless-stopped
+
+  # -----------------------------------------------------------------------
+  # OPTIONAL COMPUTE SERVICES
+  # -----------------------------------------------------------------------
+  # Each service below is optional. Uncomment the block AND the matching
+  # env var under `engine.environment` above to wire it in. See
+  # docs/deploying-services/<service>.md for pre-reqs (GPU, model weights,
+  # etc.) and standalone deployment instructions if you prefer to run the
+  # compute on a remote box.
+
+  # chem-props:
+  #   image: ghcr.io/novomcp/chem-props:latest
+  #   container_name: novomcp-chem-props
+  #   ports: ["8003:8003"]
+  #   restart: unless-stopped
+  #   # CPU only. ~200 MB. Handles RDKit descriptors, similarity, BOILED-Egg.
+
+  # autodock-gpu:
+  #   image: ghcr.io/novomcp/autodock-gpu:latest
+  #   container_name: novomcp-autodock-gpu
+  #   ports: ["8022:8022"]
+  #   deploy:
+  #     resources:
+  #       reservations:
+  #         devices: [{ driver: nvidia, count: 1, capabilities: [gpu] }]
+  #   restart: unless-stopped
+  #   # NVIDIA GPU required. Docking against protein PDB IDs.
+
+  # gromacs-md:
+  #   image: ghcr.io/novomcp/gromacs-md:latest
+  #   container_name: novomcp-gromacs-md
+  #   ports: ["8021:8021"]
+  #   deploy:
+  #     resources:
+  #       reservations:
+  #         devices: [{ driver: nvidia, count: 1, capabilities: [gpu] }]
+  #   restart: unless-stopped
+  #   # NVIDIA GPU required. Molecular dynamics simulations.
+
+  # openfold3:
+  #   image: ghcr.io/novomcp/openfold3:latest
+  #   container_name: novomcp-openfold3
+  #   ports: ["8025:8025"]
+  #   deploy:
+  #     resources:
+  #       reservations:
+  #         devices: [{ driver: nvidia, count: 1, capabilities: [gpu] }]
+  #   restart: unless-stopped
+  #   # NVIDIA GPU required. Protein structure prediction.
+
+  # addie-models:
+  #   image: ghcr.io/novomcp/addie-models:latest
+  #   container_name: novomcp-addie-models
+  #   ports: ["8033:8033"]
+  #   restart: unless-stopped
+  #   # CPU or GPU. 31 ADMET prediction models.
+
+volumes:
+  novomcp-audit:
+  # novomcp-redis-data:

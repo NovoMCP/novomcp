@@ -1,0 +1,130 @@
+# Pfam family -> metal functional role lookup
+# Used by intake.pfam.lookup_role().
+#
+# Values: structural | catalytic | electron | transport
+#   structural    -> metal stabilizes a fold; classical MD with non-bonded
+#                    Li-Merz parameters is acceptable. Will route to MCPB
+#                    in v1 per Nash decision rule (distal metal = MCPB).
+#   catalytic     -> metal in an enzyme active site or substrate-bound
+#                    cofactor. Refuse in v0; route to QM/MM in a future
+#                    branch per Nash decision rule (active-site = QM/MM).
+#   electron      -> metal in electron-transfer site. Treat like
+#                    structural for routing, flag in warnings.
+#   transport     -> metal transport protein. Structural treatment with a flag.
+#
+# Matching (see intake.pfam.lookup_role) is case-insensitive and ignores
+# underscores/hyphens, so "EF_hand", "EF-hand", "efhand" all resolve to
+# the same entry. Suffix stripping and substring fallback handle family
+# subtypes (e.g. "Peptidase_M10A" matches "peptidase_m10").
+#
+# Add new entries here without a code deploy — the file is loaded at
+# service startup. Format is a flat dict at the top level.
+# ----------------------------------------------------------------------
+
+# --- Structural Zn ---
+zf-c2h2: structural         # classic C2H2 zinc finger
+zf-ccch: structural
+zf-c4: structural           # nuclear receptor DBD
+zf-ranbp: structural
+linker_histone: structural
+gata: structural
+zf-nf-x1: structural
+
+# --- Structural Ca (EF-hand family) ---
+ef_hand: structural
+ef_hand_1: structural       # calmodulin family
+ef_hand_5: structural
+ef_hand_6: structural
+ef_hand_7: structural
+efhand_ca_insen: structural
+
+# --- Catalytic Zn (hydrolases, lyases, isomerases) ---
+carb_anhydrase: catalytic   # carbonic anhydrase
+astacin: catalytic
+peptidase_m10: catalytic    # matrix metalloproteinases
+peptidase_m12a: catalytic   # ADAMs, meprins
+peptidase_m12b: catalytic   # reprolysins
+peptidase_m14: catalytic    # carboxypeptidases
+peptidase_m17: catalytic    # leucyl aminopeptidase
+peptidase_m24: catalytic    # methionyl aminopeptidase
+peptidase_m20: catalytic
+peptidase_m28: catalytic
+amidohydro_1: catalytic
+adh_zinc_n: catalytic       # alcohol dehydrogenase
+beta-lactamase2: catalytic  # metallo-β-lactamases
+lactamase_b: catalytic
+mbl_fold_metallo: catalytic
+histone_deacetyl: catalytic # HDACs — important drug targets
+arginase: catalytic
+
+# --- Catalytic Mg (nucleotide-bound enzymes) ---
+ras: catalytic              # small GTPases (KRas etc.)
+small_gtpase: catalytic
+arf: catalytic
+rho: catalytic
+rab: catalytic
+ga: catalytic               # heterotrimeric G protein alpha
+miro: catalytic
+p-loop_ntpase: catalytic
+aaa: catalytic              # AAA+ ATPases
+abc_tran: catalytic
+ploopntpase: catalytic
+pkinase: catalytic          # protein kinase domain (ATP + Mg)
+pkinase_tyr: catalytic
+pk_tyr_ser-thr: catalytic
+pk_c: catalytic
+his_phos_1: catalytic
+his_phos_2: catalytic
+metallophos: catalytic      # calcineurin-like phosphoesterases
+pp2ac: catalytic
+dna_pol_a: catalytic
+dna_pol_b: catalytic
+rnase_h: catalytic
+integrase_h-n: catalytic
+topoisom_bac: catalytic
+mg_chelatase: catalytic
+
+# --- Catalytic Fe ---
+non_haem_dioxyg: catalytic
+2og-feii_oxy: catalytic     # 2-oxoglutarate/Fe(II) dioxygenases
+fe-ado_oxy: catalytic
+ribonuc_red: catalytic
+
+# --- Catalytic Cu ---
+cu-oxidase: catalytic
+cu-oxidase_2: catalytic
+cu-oxidase_3: catalytic
+tyrosinase: catalytic
+dopamine-bh: catalytic
+sod_cu: catalytic           # Cu-Zn superoxide dismutase (validated: 2SOD)
+
+# --- Catalytic Mn ---
+mn_catalase: catalytic
+sod_fe_n: catalytic
+sod_fe_c: catalytic
+arg_succ_syn: catalytic
+
+# --- Electron transfer (route as structural but flag) ---
+cytochrom_c: electron
+cytb5: electron
+cyt_b561: electron
+rieske: electron
+fer4: electron              # 4Fe-4S (also caught by HETATM audit)
+fer2: electron
+nir_sir: electron
+plastocyanin: electron
+
+# --- Transport ---
+transferrin: transport
+ferritin: transport
+fecr: transport
+zntb: transport
+zip: transport
+znt_dimer: transport
+cation_atpase: transport
+
+# --- Regulatory / sensor metals (structural-like treatment) ---
+merr_dna-bind: structural
+mt: structural              # metallothionein
+metallothio: structural
+metallothionein: structural

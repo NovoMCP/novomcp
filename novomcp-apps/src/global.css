@@ -1,0 +1,231 @@
+/* NovoMCP Apps - Japandi Design System */
+
+:root {
+  color-scheme: light dark;
+
+  /* Light mode (default) */
+  --bg: #F8F6F3;
+  --bg-warm: #F3F0EB;
+  --bg-card: #FFFFFF;
+  --text: #2D2A26;
+  --text-soft: #4A4540;
+  --text-muted: #7A756F;
+  --accent: #B8704B;
+  --accent-soft: #D4A88A;
+  --border: #E8E4DE;
+
+  /* Status colors */
+  --success: #6B8E6B;
+  --success-bg: rgba(107, 142, 107, 0.1);
+  --warning: #C4956A;
+  --warning-bg: rgba(196, 149, 106, 0.1);
+  --danger: #A65D5D;
+  --danger-bg: rgba(166, 93, 93, 0.1);
+
+  /* Typography */
+  --font-serif: 'Cormorant Garamond', Georgia, serif;
+  --font-sans: 'Inter', -apple-system, sans-serif;
+  --font-mono: 'Monaco', 'Menlo', monospace;
+
+  /* Animation */
+  --ease: cubic-bezier(0.25, 0.1, 0.25, 1);
+}
+
+/* Dark mode via host context or media query */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #1E1C1A;
+    --bg-warm: #2A2725;
+    --bg-card: #242220;
+    --text: #F8F6F3;
+    --text-soft: #D4CFC6;
+    --text-muted: #A8A29A;
+    --border: #3D3936;
+    --success-bg: rgba(107, 142, 107, 0.15);
+    --warning-bg: rgba(196, 149, 106, 0.15);
+    --danger-bg: rgba(166, 93, 93, 0.15);
+  }
+}
+
+[data-theme="dark"] {
+  --bg: #1E1C1A;
+  --bg-warm: #2A2725;
+  --bg-card: #242220;
+  --text: #F8F6F3;
+  --text-soft: #D4CFC6;
+  --text-muted: #A8A29A;
+  --border: #3D3936;
+  --success-bg: rgba(107, 142, 107, 0.15);
+  --warning-bg: rgba(196, 149, 106, 0.15);
+  --danger-bg: rgba(166, 93, 93, 0.15);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.6;
+  /* Self-contained Japandi surface. Was `transparent`, which let the host's
+   * chat background show through and produced unreadable text when the user's
+   * OS theme (which drives our @media prefers-color-scheme) didn't match the
+   * host's chat theme. Making the body opaque with our own `--bg` means the
+   * viewer always renders with consistent contrast against its own palette,
+   * regardless of what the host renders behind it. See MCP-APP-COOKBOOK.md §9. */
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Viewer inner padding. Applied to #root rather than body for cross-host
+ * portability:
+ *   - Claude.ai honors body padding correctly.
+ *   - ChatGPT strips/overrides body padding inside its MCP iframe context
+ *     (content renders flush to the edge, see screenshot 2026-05-10).
+ *   - Padding on #root is the React mount point — host CSS overrides
+ *     don't reach into it.
+ * 20px horizontal, 16px vertical matches the existing panel sizing and
+ * the visual density of Claude.ai's native tool cards.
+ *
+ * Note: body has no padding because every viewer mounts to #root, so
+ * applying padding only at #root produces consistent spacing across all
+ * hosts. Don't add `body { padding }` — it'll double up on Claude.ai. */
+#root {
+  padding: 16px 20px;
+}
+
+/* Hide the iframe's outer vertical scrollbar. The MCP host caps widget
+ * height; content taller than the cap is still scrollable via wheel /
+ * trackpad / keyboard, but the visible scrollbar creates inconsistent
+ * gray stripes across viewers. All standard scroll input methods continue
+ * to work. Internal scrollers (overflowX: auto on wide tables) keep their
+ * bars on purpose — those are informative affordances telling the user
+ * a table extends beyond the viewport. */
+html, body {
+  scrollbar-width: none;           /* Firefox 64+ */
+  -ms-overflow-style: none;        /* IE/legacy Edge */
+}
+html::-webkit-scrollbar,
+body::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;                   /* Chromium, Safari */
+}
+
+/* Loading state */
+.loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 400px;
+  color: var(--text-muted);
+  font-size: 13px;
+  gap: 12px;
+}
+
+.loading-spinner {
+  width: 28px;
+  height: 28px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Error state */
+.error {
+  padding: 20px;
+  color: var(--danger);
+  background: var(--danger-bg);
+  border-radius: 4px;
+  font-size: 13px;
+}
+
+/* Molecule viewer container */
+.molecule-viewer {
+  width: 100%;
+  position: relative;
+}
+
+/* Buttons */
+.btn {
+  padding: 8px 14px;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text-soft);
+  font-family: var(--font-sans);
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 300ms var(--ease);
+  border-radius: 2px;
+}
+
+.btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: white;
+}
+
+/* Panels */
+.panel {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  padding: 16px;
+  transition: all 300ms var(--ease);
+}
+
+.panel-title {
+  font-family: var(--font-sans);
+  font-size: 10px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+}
+
+/* Badge */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  font-size: 10px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-radius: 2px;
+}
+
+.badge.success {
+  background: var(--success-bg);
+  color: var(--success);
+}
+
+.badge.warning {
+  background: var(--warning-bg);
+  color: var(--warning);
+}
+
+.badge.danger {
+  background: var(--danger-bg);
+  color: var(--danger);
+}

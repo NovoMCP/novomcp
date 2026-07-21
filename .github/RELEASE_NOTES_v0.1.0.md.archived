@@ -1,0 +1,79 @@
+# v0.1.0
+
+**NovoMCP is the open computational chemistry engine for drug discovery and materials science.**
+
+`git clone`, `pip install`, `python3 main_https.py`. 69 tools, real property values in-process via RDKit, zero external services required.
+
+## Highlights
+
+- **69 MCP tools** covering cheminformatics, ADMET, molecular docking, molecular dynamics, protein structure prediction, quantum-mechanical calculations, autonomous discovery funnel, literature search, and regulatory compliance
+- **Turnkey local run**. No env vars, no keys, no databases. Fresh clone boots to 247 routes and returns real RDKit properties for any SMILES you throw at it.
+- **Pluggable spine** (auth / credit metering / audit). Local defaults ship. Swap in your own via three protocols in `novomcp/mcp/spine.py`.
+- **Pluggable LLM** (OpenAI / Anthropic / Ollama / Azure OpenAI). Auto-detects from present credentials. Optional; every tool call works without it.
+- **11 compute services**, each with its own deploy guide (CPU, GPU, and multi-GPU tiers)
+- **Cloud reference deploys** for AWS, GCP, and Azure
+- **Docker compose** for single-command local stack
+
+## Quickstart
+
+Requires Python 3.10+ (3.9 hit EOL October 2025). See README for install options.
+
+```bash
+git clone https://github.com/ariharrisonlab/novomcp.git
+cd novomcp/orchestrator
+python3.11 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+python main_https.py
+```
+
+Then in another shell:
+
+```bash
+curl -X POST http://localhost:8018/mcp/tools/calculate_properties \
+  -H 'Authorization: Bearer x' \
+  -H 'Content-Type: application/json' \
+  -d '{"arguments": {"smiles": "CC(=O)Oc1ccccc1C(=O)O"}}'
+```
+
+You get real values for aspirin (MW 180.16, LogP 1.31, TPSA 63.6, QED 0.55) computed in-process via RDKit.
+
+## Adding compute
+
+Every non-trivial tool (docking, MD, structure prediction, ADMET, etc.) works when you wire the corresponding compute service. Two ways:
+
+- **Docker compose**: uncomment the service block in `docker-compose.yml`, `docker compose up`
+- **Standalone**: `docker run` the service on any host, `export <SERVICE>_URL=http://<host>:<port>`
+
+See [`docs/deploying-services/`](docs/deploying-services/) for per-service guides.
+
+## Adding an LLM
+
+Set any one of these and the optional intent recognition, orchestration planning, semantic tool search, and campaign decision features light up:
+
+```bash
+export OPENAI_API_KEY=sk-...                     # OpenAI (default)
+# or
+export ANTHROPIC_API_KEY=sk-ant-...              # Claude
+# or
+export NOVO_LLM=ollama                           # Local Ollama at :11434
+```
+
+See [`docs/configuring-llm.md`](docs/configuring-llm.md).
+
+## Licensing
+
+- **Top-level tree**: Apache-2.0
+- **Orchestration core** (`novomcp/mcp/`): BSL 1.1 with a change date of 2029-07-12 to Apache-2.0
+- **Companion model artifacts**: MIT
+
+## Not included
+
+By design, the FAVES certified compliance service, curated enrichment datasets, Novo AG autonomous heuristics, and trained clinical-outcomes model weights live separately. The engine runs without any of them.
+
+## Reading further
+
+- Docker compose stack: [`docker-compose.yml`](docker-compose.yml)
+- Deploy compute services: [`docs/deploying-services/`](docs/deploying-services/)
+- Deploy to a cloud: [`docs/deploying-to-cloud/`](docs/deploying-to-cloud/)
+- Configure an LLM: [`docs/configuring-llm.md`](docs/configuring-llm.md)
+- Engineering stories: [`docs/engineering-stories/`](docs/engineering-stories/)
