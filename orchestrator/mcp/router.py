@@ -322,7 +322,7 @@ async def execute_tool(
             detail={
                 "error": "paid_plan_required",
                 "message": f"'{tool_name}' is a Novo Compute tool and requires a paid plan (Core, Team, or Enterprise).",
-                "upgrade_url": "https://novomcp.com/pricing",
+                "upgrade_url": os.getenv("NOVOMCP_PRICING_URL", ""),
             },
         )
 
@@ -362,7 +362,7 @@ async def execute_tool(
             detail={
                 "error": reason,
                 "message": message,
-                "upgrade_url": "https://novomcp.com/pricing",
+                "upgrade_url": os.getenv("NOVOMCP_PRICING_URL", ""),
                 "packs": [
                     {"name": "Starter", "credits": 20, "price": "$20"},
                     {"name": "Researcher", "credits": 110, "price": "$100"},
