@@ -35,23 +35,76 @@ If you get `command not found`, install Node:
 
     Download from [nodejs.org](https://nodejs.org/) or run `winget install OpenJS.NodeJS.LTS`.
 
-### 1. Add NovoMCP to Claude Desktop's config — one command
+### 1. Add NovoMCP to Claude Desktop's config
 
-Open your terminal and paste one line. Reads your existing config, adds NovoMCP wired through `mcp-remote`, writes it back. Works whether the config file is empty or already has content.
+Two ways — pick whichever you're more comfortable with. Both end at the same result.
 
-=== "macOS / Linux"
+=== "Option A — Edit through Claude Desktop (no terminal)"
 
-    ```
-    python3 -c "import json,os;p=os.path.expanduser('~/Library/Application Support/Claude/claude_desktop_config.json');os.makedirs(os.path.dirname(p),exist_ok=True);c=json.load(open(p)) if os.path.exists(p) else {};c.setdefault('mcpServers',{})['novomcp']={'command':'npx','args':['-y','mcp-remote','http://localhost:8018/mcp/','--header','Authorization:Bearer x']};json.dump(c,open(p,'w'),indent=2);print('done — NovoMCP added')"
-    ```
+    **1.** In Claude Desktop, go to **Settings → Developer → Edit Config**. A Finder (macOS) or Explorer (Windows) window opens showing `claude_desktop_config.json`.
 
-=== "Windows"
+    **2.** Right-click the file → **Open With → TextEdit** (macOS) or **Notepad** (Windows). Don't double-click — that opens a preview, not an editor.
 
-    ```
-    python -c "import json,os;p=os.path.expandvars('%APPDATA%\Claude\claude_desktop_config.json');os.makedirs(os.path.dirname(p),exist_ok=True);c=json.load(open(p)) if os.path.exists(p) else {};c.setdefault('mcpServers',{})['novomcp']={'command':'npx','args':['-y','mcp-remote','http://localhost:8018/mcp/','--header','Authorization:Bearer x']};json.dump(c,open(p,'w'),indent=2);print('done')"
-    ```
+    **3.** What to paste depends on the file's current state:
 
-You should see `done — NovoMCP added`. That's it — config is written.
+    - **If the file is empty or brand new**, replace everything with:
+
+        ```json
+        {
+          "mcpServers": {
+            "novomcp": {
+              "command": "npx",
+              "args": [
+                "-y",
+                "mcp-remote",
+                "http://localhost:8018/mcp/",
+                "--header",
+                "Authorization:Bearer x"
+              ]
+            }
+          }
+        }
+        ```
+
+    - **If the file already has other MCP servers**, add the `"novomcp"` block inside the existing `"mcpServers"` object, comma-separated from the others:
+
+        ```json
+        {
+          "mcpServers": {
+            "some-other-server": { "...existing...": "..." },
+            "novomcp": {
+              "command": "npx",
+              "args": [
+                "-y",
+                "mcp-remote",
+                "http://localhost:8018/mcp/",
+                "--header",
+                "Authorization:Bearer x"
+              ]
+            }
+          }
+        }
+        ```
+
+    **4.** Save (Cmd+S / Ctrl+S). Close the editor. Close the Finder / Explorer window.
+
+=== "Option B — One command in Terminal (fastest)"
+
+    Open your terminal and paste one line. It reads your existing config, adds NovoMCP wired through `mcp-remote`, writes it back — no manual JSON editing.
+
+    === "macOS / Linux"
+
+        ```
+        python3 -c "import json,os;p=os.path.expanduser('~/Library/Application Support/Claude/claude_desktop_config.json');os.makedirs(os.path.dirname(p),exist_ok=True);c=json.load(open(p)) if os.path.exists(p) and os.path.getsize(p)>0 else {};c.setdefault('mcpServers',{})['novomcp']={'command':'npx','args':['-y','mcp-remote','http://localhost:8018/mcp/','--header','Authorization:Bearer x']};json.dump(c,open(p,'w'),indent=2);print('done — NovoMCP added')"
+        ```
+
+    === "Windows"
+
+        ```
+        python -c "import json,os;p=os.path.expandvars('%APPDATA%\Claude\claude_desktop_config.json');os.makedirs(os.path.dirname(p),exist_ok=True);c=json.load(open(p)) if os.path.exists(p) and os.path.getsize(p)>0 else {};c.setdefault('mcpServers',{})['novomcp']={'command':'npx','args':['-y','mcp-remote','http://localhost:8018/mcp/','--header','Authorization:Bearer x']};json.dump(c,open(p,'w'),indent=2);print('done')"
+        ```
+
+    You should see `done — NovoMCP added`.
 
 !!! note "Why the proxy"
     Claude Desktop's `mcpServers` config only accepts stdio commands. The `Add custom connector` UI would work for HTTP, but only accepts HTTPS URLs — not localhost. `mcp-remote` bridges the gap: Claude Desktop spawns it as a stdio process, and it forwards to our HTTP engine. Nothing installs permanently — `npx -y` runs it on demand.
