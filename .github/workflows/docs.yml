@@ -1,31 +1,20 @@
 # Build and deploy the MkDocs Material site to GitHub Pages.
 #
-# GATED to workflow_dispatch (manual trigger) only while this repo is
-# private. Once we move to the public repo, uncomment the `push` block
-# below to enable auto-deploy on every docs change.
-#
-# Private-repo Pages requires a paid GitHub plan; auto-triggering during
-# the pre-launch window would either silently fail or publish to a URL
-# only reachable by collaborators — neither is what we want.
-#
-# To manually test the site build (does NOT publish): run `mkdocs build`
-# locally. To manually publish: Actions tab → "docs" → "Run workflow".
-#
-# When flipping to public: uncomment the push trigger; site publishes to
-# gh-pages branch; point docs.novomcp.com at that branch (Settings → Pages).
+# Publishes to the gh-pages branch on every push to main that touches
+# docs/mkdocs config. Custom domain: docs.novomcp.com (CNAME committed
+# under docs/CNAME so mkdocs-material carries it through gh-deploy).
 
 name: docs
 
 on:
   workflow_dispatch:
-  # Uncomment when the repo is public:
-  # push:
-  #   branches: [main]
-  #   paths:
-  #     - docs/**
-  #     - mkdocs.yml
-  #     - CHANGELOG.md
-  #     - .github/workflows/docs.yml
+  push:
+    branches: [main]
+    paths:
+      - docs/**
+      - mkdocs.yml
+      - CHANGELOG.md
+      - .github/workflows/docs.yml
 
 permissions:
   contents: write
