@@ -157,16 +157,56 @@ class Settings(BaseSettings):
     CAMPAIGN_MANAGER_API_KEY: Optional[str] = os.getenv("CAMPAIGN_MANAGER_API_KEY")
     DASHBOARD_AGGREGATOR_API_KEY: Optional[str] = os.getenv("DASHBOARD_AGGREGATOR_API_KEY")
     
+    # Per-service env var overrides. Set any of these to point the engine at
+    # a specific deployed backend. Used by OSS installs where each optional
+    # service ships separately (Modal, Runpod, self-hosted k8s, ...).
+    # If set → the URL is honored. If unset in local mode → the service is
+    # treated as unwired and _call_service returns a clean 503 so tools
+    # degrade gracefully with the "not configured" branch instead of DNS
+    # errors on a docker-compose-only hostname.
+    _SERVICE_ENV_OVERRIDES = {
+        "faves-compliance": "NOVOMCP_COMPLIANCE_URL",
+        "chem-props": "CHEM_PROPS_URL",
+        "addie-models": "ADDIE_MODELS_URL",
+        "molmim-optimizer": "MOLMIM_OPTIMIZER_URL",
+        "openfold3": "OPENFOLD3_URL",
+        "autodock-gpu": "AUTODOCK_GPU_URL",
+        "gromacs-md": "GROMACS_MD_URL",
+        "novomcp-qm": "NOVOMCP_QM_URL",
+        "novomcp-nnp": "NOVOMCP_NNP_URL",
+    }
+
     # Service URLs (for adapter connections)
     # Dynamic service URL generation based on routing mode
     def _get_service_url(self, service_name: str, port: int) -> str:
-        """Generate service URL based on routing configuration"""
+        """Generate service URL based on routing configuration.
+
+        Precedence:
+          1. Per-service env override (NOVOMCP_COMPLIANCE_URL, etc.) — hosted
+             deploys point at their real backend; OSS users point at whatever
+             they wired (Modal endpoint, self-hosted k8s ingress, ...).
+          2. CLOUD_MAP_ENABLED → AWS Cloud Map DNS.
+          3. USE_ALB_ROUTING → ALB routing.
+          4. Local/docker-compose default → http://<service>:<port>.
+
+        For services in _SERVICE_ENV_OVERRIDES, the docker-compose default is
+        suppressed when the env var is unset — otherwise the engine would try
+        to resolve a bare hostname (e.g. faves-compliance) that only exists
+        inside a compose network, causing DNS errors in bare-metal local mode.
+        """
+        # 1) Per-service env override always wins.
+        env_key = self._SERVICE_ENV_OVERRIDES.get(service_name)
+        if env_key:
+            env_url = os.getenv(env_key, "").strip()
+            if env_url:
+                return env_url
+
         # NovoMCP uses internal routing for service-to-service communication
         # Use AWS Cloud Map DNS only when explicitly enabled
         if self.CLOUD_MAP_ENABLED:
             # ECS Service Connect creates DNS entries with full namespace domain
             # Format: service-name.namespace:port (as seen in Route 53)
-            
+
             # Special cases where we need to use -sc suffix for DNS_HTTP support
             if service_name == "auth":
                 # auth (HTTP only) vs auth-sc (DNS_HTTP) - use auth-sc for DNS
@@ -177,11 +217,17 @@ class Settings(BaseSettings):
             elif service_name == "project-data":
                 # project-data has DNS_HTTP in Cloud Map (project-data-sc is HTTP only without DNS)
                 return f"http://project-data.{self.SERVICE_DISCOVERY_NAMESPACE}:{port}"
-            
+
             # All other services use standard naming (they have DNS_HTTP support)
             return f"http://{service_name}.{self.SERVICE_DISCOVERY_NAMESPACE}:{port}"
         elif not self.USE_ALB_ROUTING:
-            # Direct internal service resolution (for local/docker-compose)
+            # Local / docker-compose. If the service has an env override key
+            # but no value was set, suppress the docker hostname default —
+            # otherwise we DNS-error on a name that only resolves inside a
+            # compose network. Return "" so _call_service returns a clean 503
+            # and the tool degrades to its "not configured" branch.
+            if env_key:
+                return ""
             return f"http://{service_name}:{port}"
         else:
             # ALB routing (only for external requests)
