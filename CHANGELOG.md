@@ -4,14 +4,14 @@ All notable changes to NovoMCP are recorded here. The format is [Keep a Changelo
 
 ## [Unreleased]
 
-## [0.1.0] first public release
+## [1.0.0] - 2026-07-21 — first public release
 
 **The open computational chemistry engine for drug discovery and materials science.**
 
 ### What's in the box
 
 **The engine**
-- 69 MCP tools spanning cheminformatics, ADMET prediction, molecular docking, molecular dynamics, protein structure prediction, quantum-mechanical calculations, autonomous discovery funnel, literature/patent search, regulatory compliance, and file intelligence
+- 67 MCP tools spanning cheminformatics, ADMET prediction, molecular docking, molecular dynamics, protein structure prediction, quantum-mechanical calculations, autonomous discovery funnel, literature/patent search, regulatory compliance, and file intelligence
 - Full REST API (`POST /v1/tools/{name}`) with a curated OpenAPI at `/v1/openapi.json`
 - MCP JSON-RPC endpoint at `/mcp/` with the 2024-11-05 protocol
 - 247 registered HTTP routes across MCP, REST, OAuth, admin, WebSocket, and health surfaces
@@ -65,7 +65,7 @@ INFO  Loaded 17 service configurations
 INFO  Starting NovoMCP Orchestration Service
 INFO  HTTP client initialized
 INFO  Spine assembled: auth=LocalAuthGate meter=NoopMeter audit=FileAuditSink
-INFO  NovoMCP initialized with 69 tools
+INFO  NovoMCP initialized with 67 tools
 INFO  NovoMCP OAuth initialized
 INFO  MCP root handler initialized
 INFO  Application startup complete.
@@ -74,5 +74,5 @@ INFO  Uvicorn running on http://0.0.0.0:8018
 
 Then `curl http://localhost:8018/health` returns `{"status":"healthy","service":"novomcp","redis":"disabled","services_available":31}` and `curl -X POST http://localhost:8018/mcp/tools/calculate_properties -H 'Authorization: Bearer x' -d '{"arguments":{"smiles":"CCO"}}'` returns real RDKit values.
 
-[Unreleased]: https://github.com/NovoMCP/novomcp/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/NovoMCP/novomcp/releases/tag/v0.1.0
+[Unreleased]: https://github.com/NovoMCP/novomcp/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/NovoMCP/novomcp/releases/tag/v1.0.0
