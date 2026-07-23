@@ -1,0 +1,27 @@
+# PR gate: build the docs with --strict so a broken MkDocs build (dead link,
+# missing nav page, invalid config, unrendered Mermaid fence) is caught on the
+# pull request — before it merges and deploys. Deploy itself stays in docs.yml
+# (push to main only). Runs on every PR so it is always reported and safe to
+# require as a status check.
+name: docs-check
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  docs-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+      - name: Install MkDocs
+        run: pip install mkdocs-material pymdown-extensions
+      - name: Build (strict)
+        run: mkdocs build --strict
