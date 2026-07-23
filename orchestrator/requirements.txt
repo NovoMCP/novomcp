@@ -1,0 +1,106 @@
+# NovoMCP engine requirements.
+# Python: 3.10+ required (3.9 hit EOL October 2025; python-multipart>=0.0.30
+# for CVE-2024-53981 and current starlette line both need 3.10+).
+# main_https.py fails fast with an actionable message if a lower version
+# is detected — but pip would fail first, so update Python first.
+
+# Core dependencies
+fastapi==0.115.12
+uvicorn[standard]==0.34.0
+python-multipart>=0.0.30
+
+# HTTP and async
+aiohttp>=3.13.3
+httpx==0.28.1
+
+# .env file loading — auto-loads a .env in the working directory at boot
+python-dotenv>=1.0.1
+
+# Pydantic for validation
+pydantic==2.11.1
+pydantic-settings==2.8.1
+email-validator==2.1.0
+
+# WebSocket support
+websockets==12.0
+
+# Server-Sent Events for MCP
+
+# Resilience patterns
+tenacity==8.2.3
+circuitbreaker==1.4.0
+
+# Caching and async job management
+redis==5.0.1
+
+# Authentication
+PyJWT>=2.13.0
+python-jose[cryptography]==3.5.0
+passlib[bcrypt]==1.7.4
+cryptography>=48.0.1
+
+# Utilities
+python-dateutil==2.8.2
+
+# Monitoring
+prometheus-client==0.19.0
+opentelemetry-api==1.21.0
+opentelemetry-sdk==1.21.0
+opentelemetry-instrumentation-fastapi==0.42b0
+opentelemetry-exporter-otlp==1.21.0
+opentelemetry-propagator-aws-xray==1.0.1
+opentelemetry-semantic-conventions==0.42b0
+
+# AWS SDK (SQS for ai_orchestration queue, S3 for File Intelligence Layer,
+# Secrets Manager for Aurora password + vault_client)
+boto3>=1.35.0
+
+# core/k8s_jobs.py talks to the k8s API directly via httpx + the in-cluster
+# SA token. No `kubernetes` Python client dependency — its v30+ ApiClient
+# has a known auth bug that drops the Bearer header silently (every request
+# lands as system:anonymous → 403). Raw httpx is also a smaller surface
+# for 3 endpoints (read configmap, create job, delete job).
+# httpx is already a top-level dep above; pyyaml below covers the parse.
+
+# Connection Registry connectors
+snowflake-connector-python>=3.0.0
+databricks-sql-connector>=3.0.0
+gspread>=6.0.0
+google-auth>=2.0.0
+pyairtable>=2.0.0
+benchling-sdk>=1.0.0
+
+# LLM providers (all optional). At least one API key must be set for the
+# AI-orchestration features to activate; without any, those features
+# gracefully no-op. See docs/configuring-llm.md.
+openai==1.55.3           # OpenAI, OpenAI-compatible endpoints, and Azure OpenAI
+anthropic==0.40.0        # Anthropic Claude
+
+# Database (for future use)
+sqlalchemy==2.0.23
+psycopg2-binary>=2.9.9
+boto3>=1.35.0
+
+# Data processing
+pandas>=1.5.0
+numpy<2.0.0
+
+# Cheminformatics (required for scaffold diversity clustering in lead_optimization,
+# SMILES canonicalization fallback, and future structure-based features)
+rdkit==2024.9.4
+
+# PDB structure parsing (required for audit_system / intake classifier — moved
+# from gromacs-md to eliminate GPU cold-start dependency)
+MDAnalysis>=2.7.0
+pyyaml>=6.0
+
+# System monitoring
+psutil>=5.9.0
+
+# Literature monitoring and data pipeline
+feedparser==6.0.10
+# pinecone-client (PyPI name) was renamed to `pinecone` in v5. Serverless
+# indices created post-2025 (e.g., novomcp-literature-v2) return 404 on
+# pre-5.x SDKs because the host-resolution endpoint changed. Pinning to
+# >=5,<8 keeps the import path (`from pinecone import Pinecone`) stable.
+pinecone>=5.0.0,<8.0.0

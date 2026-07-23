@@ -1,0 +1,155 @@
+@import "tailwindcss";
+
+:root {
+  /* Japandi Design System - Warm Neutrals (Light) */
+  --bg: #F8F6F3;
+  --bg-warm: #F3F0EB;
+  --text: #2D2A26;
+  --text-soft: #6B6560;
+  --text-muted: #9C9690;
+  --accent: #B8704B;
+  --accent-soft: #D4A88A;
+  --border: #E8E4DE;
+  --ease: cubic-bezier(0.25, 0.1, 0.25, 1);
+  --serif: 'Cormorant Garamond', Georgia, serif;
+  --sans: 'Inter', -apple-system, sans-serif;
+
+  /* Radix UI semantic mappings */
+  --background: #F8F6F3;
+  --foreground: #2D2A26;
+  --card: #FFFFFF;
+  --card-foreground: #2D2A26;
+  --primary: #B8704B;
+  --primary-foreground: #FFFFFF;
+  --secondary: #F3F0EB;
+  --secondary-foreground: #2D2A26;
+  --muted: #F3F0EB;
+  --muted-foreground: #9C9690;
+  --accent-ui: #B8704B;
+  --accent-foreground: #FFFFFF;
+  --popover: #FFFFFF;
+  --popover-foreground: #2D2A26;
+  --border: #E8E4DE;
+  --input: #E8E4DE;
+  --ring: #B8704B;
+
+  /* Status colors */
+  --success: #4A7C59;
+  --success-foreground: #FFFFFF;
+  --warning: #B8944B;
+  --warning-foreground: #FFFFFF;
+  --destructive: #C53030;
+  --destructive-foreground: #FFFFFF;
+
+  /* Layout */
+  --radius: 0;
+  --sidebar-width: 260px;
+}
+
+/* Japandi Design System - Dark */
+.dark {
+  --bg: #1C1A17;
+  --bg-warm: #242120;
+  --text: #E8E4DE;
+  --text-soft: #A39E98;
+  --text-muted: #706B65;
+  --accent: #C9845E;
+  --accent-soft: #9E6A4A;
+  --border: #3A3632;
+
+  --background: #1C1A17;
+  --foreground: #E8E4DE;
+  --card: #242120;
+  --card-foreground: #E8E4DE;
+  --primary: #C9845E;
+  --primary-foreground: #1C1A17;
+  --secondary: #2E2B28;
+  --secondary-foreground: #E8E4DE;
+  --muted: #2E2B28;
+  --muted-foreground: #706B65;
+  --accent-ui: #C9845E;
+  --accent-foreground: #1C1A17;
+  --popover: #242120;
+  --popover-foreground: #E8E4DE;
+  --border: #3A3632;
+  --input: #3A3632;
+  --ring: #C9845E;
+
+  --success: #5E9E6E;
+  --success-foreground: #1C1A17;
+  --warning: #C9A85E;
+  --warning-foreground: #1C1A17;
+  --destructive: #D65454;
+  --destructive-foreground: #FFFFFF;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --font-sans: var(--font-inter), -apple-system, sans-serif;
+  --font-serif: var(--font-cormorant), Georgia, serif;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-inter), -apple-system, sans-serif;
+  font-weight: 400;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Subtle grain texture */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  opacity: 0.03;
+  pointer-events: none;
+  z-index: 9999;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 256px 256px;
+}
+
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+/* Focus Outline Styling */
+*:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}

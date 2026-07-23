@@ -1,0 +1,36 @@
+# Build and deploy the MkDocs Material site to GitHub Pages.
+#
+# Publishes to the gh-pages branch on every push to main that touches
+# docs/mkdocs config. Custom domain: docs.novomcp.com (CNAME committed
+# under docs/CNAME so mkdocs-material carries it through gh-deploy).
+
+name: docs
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - docs/**
+      - mkdocs.yml
+      - CHANGELOG.md
+      - .github/workflows/docs.yml
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+      - name: Install MkDocs
+        run: pip install mkdocs-material pymdown-extensions
+      - name: Build + deploy to gh-pages
+        run: mkdocs gh-deploy --force --clean --verbose

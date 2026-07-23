@@ -1,0 +1,59 @@
+{
+  "name": "NovoMCP",
+  "short_name": "NQN",
+  "description": "The computational chemistry engine for drug discovery and materials science.",
+  "theme_color": "#3B82F6",
+  "background_color": "#ffffff",
+  "display": "standalone",
+  "orientation": "portrait",
+  "scope": "/",
+  "start_url": "/",
+  "icons": [
+    {
+      "src": "/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-384x384.png",
+      "sizes": "384x384",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ],
+  "categories": ["medical", "productivity", "business"],
+  "shortcuts": [
+    {
+      "name": "Dashboard",
+      "url": "/dashboard",
+      "description": "View your dashboard"
+    },
+    {
+      "name": "Generate Molecules",
+      "url": "/molecules",
+      "description": "Generate new molecules"
+    },
+    {
+      "name": "Projects",
+      "url": "/projects",
+      "description": "Manage projects"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshots/dashboard.png",
+      "type": "image/png",
+      "sizes": "1280x720"
+    },
+    {
+      "src": "/screenshots/molecules.png",
+      "type": "image/png",
+      "sizes": "1280x720"
+    }
+  ]
+}

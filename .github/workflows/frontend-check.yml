@@ -1,0 +1,34 @@
+# PR gate for the Next.js dashboard: type-check + production build, so a change
+# that breaks the frontend (dangling import, type error, bad route) is caught
+# before merge. Path-filtered — only runs when frontend-nextjs/ changes.
+name: frontend-check
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'frontend-nextjs/**'
+      - '.github/workflows/frontend-check.yml'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: frontend-nextjs
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: frontend-nextjs/package-lock.json
+      - name: Install
+        run: npm ci
+      - name: Type-check
+        run: npm run type-check
+      - name: Build
+        run: npm run build
+        env:
+          NEXT_TELEMETRY_DISABLED: '1'

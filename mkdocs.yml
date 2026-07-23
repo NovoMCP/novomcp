@@ -1,0 +1,122 @@
+site_name: NovoMCP
+site_description: The open computational chemistry engine for drug discovery and materials science.
+site_url: https://docs.novomcp.com/
+repo_url: https://github.com/NovoMCP/novomcp
+repo_name: NovoMCP/novomcp
+edit_uri: edit/main/docs/
+
+docs_dir: docs
+site_dir: site
+
+theme:
+  name: material
+  logo: assets/logo.png
+  favicon: assets/favicon.png
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: black
+      accent: blue
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: black
+      accent: blue
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - navigation.footer
+    - search.highlight
+    - search.share
+    - search.suggest
+    - content.code.copy
+    - content.action.edit
+    - toc.follow
+  icon:
+    repo: fontawesome/brands/github
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/NovoMCP/novomcp
+    - icon: fontawesome/brands/x-twitter
+      link: https://x.com/novomcp
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+
+plugins:
+  - search
+
+nav:
+  - Home: index.md
+  - "← novomcp.com": https://www.novomcp.com/
+  - Quickstart: quickstart.md
+  - Architecture: architecture.md
+  - Use cases: use-cases.md
+  - Configuring LLM providers: configuring-llm.md
+  - Deploying services:
+      - Overview: deploying-services/README.md
+      - chem-props (RDKit): deploying-services/chem-props.md
+      - addie-models (ADMET): deploying-services/addie-models.md
+      - faves-compliance: deploying-services/faves-compliance.md
+      - autodock-gpu (GPU): deploying-services/autodock-gpu.md
+      - gromacs-md (GPU): deploying-services/gromacs-md.md
+      - openfold3 (GPU): deploying-services/openfold3.md
+      - novomcp-qm: deploying-services/novomcp-qm.md
+      - novomcp-nnp: deploying-services/novomcp-nnp.md
+      - novomcp-neb: deploying-services/novomcp-neb.md
+      - novomcp-properties: deploying-services/novomcp-properties.md
+  - Deploying to the cloud:
+      - Overview: deploying-to-cloud/README.md
+      - AWS: deploying-to-cloud/aws.md
+      - GCP: deploying-to-cloud/gcp.md
+      - Azure: deploying-to-cloud/azure.md
+  - Engineering stories:
+      - Overview: engineering-stories/README.md
+      - Tree-guided retrieval (122M molecules): engineering-stories/tree-guided-retrieval-122m-molecules.md
+      - Server-side tool search: engineering-stories/server-side-tool-search.md
+      - Fallback state as first-class: engineering-stories/fallback-state-first-class.md
+      - False-alarm memory: engineering-stories/false-alarm-memory.md
+      - Pause and continue: engineering-stories/pause-and-continue.md
+      - Predeclared gates: engineering-stories/predeclared-gates.md
+      - Spec as source of truth: engineering-stories/spec-source-of-truth.md
+      - Verification doesn't propagate: engineering-stories/verification-doesnt-propagate.md
+  - API reference: api-reference.md
+  - Connecting MCP clients: connecting-mcp-clients.md
+  - Optional data services: optional-data-services.md
+  - Tool availability: tool-availability.md
+  - Troubleshooting: troubleshooting.md
+  - Updating: updating.md
+  - Changelog: changelog.md
