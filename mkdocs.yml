@@ -84,6 +84,7 @@ nav:
   - "← novomcp.com": https://www.novomcp.com/
   - Quickstart: quickstart.md
   - Architecture: architecture.md
+  - Use cases: use-cases.md
   - Configuring LLM providers: configuring-llm.md
   - Deploying services:
       - Overview: deploying-services/README.md
