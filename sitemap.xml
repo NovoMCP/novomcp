@@ -2,138 +2,142 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
          <loc>https://docs.novomcp.com/</loc>
-         <lastmod>2026-07-22</lastmod>
+         <lastmod>2026-07-23</lastmod>
     </url>
     <url>
          <loc>https://docs.novomcp.com/api-reference/</loc>
-         <lastmod>2026-07-22</lastmod>
+         <lastmod>2026-07-23</lastmod>
+    </url>
+    <url>
+         <loc>https://docs.novomcp.com/architecture/</loc>
+         <lastmod>2026-07-23</lastmod>
     </url>
     <url>
          <loc>https://docs.novomcp.com/changelog/</loc>
-         <lastmod>2026-07-22</lastmod>
+         <lastmod>2026-07-23</lastmod>
     </url>
     <url>
          <loc>https://docs.novomcp.com/configuring-llm/</loc>
-         <lastmod>2026-07-22</lastmod>
+         <lastmod>2026-07-23</lastmod>
     </url>
     <url>
          <loc>https://docs.novomcp.com/connecting-mcp-clients/</loc>
-         <lastmod>2026-07-22</lastmod>
+         <lastmod>2026-07-23</lastmod>
     </url>
     <url>
          <loc>https://docs.novomcp.com/optional-data-services/</loc>
-         <lastmod>2026-07-22</lastmod>
+         <lastmod>2026-07-23</lastmod>
     </url>
     <url>
          <loc>https://docs.novomcp.com/quickstart/</loc>
-         <lastmod>2026-07-22</lastmod>
+         <lastmod>2026-07-23</lastmod>
     </url>
     <url>
          <loc>https://docs.novomcp.com/tool-availability/</loc>
-         <lastmod>2026-07-22</lastmod>
+         <lastmod>2026-07-23</lastmod>
     </url>
     <url>
          <loc>https://docs.novomcp.com/troubleshooting/</loc>
-         <lastmod>2026-07-22</lastmod>
+         <lastmod>2026-07-23</lastmod>
     </url>
     <url>
          <loc>https://docs.novomcp.com/updating/</loc>
-         <lastmod>2026-07-22</lastmod>
+         <lastmod>2026-07-23</lastmod>
     </url>
     <url>
          <loc>https://docs.novomcp.com/deploying-services/</loc>
-         <lastmod>2026-07-22</lastmod>
+         <lastmod>2026-07-23</lastmod>
     </url>
     <url>
          <loc>https://docs.novomcp.com/deploying-services/addie-models/</loc>
-         <lastmod>2026-07-22</lastmod>
+         <lastmod>2026-07-23</lastmod>
     </url>
     <url>
          <loc>https://docs.novomcp.com/deploying-services/autodock-gpu/</loc>
-         <lastmod>2026-07-22</lastmod>
+         <lastmod>2026-07-23</lastmod>
     </url>
     <url>
          <loc>https://docs.novomcp.com/deploying-services/chem-props/</loc>
-         <lastmod>2026-07-22</lastmod>
+         <lastmod>2026-07-23</lastmod>
     </url>
     <url>
          <loc>https://docs.novomcp.com/deploying-services/faves-compliance/</loc>
-         <lastmod>2026-07-22</lastmod>
+         <lastmod>2026-07-23</lastmod>
     </url>
     <url>
          <loc>https://docs.novomcp.com/deploying-services/gromacs-md/</loc>
-         <lastmod>2026-07-22</lastmod>
+         <lastmod>2026-07-23</lastmod>
     </url>
     <url>
          <loc>https://docs.novomcp.com/deploying-services/novomcp-neb/</loc>
-         <lastmod>2026-07-22</lastmod>
+         <lastmod>2026-07-23</lastmod>
     </url>
     <url>
          <loc>https://docs.novomcp.com/deploying-services/novomcp-nnp/</loc>
-         <lastmod>2026-07-22</lastmod>
+         <lastmod>2026-07-23</lastmod>
     </url>
     <url>
          <loc>https://docs.novomcp.com/deploying-services/novomcp-properties/</loc>
-         <lastmod>2026-07-22</lastmod>
+         <lastmod>2026-07-23</lastmod>
     </url>
     <url>
          <loc>https://docs.novomcp.com/deploying-services/novomcp-qm/</loc>
-         <lastmod>2026-07-22</lastmod>
+         <lastmod>2026-07-23</lastmod>
     </url>
     <url>
          <loc>https://docs.novomcp.com/deploying-services/openfold3/</loc>
-         <lastmod>2026-07-22</lastmod>
+         <lastmod>2026-07-23</lastmod>
     </url>
     <url>
          <loc>https://docs.novomcp.com/deploying-to-cloud/</loc>
-         <lastmod>2026-07-22</lastmod>
+         <lastmod>2026-07-23</lastmod>
     </url>
     <url>
          <loc>https://docs.novomcp.com/deploying-to-cloud/aws/</loc>
-         <lastmod>2026-07-22</lastmod>
+         <lastmod>2026-07-23</lastmod>
     </url>
     <url>
          <loc>https://docs.novomcp.com/deploying-to-cloud/azure/</loc>
-         <lastmod>2026-07-22</lastmod>
+         <lastmod>2026-07-23</lastmod>
     </url>
     <url>
          <loc>https://docs.novomcp.com/deploying-to-cloud/gcp/</loc>
-         <lastmod>2026-07-22</lastmod>
+         <lastmod>2026-07-23</lastmod>
     </url>
     <url>
          <loc>https://docs.novomcp.com/engineering-stories/</loc>
-         <lastmod>2026-07-22</lastmod>
+         <lastmod>2026-07-23</lastmod>
     </url>
     <url>
          <loc>https://docs.novomcp.com/engineering-stories/fallback-state-first-class/</loc>
-         <lastmod>2026-07-22</lastmod>
+         <lastmod>2026-07-23</lastmod>
     </url>
     <url>
          <loc>https://docs.novomcp.com/engineering-stories/false-alarm-memory/</loc>
-         <lastmod>2026-07-22</lastmod>
+         <lastmod>2026-07-23</lastmod>
     </url>
     <url>
          <loc>https://docs.novomcp.com/engineering-stories/pause-and-continue/</loc>
-         <lastmod>2026-07-22</lastmod>
+         <lastmod>2026-07-23</lastmod>
     </url>
     <url>
          <loc>https://docs.novomcp.com/engineering-stories/predeclared-gates/</loc>
-         <lastmod>2026-07-22</lastmod>
+         <lastmod>2026-07-23</lastmod>
     </url>
     <url>
          <loc>https://docs.novomcp.com/engineering-stories/server-side-tool-search/</loc>
-         <lastmod>2026-07-22</lastmod>
+         <lastmod>2026-07-23</lastmod>
     </url>
     <url>
          <loc>https://docs.novomcp.com/engineering-stories/spec-source-of-truth/</loc>
-         <lastmod>2026-07-22</lastmod>
+         <lastmod>2026-07-23</lastmod>
     </url>
     <url>
          <loc>https://docs.novomcp.com/engineering-stories/tree-guided-retrieval-122m-molecules/</loc>
-         <lastmod>2026-07-22</lastmod>
+         <lastmod>2026-07-23</lastmod>
     </url>
     <url>
          <loc>https://docs.novomcp.com/engineering-stories/verification-doesnt-propagate/</loc>
-         <lastmod>2026-07-22</lastmod>
+         <lastmod>2026-07-23</lastmod>
     </url>
 </urlset>

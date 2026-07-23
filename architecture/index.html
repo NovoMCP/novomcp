@@ -10,13 +10,13 @@
       
       
       
-        <link rel="canonical" href="https://docs.novomcp.com/troubleshooting/">
+        <link rel="canonical" href="https://docs.novomcp.com/architecture/">
       
       
-        <link rel="prev" href="../tool-availability/">
+        <link rel="prev" href="../quickstart/">
       
       
-        <link rel="next" href="../updating/">
+        <link rel="next" href="../configuring-llm/">
       
       
         
@@ -27,7 +27,7 @@
     
     
       
-        <title>Troubleshooting - NovoMCP</title>
+        <title>Architecture - NovoMCP</title>
       
     
     
@@ -78,7 +78,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#troubleshooting" class="md-skip">
+        <a href="#architecture" class="md-skip">
           Skip to content
         </a>
       
@@ -111,7 +111,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Troubleshooting
+              Architecture
             
           </span>
         </div>
@@ -284,9 +284,11 @@
   
   
   
+    
   
-    <li class="md-tabs__item">
-      <a href="../architecture/" class="md-tabs__link">
+  
+    <li class="md-tabs__item md-tabs__item--active">
+      <a href="./" class="md-tabs__link">
         
   
   
@@ -458,11 +460,9 @@
   
   
   
-    
   
-  
-    <li class="md-tabs__item md-tabs__item--active">
-      <a href="./" class="md-tabs__link">
+    <li class="md-tabs__item">
+      <a href="../troubleshooting/" class="md-tabs__link">
         
   
   
@@ -642,10 +642,37 @@
       
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../architecture/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -661,6 +688,70 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#the-four-layers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The four layers
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-runs-with-nothing-wired" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What runs with nothing wired
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-a-tool-call-does" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What a tool call does
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#next" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Next
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -1653,37 +1744,10 @@
       
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Troubleshooting
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../troubleshooting/" class="md-nav__link">
         
   
   
@@ -1699,171 +1763,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#install" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Install
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Install">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#psycopg2-install-fails-on-macos" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        psycopg2 install fails on macOS
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#python-39-install-fails" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Python 3.9 install fails
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#boot" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Boot
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Boot">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#engine-boots-but-toolslist-returns-fewer-tools-than-expected" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Engine boots but tools/list returns fewer tools than expected
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#novomcp_db_host-is-set-but-omics-tools-still-dont-appear" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        NOVOMCP_DB_HOST is set but omics tools still don't appear
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#external-apis" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        External APIs
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="External APIs">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#search_biorxiv-search_chembl-audit_system-return-connection-error" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        search_biorxiv / search_chembl / audit_system return "connection error"
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#updates" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Updates
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Updates">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#the-boot-time-update-check-spams-the-log" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        The boot-time update check spams the log
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#update-check-fails-behind-a-corporate-firewall" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Update check fails behind a corporate firewall
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -1949,147 +1848,46 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#install" class="md-nav__link">
+  <a href="#the-four-layers" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Install
+        The four layers
       
     </span>
   </a>
-  
-    <nav class="md-nav" aria-label="Install">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#psycopg2-install-fails-on-macos" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        psycopg2 install fails on macOS
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#python-39-install-fails" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Python 3.9 install fails
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#boot" class="md-nav__link">
+  <a href="#what-runs-with-nothing-wired" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Boot
+        What runs with nothing wired
       
     </span>
   </a>
-  
-    <nav class="md-nav" aria-label="Boot">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#engine-boots-but-toolslist-returns-fewer-tools-than-expected" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Engine boots but tools/list returns fewer tools than expected
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#novomcp_db_host-is-set-but-omics-tools-still-dont-appear" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        NOVOMCP_DB_HOST is set but omics tools still don't appear
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#external-apis" class="md-nav__link">
+  <a href="#what-a-tool-call-does" class="md-nav__link">
     <span class="md-ellipsis">
       
-        External APIs
+        What a tool call does
       
     </span>
   </a>
-  
-    <nav class="md-nav" aria-label="External APIs">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#search_biorxiv-search_chembl-audit_system-return-connection-error" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        search_biorxiv / search_chembl / audit_system return "connection error"
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#updates" class="md-nav__link">
+  <a href="#next" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Updates
+        Next
       
     </span>
   </a>
-  
-    <nav class="md-nav" aria-label="Updates">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#the-boot-time-update-check-spams-the-log" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        The boot-time update check spams the log
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#update-check-fails-behind-a-corporate-firewall" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Update check fails behind a corporate firewall
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
@@ -2110,7 +1908,7 @@
 
 
   
-    <a href="https://github.com/NovoMCP/novomcp/edit/main/docs/troubleshooting.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+    <a href="https://github.com/NovoMCP/novomcp/edit/main/docs/architecture.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
       
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
     </a>
@@ -2118,74 +1916,69 @@
   
 
 
-<h1 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h1>
-<p>Common install/boot issues and their fixes. If your issue isn't here, <a href="https://github.com/NovoMCP/novomcp/issues">open an issue</a> — good bug reports become new entries on this page.</p>
-<h2 id="install">Install<a class="headerlink" href="#install" title="Permanent link">&para;</a></h2>
-<h3 id="psycopg2-install-fails-on-macos">psycopg2 install fails on macOS<a class="headerlink" href="#psycopg2-install-fails-on-macos" title="Permanent link">&para;</a></h3>
-<p><strong>Symptoms:</strong> <code>pip install -r requirements.txt</code> fails with a compile error mentioning <code>libpq-fe.h</code> or <code>Error: pg_config executable not found</code>.</p>
-<p><strong>Cause:</strong> <code>psycopg2-binary</code> needs Postgres client headers to compile from source when the pre-built wheel isn't available for your Python + macOS combination.</p>
-<p><strong>Fix:</strong></p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>brew<span class="w"> </span>install<span class="w"> </span>postgresql@16
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>pip<span class="w"> </span>install<span class="w"> </span>psycopg2-binary
-</span></code></pre></div>
-<p>If the pre-built wheel exists, <code>pip</code> picks it up and the Homebrew install isn't strictly needed. On fresh venvs where the wheel is missing, the compile-from-source path needs the headers.</p>
-<p><strong>Not blocking a boot:</strong> the engine runs fine without <code>psycopg2-binary</code> when <code>NOVOMCP_DB_HOST</code> is unset (which is the OSS default). Only wire it in when you're ready to load the omics data pack.</p>
-<h3 id="python-39-install-fails">Python 3.9 install fails<a class="headerlink" href="#python-39-install-fails" title="Permanent link">&para;</a></h3>
-<p><strong>Symptoms:</strong> <code>pip install -r requirements.txt</code> fails, or <code>python main_https.py</code> exits immediately with a Python-version error.</p>
-<p><strong>Cause:</strong> NovoMCP requires Python 3.10+. Python 3.9 hit end-of-life October 2025 and several transitive dependencies (<code>python-multipart&gt;=0.0.30</code> for CVE-2024-53981, current starlette + fastapi) require 3.10+.</p>
-<p><strong>Fix:</strong> install a supported Python version.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="c1"># macOS (Homebrew)</span>
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>brew<span class="w"> </span>install<span class="w"> </span>python@3.11
-</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>
-</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="c1"># Linux (apt)</span>
-</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>sudo<span class="w"> </span>apt<span class="w"> </span>install<span class="w"> </span>python3.11<span class="w"> </span>python3.11-venv
-</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>
-</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="c1"># Then recreate the venv</span>
-</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>rm<span class="w"> </span>-rf<span class="w"> </span>.venv
-</span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>python3.11<span class="w"> </span>-m<span class="w"> </span>venv<span class="w"> </span>.venv<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">source</span><span class="w"> </span>.venv/bin/activate
-</span><span id="__span-1-10"><a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>pip<span class="w"> </span>install<span class="w"> </span>-r<span class="w"> </span>requirements.txt
-</span><span id="__span-1-11"><a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>python<span class="w"> </span>main_https.py
-</span></code></pre></div>
-<h2 id="boot">Boot<a class="headerlink" href="#boot" title="Permanent link">&para;</a></h2>
-<h3 id="engine-boots-but-toolslist-returns-fewer-tools-than-expected">Engine boots but tools/list returns fewer tools than expected<a class="headerlink" href="#engine-boots-but-toolslist-returns-fewer-tools-than-expected" title="Permanent link">&para;</a></h3>
-<p><strong>Symptoms:</strong> You expected the full 67-tool catalog, but <code>tools/list</code> shows only 11 (or some small number).</p>
-<p><strong>Cause:</strong> This is by design. Tools whose service or data dependencies aren't wired locally are hidden from <code>tools/list</code> — no "unavailable" errors on tools you can't run. See <a href="../tool-availability/">tool availability</a> for the full map of what unlocks what.</p>
-<p><strong>Fix:</strong> either configure the service (see <a href="../deploying-services/">deploying services</a>) or turn on debug mode to see everything:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">NOVOMCP_SHOW_HIDDEN_TOOLS</span><span class="o">=</span><span class="m">1</span>
-</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>python<span class="w"> </span>main_https.py
-</span></code></pre></div>
-<p>In debug mode, unwired tools are visible but calls to them return structured "service unavailable" errors.</p>
-<h3 id="novomcp_db_host-is-set-but-omics-tools-still-dont-appear"><code>NOVOMCP_DB_HOST</code> is set but omics tools still don't appear<a class="headerlink" href="#novomcp_db_host-is-set-but-omics-tools-still-dont-appear" title="Permanent link">&para;</a></h3>
-<p><strong>Symptoms:</strong> You set <code>NOVOMCP_DB_HOST</code> but <code>target_discovery</code> / <code>validate_target</code> / <code>stratify_patients</code> don't show up in <code>tools/list</code>.</p>
-<p><strong>Cause:</strong> the engine reads env at boot. Set the variable, then restart the engine (Ctrl+C, then <code>python main_https.py</code>). MCP clients also cache the tool list — reconnect the MCP connection to see the new tools.</p>
-<p><strong>Fix:</strong></p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="c1"># Set the env var</span>
-</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="nb">export</span><span class="w"> </span><span class="nv">NOVOMCP_DB_HOST</span><span class="o">=</span>postgresql://novomcp:password@localhost:5432/novomcp
-</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>
-</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="c1"># Restart the engine</span>
-</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>python<span class="w"> </span>main_https.py
-</span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>
-</span><span id="__span-3-7"><a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="c1"># In your MCP client (Claude Desktop / Cursor / etc.), reconnect the NovoMCP</span>
-</span><span id="__span-3-8"><a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a><span class="c1"># connection — the client caches tools/list until reconnect.</span>
-</span></code></pre></div>
-<h2 id="external-apis">External APIs<a class="headerlink" href="#external-apis" title="Permanent link">&para;</a></h2>
-<h3 id="search_biorxiv-search_chembl-audit_system-return-connection-error"><code>search_biorxiv</code> / <code>search_chembl</code> / <code>audit_system</code> return "connection error"<a class="headerlink" href="#search_biorxiv-search_chembl-audit_system-return-connection-error" title="Permanent link">&para;</a></h3>
-<p><strong>Symptoms:</strong> These three tools sometimes fail with transient connection errors even when other tools work fine.</p>
-<p><strong>Cause:</strong> these tools hit external public APIs (<code>api.biorxiv.org</code>, <code>www.ebi.ac.uk/chembl</code>, <code>data.rcsb.org</code>) directly. When those services rate-limit, hit maintenance, or your network drops packets to them, the tool fails. No config change on your side helps — retry in a minute.</p>
-<p><strong>Fix:</strong> retry. If it keeps failing on your network specifically, check whether your firewall / VPN is blocking these hosts.</p>
-<h2 id="updates">Updates<a class="headerlink" href="#updates" title="Permanent link">&para;</a></h2>
-<h3 id="the-boot-time-update-check-spams-the-log">The boot-time update check spams the log<a class="headerlink" href="#the-boot-time-update-check-spams-the-log" title="Permanent link">&para;</a></h3>
-<p><strong>Symptoms:</strong> every boot logs about a newer version being available.</p>
-<p><strong>Cause:</strong> the check caches the result for 30 days but if you never update, it keeps reporting the same "newer version available" line.</p>
-<p><strong>Fix:</strong> either update the engine (see <a href="../updating/">updating</a>) or disable the check:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">NOVOMCP_NO_UPDATE_CHECK</span><span class="o">=</span><span class="m">1</span>
-</span></code></pre></div>
-<h3 id="update-check-fails-behind-a-corporate-firewall">Update check fails behind a corporate firewall<a class="headerlink" href="#update-check-fails-behind-a-corporate-firewall" title="Permanent link">&para;</a></h3>
-<p><strong>Symptoms:</strong> boot log shows nothing about updates and <code>get_platform_info(info_type='update')</code> returns <code>update_check_enabled: true</code> but no <code>latest_version</code> field.</p>
-<p><strong>Cause:</strong> the check makes one HTTPS GET to <code>api.github.com</code>. Corporate firewalls sometimes block GitHub API traffic even when they allow GitHub HTTPS.</p>
-<p><strong>Fix:</strong> either allow <code>api.github.com</code> outbound, or disable the check:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">NOVOMCP_NO_UPDATE_CHECK</span><span class="o">=</span><span class="m">1</span>
-</span></code></pre></div>
+<h1 id="architecture">Architecture<a class="headerlink" href="#architecture" title="Permanent link">&para;</a></h1>
+<p>How the engine fits together — and what talks to what when you make a tool call.</p>
+<p>NovoMCP is a single engine that exposes molecular intelligence through two surfaces, backed by optional compute services and data. Everything below the engine is pluggable or optional; the engine runs on its own on a laptop with none of it wired.</p>
+<pre class="mermaid"><code>flowchart TB
+    subgraph clients["Clients"]
+        C1["MCP clients&lt;br/&gt;Claude Desktop · Cursor · Zed · Cline"]
+        C2["REST clients&lt;br/&gt;scripts · notebooks · services"]
+    end
+
+    subgraph engine["NovoMCP engine · localhost:8018"]
+        S["Surfaces&lt;br/&gt;MCP JSON-RPC /mcp/ · REST + OpenAPI 3.1 /v1"]
+        K["Orchestrator core (BSL 1.1)&lt;br/&gt;intent → plan → tool dispatch&lt;br/&gt;11-stage discovery funnel"]
+        A["Pluggable adapters · env-swappable&lt;br/&gt;AuthGate · CreditMeter · AuditSink"]
+    end
+
+    subgraph compute["Compute services · deploy as needed"]
+        M1["chem-props · addie-models (ADMET)"]
+        M2["autodock-gpu · gromacs-md · openfold3"]
+        M3["novomcp-qm · nnp · neb · properties"]
+    end
+
+    subgraph ext["Data &amp; external · optional"]
+        F["faves-compliance"]
+        D["122M-molecule corpus · omics data pack"]
+        L["LLM provider&lt;br/&gt;OpenAI · Anthropic · Ollama · Azure"]
+    end
+
+    C1 --&gt; S
+    C2 --&gt; S
+    S --&gt; K
+    K --&gt; A
+    K --&gt; compute
+    K --&gt; F
+    F --&gt; D
+    K -.-&gt;|LLM calls| L</code></pre>
+<h2 id="the-four-layers">The four layers<a class="headerlink" href="#the-four-layers" title="Permanent link">&para;</a></h2>
+<p><strong>Clients.</strong> Anything that speaks MCP or HTTP. MCP-compatible assistants (Claude Desktop, Cursor, Zed, Cline) connect to the JSON-RPC surface; scripts, notebooks, and services hit the REST surface. Same tool catalog either way.</p>
+<p><strong>The engine.</strong> One process (<code>localhost:8018</code> by default). It has two surfaces over one core:</p>
+<ul>
+<li><strong>Surfaces</strong> — MCP JSON-RPC at <code>/mcp/</code> and a curated REST API + OpenAPI 3.1 spec at <code>/v1</code>. Both routes land in the same orchestrator, so a tool behaves identically whether an agent calls it or a <code>curl</code> does.</li>
+<li><strong>Orchestrator core</strong> — intent recognition, orchestration planning, semantic tool search, and the governed 11-stage discovery funnel. This is the part licensed under BSL 1.1 (see <a href="../#licensing">Licensing</a>); everything around it is Apache-2.0.</li>
+<li><strong>Pluggable adapters</strong> — <code>AuthGate</code>, <code>CreditMeter</code>, and <code>AuditSink</code> swap via environment variables. The OSS defaults are <code>LocalAuthGate</code> (every request is an unlimited <code>local</code> user), <code>NoopMeter</code> (no credit accounting), and <code>FileAuditSink</code> (appends to <code>~/.novo/audit.jsonl</code>). Swap them to run the same core authenticated, metered, and audited in production.</li>
+</ul>
+<p><strong>Compute services.</strong> Each heavy capability is a separate service you deploy when you need it — CPU services like <code>chem-props</code> and <code>addie-models</code>, GPU services like <code>autodock-gpu</code>, <code>gromacs-md</code>, and <code>openfold3</code>, and the native <code>novomcp-qm</code> / <code>nnp</code> / <code>neb</code> / <code>properties</code> stack. The engine dispatches to whichever are wired and reports the rest as unavailable rather than failing. See <a href="../deploying-services/">Deploying services</a>.</p>
+<p><strong>Data &amp; external.</strong> All optional. <code>faves-compliance</code> serves regulatory screening and cached lookups against the enriched corpus; the 122M-molecule corpus and omics data pack are downloadable datasets you point the engine at; the LLM provider (used for intent recognition and planning) is your own key. None are required to boot.</p>
+<h2 id="what-runs-with-nothing-wired">What runs with nothing wired<a class="headerlink" href="#what-runs-with-nothing-wired" title="Permanent link">&para;</a></h2>
+<p>Out of the 67-tool catalog, <strong>11 tools work fully local</strong> the moment the engine boots — molecular profiling and cheminformatics computed in-process via RDKit, plus the MCP handshake and funnel protocol. No compute services, no data pack, no LLM key, no cloud. See <a href="../tool-availability/">Tool availability</a> for the exact map of what's on by default and what each service unlocks.</p>
+<h2 id="what-a-tool-call-does">What a tool call does<a class="headerlink" href="#what-a-tool-call-does" title="Permanent link">&para;</a></h2>
+<ol>
+<li>A client sends a request to a surface (<code>/mcp/</code> or <code>/v1</code>).</li>
+<li><code>AuthGate</code> resolves the caller (a <code>local</code> user, unauthenticated, in OSS defaults).</li>
+<li>The core plans and dispatches to the right handler — computed in-process for local tools, or proxied to a compute service for the rest.</li>
+<li><code>CreditMeter</code> records usage (a no-op in OSS defaults).</li>
+<li><code>AuditSink</code> logs the call (<code>~/.novo/audit.jsonl</code> in OSS defaults).</li>
+<li>The result returns on the same surface it came in on.</li>
+</ol>
+<h2 id="next">Next<a class="headerlink" href="#next" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong><a href="../quickstart/">Quickstart</a></strong> — boot the engine and run the first calls</li>
+<li><strong><a href="../tool-availability/">Tool availability</a></strong> — the 11-local map and what each service adds</li>
+<li><strong><a href="../deploying-services/">Deploying services</a></strong> — wire up ADMET, docking, MD, structure prediction, QM</li>
+<li><strong><a href="../configuring-llm/">Configuring LLM providers</a></strong> — enable intent recognition and planning</li>
+</ul>
 
 
 
@@ -2221,7 +2014,7 @@
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../tool-availability/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Tool availability">
+          <a href="../quickstart/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Quickstart">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
@@ -2231,20 +2024,20 @@
                 Previous
               </span>
               <div class="md-ellipsis">
-                Tool availability
+                Quickstart
               </div>
             </div>
           </a>
         
         
           
-          <a href="../updating/" class="md-footer__link md-footer__link--next" aria-label="Next: Updating">
+          <a href="../configuring-llm/" class="md-footer__link md-footer__link--next" aria-label="Next: Configuring LLM providers">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Updating
+                Configuring LLM providers
               </div>
             </div>
             <div class="md-footer__button md-icon">
