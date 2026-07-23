@@ -30,7 +30,6 @@ if _sys.version_info < (3, 10):
 import warnings as _warnings
 _warnings.filterwarnings("ignore", message=r".*urllib3 v2 only supports OpenSSL.*")
 _warnings.filterwarnings("ignore", message=r".*'schema_extra' has been renamed.*")
-_warnings.filterwarnings("ignore", message=r".*on_event is deprecated.*")
 
 import asyncio
 import json
@@ -449,13 +448,22 @@ async def lifespan(app: FastAPI):
     except Exception:
         pass
 
-    # Initialize AI modules
+    # Initialize AI modules (intent recognition, planning, enrichment).
+    # These no-op when no LLM provider is configured — see docs/configuring-llm.md.
+    # AzureOpenAIClient logs "AI client using provider=<name>" when a provider
+    # is available; here we only add an honest line for the disabled case so we
+    # never claim a model is active when no key is set.
     try:
         ai_client = AzureOpenAIClient()
         intent_recognizer = IntentRecognizer(ai_client)
         orchestration_planner = OrchestrationPlanner(ai_client)
         project_enricher = ProjectEnricher(ai_client)
-        logger.info("AI modules initialized with GPT-5")
+        if not ai_client.available:
+            logger.info(
+                "AI modules disabled — no LLM provider configured. Intent "
+                "recognition, planning, and enrichment will no-op; direct tool "
+                "calls work normally. See docs/configuring-llm.md to enable."
+            )
     except Exception as e:
         logger.warning(f"AI modules initialization failed: {e}")
         ai_client = None
@@ -758,6 +766,27 @@ async def lifespan(app: FastAPI):
         logger.info("Tool-search index build scheduled (background)")
     except Exception as e:
         logger.error(f"Failed to schedule tool-search index build (non-critical): {e}")
+
+    # Log registered routes + service configuration (moved here from a legacy
+    # @app.on_event("startup") handler, which FastAPI has deprecated in favor
+    # of lifespan).
+    routes = [route.path for route in app.routes if hasattr(route, "path")]
+    logger.info("=" * 60)
+    logger.info("NovoMCP Service Started")
+    logger.info(f"Registered {len(routes)} routes:")
+    mcp_routes = [r for r in routes if "/mcp" in r]
+    if mcp_routes:
+        logger.info(f"NovoMCP routes registered ({len(mcp_routes)} routes):")
+        for route in sorted(mcp_routes):
+            logger.info(f"  - {route}")
+    logger.info("Service configurations loaded:")
+    for service_name in ["addie-models", "chem-props", "faves-compliance", "lead-optimization", "autodock-gpu", "gromacs-md"]:
+        config = service_config_manager.get_service_config(service_name)
+        if config and config.get("url"):
+            logger.info(f"  {service_name}: {config['url']} (API Key: {'Present' if config.get('api_key') else 'Missing'})")
+        else:
+            logger.warning(f"  {service_name}: NOT CONFIGURED")
+    logger.info("=" * 60)
 
     yield
 
@@ -1624,36 +1653,6 @@ async def proxy_to_service(service_name: str, method: str, path: str, data: Opti
         raise HTTPException(status_code=500, detail="Internal proxy error")
 
 # Log registered routes at startup
-@app.on_event("startup")
-async def log_routes():
-    """Log all registered routes for debugging"""
-    routes = []
-    for route in app.routes:
-        if hasattr(route, 'path'):
-            routes.append(route.path)
-    
-    logger.info("=" * 60)
-    logger.info("NovoMCP Service Started")
-    logger.info(f"Registered {len(routes)} routes:")
-
-    # Log NovoMCP routes
-    mcp_routes = [r for r in routes if '/mcp' in r]
-    if mcp_routes:
-        logger.info(f"NovoMCP routes registered ({len(mcp_routes)} routes):")
-        for route in sorted(mcp_routes):
-            logger.info(f"  - {route}")
-
-    # Log service configurations
-    logger.info("Service configurations loaded:")
-    for service_name in ["addie-models", "chem-props", "faves-compliance", "lead-optimization", "autodock-gpu", "gromacs-md"]:
-        config = service_config_manager.get_service_config(service_name)
-        if config and config.get("url"):
-            logger.info(f"  {service_name}: {config['url']} (API Key: {'Present' if config.get('api_key') else 'Missing'})")
-        else:
-            logger.warning(f"  {service_name}: NOT CONFIGURED")
-    
-    logger.info("=" * 60)
-
 # Main entry point
 if __name__ == "__main__":
     uvicorn.run(
