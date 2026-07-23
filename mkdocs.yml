@@ -66,7 +66,11 @@ markdown_extensions:
       pygments_lang_class: true
   - pymdownx.inlinehilite
   - pymdownx.snippets
-  - pymdownx.superfences
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
   - pymdownx.tabbed:
       alternate_style: true
   - pymdownx.tasklist:
@@ -79,6 +83,7 @@ nav:
   - Home: index.md
   - "← novomcp.com": https://www.novomcp.com/
   - Quickstart: quickstart.md
+  - Architecture: architecture.md
   - Configuring LLM providers: configuring-llm.md
   - Deploying services:
       - Overview: deploying-services/README.md
@@ -111,4 +116,6 @@ nav:
   - Connecting MCP clients: connecting-mcp-clients.md
   - Optional data services: optional-data-services.md
   - Tool availability: tool-availability.md
+  - Troubleshooting: troubleshooting.md
+  - Updating: updating.md
   - Changelog: changelog.md

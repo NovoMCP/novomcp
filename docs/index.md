@@ -6,6 +6,17 @@ NovoMCP is an agent-callable engine that exposes molecular intelligence, cheminf
 
 One engine. Two domains. Four surfaces.
 
+## Why NovoMCP?
+
+Molecular intelligence is scattered — RDKit in one notebook, an ADMET model in another, a docking rig on a cluster, a compliance check in a spreadsheet, literature search in a browser tab. Wiring all of it into something an AI agent can actually *call* is the work nobody wants to redo per project. NovoMCP collapses it into one engine:
+
+- **Agent-callable by default.** 67 tools over MCP JSON-RPC plus a curated REST API — the same catalog whether you drive it from Claude Desktop, Cursor, a script, or the discovery funnel.
+- **Runs on your laptop, day one.** 11 tools work fully local with no API keys and no cloud. The rest unlock as you deploy compute or bring data — nothing is gated behind a signup to get started.
+- **An engine, not a wrapper.** Intent recognition, orchestration planning, semantic tool search, and a governed 11-stage discovery funnel are built in — not left as an exercise for the caller.
+- **Pluggable where it counts.** Auth, metering, audit, and LLM provider each swap via env vars, so the same core runs unauthenticated on a laptop or metered-and-audited in production.
+
+New here? [Boot it in 2 minutes](quickstart.md), then see [how it fits together](architecture.md).
+
 ## Get started
 
 <div class="grid cards" markdown>
