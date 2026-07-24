@@ -4,6 +4,11 @@ All notable changes to NovoMCP are recorded here. The format is [Keep a Changelo
 
 ## [Unreleased]
 
+## [1.1.3] - 2026-07-24
+
+### Fixed
+- MCP-over-HTTP: handle `DELETE` on the endpoint for Streamable HTTP session termination. Clients that close a session on teardown previously got a `405`; the endpoint now drops the session and returns `204`, completing the HEAD/GET/POST/DELETE transport surface.
+
 ## [1.1.2] - 2026-07-24
 
 ### Changed
@@ -93,7 +98,8 @@ INFO  Uvicorn running on http://0.0.0.0:8018
 
 Then `curl http://localhost:8018/health` returns `{"status":"healthy","service":"novomcp","redis":"disabled","services_available":31}` and `curl -X POST http://localhost:8018/mcp/tools/calculate_properties -H 'Authorization: Bearer x' -d '{"arguments":{"smiles":"CCO"}}'` returns real RDKit values.
 
-[Unreleased]: https://github.com/NovoMCP/novomcp/compare/v1.1.2...HEAD
+[Unreleased]: https://github.com/NovoMCP/novomcp/compare/v1.1.3...HEAD
+[1.1.3]: https://github.com/NovoMCP/novomcp/compare/v1.1.2...v1.1.3
 [1.1.2]: https://github.com/NovoMCP/novomcp/compare/v1.1.1...v1.1.2
 [1.1.1]: https://github.com/NovoMCP/novomcp/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/NovoMCP/novomcp/compare/v1.0.0...v1.1.0
