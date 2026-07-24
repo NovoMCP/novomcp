@@ -2132,7 +2132,7 @@
 <p>These persist audit + discovery-funnel state to a backing service so future runs can retrieve them via semantic search (<code>search_prior_runs</code>).</p>
 <p><strong>Not required for the engine itself</strong> — every tool call already lands in a local file audit sink at <code>~/.novo/audit.jsonl</code> (via <code>FileAuditSink</code>). The funnel-persistence tools are additive: they enable cross-run learning where "last month's kinase run" can be retrieved by search when you start a new one.</p>
 <p>Two ways to wire it:</p>
-<p><strong>A — Point at an HTTP audit/credit-ledger service</strong> (like our hosted <code>dashboard-aggregator</code>):</p>
+<p><strong>A — Point at an HTTP audit/credit-ledger service</strong> (like our hosted <code>managed backend</code>):</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">FUNNEL_BACKEND_URL</span><span class="o">=</span>http://your-backend.example.com
 </span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="c1"># Legacy alias: DASHBOARD_AGGREGATOR_URL</span>
 </span></code></pre></div>

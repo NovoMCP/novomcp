@@ -1831,7 +1831,18 @@
 <p>The canonical changelog lives at <a href="https://github.com/NovoMCP/novomcp/blob/main/CHANGELOG.md"><code>CHANGELOG.md</code></a> in the repository root, following <a href="https://keepachangelog.com/en/1.1.0/">Keep a Changelog</a> format and <a href="https://semver.org/spec/v2.0.0.html">Semantic Versioning</a>.</p>
 <h1 id="changelog_1">Changelog<a class="headerlink" href="#changelog_1" title="Permanent link">&para;</a></h1>
 <p>All notable changes to NovoMCP are recorded here. The format is <a href="https://keepachangelog.com/en/1.1.0/">Keep a Changelog</a> and this project follows <a href="https://semver.org/spec/v2.0.0.html">Semantic Versioning</a>.</p>
-<h2 id="unreleased"><a href="https://github.com/NovoMCP/novomcp/compare/v1.0.0...HEAD">Unreleased</a><a class="headerlink" href="#unreleased" title="Permanent link">&para;</a></h2>
+<h2 id="unreleased"><a href="https://github.com/NovoMCP/novomcp/compare/v1.1.1...HEAD">Unreleased</a><a class="headerlink" href="#unreleased" title="Permanent link">&para;</a></h2>
+<h2 id="111-2026-07-23"><a href="https://github.com/NovoMCP/novomcp/compare/v1.1.0...v1.1.1">1.1.1</a> - 2026-07-23<a class="headerlink" href="#111-2026-07-23" title="Permanent link">&para;</a></h2>
+<h3 id="fixed">Fixed<a class="headerlink" href="#fixed" title="Permanent link">&para;</a></h3>
+<ul>
+<li>MCP-over-HTTP: standards-compliant Streamable HTTP clients (e.g. <code>ollmcp</code>) now connect end-to-end in local mode. Added the server→client SSE stream on the MCP endpoint (its absence surfaced in strict clients as <code>unhandled errors in a TaskGroup</code>), made local mode auth-less for MCP clients so no <code>Authorization</code> header is required, and fixed <code>tools/list</code> failing on core-tier tools.</li>
+<li><code>initialize</code> now reports the real engine version in <code>serverInfo</code> (sourced from <code>version.py</code>) instead of a hardcoded value.</li>
+</ul>
+<h2 id="110-2026-07-23"><a href="https://github.com/NovoMCP/novomcp/compare/v1.0.0...v1.1.0">1.1.0</a> - 2026-07-23<a class="headerlink" href="#110-2026-07-23" title="Permanent link">&para;</a></h2>
+<h3 id="changed">Changed<a class="headerlink" href="#changed" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Engine, dashboard, and documentation updates.</li>
+</ul>
 <h2 id="100-2026-07-21-first-public-release"><a href="https://github.com/NovoMCP/novomcp/releases/tag/v1.0.0">1.0.0</a> - 2026-07-21 — first public release<a class="headerlink" href="#100-2026-07-21-first-public-release" title="Permanent link">&para;</a></h2>
 <p><strong>The open computational chemistry engine for drug discovery and materials science.</strong></p>
 <h3 id="whats-in-the-box">What's in the box<a class="headerlink" href="#whats-in-the-box" title="Permanent link">&para;</a></h3>
