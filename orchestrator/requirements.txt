@@ -82,6 +82,9 @@ psycopg2-binary>=2.9.9
 boto3>=1.35.0
 
 # Data processing
+# NOTE: these pinned versions publish wheels for Python 3.10-3.12. On Python
+# 3.13/3.14 there are no matching wheels yet, so pip falls back to source
+# builds. Use Python 3.11 or 3.12 (see README) for a wheels-only install.
 pandas>=1.5.0
 numpy<2.0.0
 
