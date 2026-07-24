@@ -8,6 +8,7 @@ Protocol Version: 2025-06-18
 Reference: https://spec.modelcontextprotocol.io/specification/2025-06-18/
 """
 
+import asyncio
 import json
 import logging
 import uuid
@@ -15,11 +16,12 @@ from typing import Optional, Dict, Any
 from datetime import datetime
 
 from fastapi import APIRouter, Request, Response, HTTPException, Header
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 
 from .tools import MCP_TOOLS, MCP_PROMPTS, MCP_PROMPT_TEMPLATES, MCP_RESOURCES, MCP_RESOURCE_DATA, MCPToolExecutor, ToolTier, host_is_compute, is_tool_visible
 from .auth import MCPUser, validate_via_spine
 from .spine import build_spine
+from version import __version__
 
 logger = logging.getLogger(__name__)
 
@@ -82,8 +84,11 @@ async def _get_user_from_request(request: Request) -> Optional[MCPUser]:
             logger.warning(f"Invalid API key: {api_key[:10]}...")
         return user
 
-    logger.warning("No authentication credentials provided in request")
-    return None
+    # No credential supplied. Route through the spine anyway: the local auth
+    # gate resolves a missing credential to the local user (so MCP clients
+    # connect without a header in local mode), while a managed auth gate
+    # rejects it and returns None.
+    return await validate_via_spine(_spine, None, mode="core")
 
 
 def _make_jsonrpc_response(id: Any, result: Any = None, error: Dict = None) -> Dict:
@@ -120,6 +125,46 @@ async def mcp_head():
             "MCP-Protocol-Version": MCP_PROTOCOL_VERSION,
             "Content-Type": "application/json"
         }
+    )
+
+
+# =============================================================================
+# GET endpoint - Streamable HTTP server->client SSE stream
+# =============================================================================
+
+@router.get("/")
+async def mcp_sse_stream(request: Request):
+    """
+    Streamable HTTP server-to-client SSE stream.
+
+    The MCP Streamable HTTP transport opens a GET stream on the endpoint to
+    receive server-initiated messages. NovoMCP does not push server-initiated
+    messages, so we hold the stream open with periodic keepalive comments.
+
+    Without this handler the GET returns 405 and strict clients (which open
+    the stream concurrently with their POST channel) fail the whole connection
+    with "unhandled errors in a TaskGroup". No auth is required to open the
+    stream; message exchange still happens over POST.
+    """
+    async def event_stream():
+        try:
+            while True:
+                if await request.is_disconnected():
+                    break
+                # SSE comment line — keeps the connection alive, carries no data
+                yield ": keepalive\n\n"
+                await asyncio.sleep(15)
+        except asyncio.CancelledError:
+            pass
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "MCP-Protocol-Version": MCP_PROTOCOL_VERSION,
+        },
     )
 
 
@@ -274,7 +319,7 @@ async def _handle_initialize(params: Dict, request: Request) -> Dict:
         "protocolVersion": MCP_PROTOCOL_VERSION,
         "serverInfo": {
             "name": "NovoMCP",
-            "version": "1.0.0"
+            "version": __version__
         },
         "capabilities": {
             "tools": {"listChanged": False},
@@ -299,7 +344,10 @@ async def _handle_tools_list(params: Dict, request: Request, session_id: str) ->
     user_tier = user.tier.value
 
     # Get tools available for this tier
-    tier_order = [ToolTier.FREE, ToolTier.PRO, ToolTier.TEAM, ToolTier.ENTERPRISE]
+    # Order must match the ToolTier enum and the executor's own gate — omitting
+    # CORE makes tier_order.index() raise a ValueError on any CORE-tier tool and
+    # 500s the whole tools/list response.
+    tier_order = [ToolTier.FREE, ToolTier.CORE, ToolTier.PRO, ToolTier.TEAM, ToolTier.ENTERPRISE]
     try:
         user_tier_index = tier_order.index(ToolTier(user_tier))
     except ValueError:

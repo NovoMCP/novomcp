@@ -4,6 +4,12 @@ All notable changes to NovoMCP are recorded here. The format is [Keep a Changelo
 
 ## [Unreleased]
 
+## [1.1.1] - 2026-07-23
+
+### Fixed
+- MCP-over-HTTP: standards-compliant Streamable HTTP clients (e.g. `ollmcp`) now connect end-to-end in local mode. Added the server→client SSE stream on the MCP endpoint (its absence surfaced in strict clients as `unhandled errors in a TaskGroup`), made local mode auth-less for MCP clients so no `Authorization` header is required, and fixed `tools/list` failing on core-tier tools.
+- `initialize` now reports the real engine version in `serverInfo` (sourced from `version.py`) instead of a hardcoded value.
+
 ## [1.1.0] - 2026-07-23
 
 ### Changed
@@ -79,5 +85,7 @@ INFO  Uvicorn running on http://0.0.0.0:8018
 
 Then `curl http://localhost:8018/health` returns `{"status":"healthy","service":"novomcp","redis":"disabled","services_available":31}` and `curl -X POST http://localhost:8018/mcp/tools/calculate_properties -H 'Authorization: Bearer x' -d '{"arguments":{"smiles":"CCO"}}'` returns real RDKit values.
 
-[Unreleased]: https://github.com/NovoMCP/novomcp/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/NovoMCP/novomcp/compare/v1.1.1...HEAD
+[1.1.1]: https://github.com/NovoMCP/novomcp/compare/v1.1.0...v1.1.1
+[1.1.0]: https://github.com/NovoMCP/novomcp/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/NovoMCP/novomcp/releases/tag/v1.0.0
