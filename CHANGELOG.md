@@ -4,6 +4,14 @@ All notable changes to NovoMCP are recorded here. The format is [Keep a Changelo
 
 ## [Unreleased]
 
+## [1.1.2] - 2026-07-24
+
+### Changed
+- Install docs: recommend Python 3.11 or 3.12 explicitly and note that the pinned `numpy`/`rdkit` don't publish wheels for Python 3.13/3.14, so fresh machines on system Python hit a source-build wall. No functional change.
+
+### Fixed
+- `search_chembl`: retry the EBI ChEMBL API with exponential backoff on transient upstream errors (5xx / timeouts) before surfacing the failure. Still returns the upstream error honestly if EBI stays down — no fallback data.
+
 ## [1.1.1] - 2026-07-23
 
 ### Fixed
@@ -85,7 +93,8 @@ INFO  Uvicorn running on http://0.0.0.0:8018
 
 Then `curl http://localhost:8018/health` returns `{"status":"healthy","service":"novomcp","redis":"disabled","services_available":31}` and `curl -X POST http://localhost:8018/mcp/tools/calculate_properties -H 'Authorization: Bearer x' -d '{"arguments":{"smiles":"CCO"}}'` returns real RDKit values.
 
-[Unreleased]: https://github.com/NovoMCP/novomcp/compare/v1.1.1...HEAD
+[Unreleased]: https://github.com/NovoMCP/novomcp/compare/v1.1.2...HEAD
+[1.1.2]: https://github.com/NovoMCP/novomcp/compare/v1.1.1...v1.1.2
 [1.1.1]: https://github.com/NovoMCP/novomcp/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/NovoMCP/novomcp/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/NovoMCP/novomcp/releases/tag/v1.0.0

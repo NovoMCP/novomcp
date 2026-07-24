@@ -5,4 +5,4 @@ Bump this on every release. Referenced by:
 - `get_platform_info` tool response
 - CI release checks
 """
-__version__ = "1.1.1"
+__version__ = "1.1.2"

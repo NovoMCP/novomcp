@@ -9639,6 +9639,31 @@ class MCPToolExecutor:
                 error=chembl_val.message or f"ChEMBL query '{query}' not valid.",
             )
 
+        async def _get_with_retry(client, url, retries=3):
+            """GET with exponential backoff on transient upstream failures.
+            The EBI ChEMBL API is occasionally flaky (5xx / timeouts); retry a
+            few times, then surface the error unchanged — no fallback data."""
+            delay = 0.5
+            response = None
+            for attempt in range(retries):
+                try:
+                    response = await client.get(url)
+                    if response.status_code >= 500 and attempt < retries - 1:
+                        await asyncio.sleep(delay)
+                        delay *= 2
+                        continue
+                    response.raise_for_status()
+                    return response
+                except (httpx.TimeoutException, httpx.TransportError):
+                    if attempt < retries - 1:
+                        await asyncio.sleep(delay)
+                        delay *= 2
+                        continue
+                    raise
+            # Final attempt still 5xx — raise for the outer handler.
+            response.raise_for_status()
+            return response
+
         try:
             base_url = "https://www.ebi.ac.uk/chembl/api/data"
             results = []
@@ -9647,8 +9672,7 @@ class MCPToolExecutor:
                 if search_type == "compound":
                     # Search for molecules by name
                     url = f"{base_url}/molecule/search.json?q={query}&limit={top_k}"
-                    response = await client.get(url)
-                    response.raise_for_status()
+                    response = await _get_with_retry(client, url)
                     data = response.json()
 
                     for mol in data.get("molecules", []):
@@ -9668,8 +9692,7 @@ class MCPToolExecutor:
                 elif search_type == "target":
                     # Search for targets
                     url = f"{base_url}/target/search.json?q={query}&limit={top_k}"
-                    response = await client.get(url)
-                    response.raise_for_status()
+                    response = await _get_with_retry(client, url)
                     data = response.json()
 
                     for target in data.get("targets", []):
@@ -9688,8 +9711,7 @@ class MCPToolExecutor:
                     # Search for bioactivity data
                     # First find the target/compound, then get activities
                     url = f"{base_url}/activity/search.json?q={query}&limit={top_k}"
-                    response = await client.get(url)
-                    response.raise_for_status()
+                    response = await _get_with_retry(client, url)
                     data = response.json()
 
                     for activity in data.get("activities", []):

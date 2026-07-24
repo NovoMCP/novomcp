@@ -12,13 +12,13 @@ One engine. Two domains. Four surfaces.
 
 ## Quickstart
 
-**Requires Python 3.10 or later.** Python 3.9 hit end-of-life October 2025; several transitive deps require 3.10+. Check what you have:
+**Requires Python 3.10–3.12** (3.11 or 3.12 recommended). Python 3.9 hit end-of-life October 2025 and several transitive deps require 3.10+. On the high end, the pinned scientific stack (`numpy`, `rdkit`) doesn't yet publish wheels for Python 3.13/3.14, so those versions fall back to slow source builds on a fresh machine. If your system Python is 3.13+, install a 3.11 or 3.12 alongside it (below) — e.g. `uv python install 3.11`. Check what you have:
 
 ```bash
 python3 --version
 ```
 
-If it says `Python 3.10.x` or newer, you're set — skip ahead. Otherwise install a supported Python via whatever channel fits your setup:
+If it says `Python 3.10`, `3.11`, or `3.12`, you're set — skip ahead. If it's 3.9 or 3.13+, install a supported Python via whatever channel fits your setup:
 
 - **macOS with Homebrew:** `brew install python@3.11`
 - **macOS with the official installer:** download from [python.org/downloads](https://www.python.org/downloads/)
@@ -27,7 +27,7 @@ If it says `Python 3.10.x` or newer, you're set — skip ahead. Otherwise instal
 - **Windows:** [python.org/downloads](https://www.python.org/downloads/) installer, or use WSL and follow the Linux path
 - **pyenv (any OS):** `pyenv install 3.11.9 && pyenv local 3.11.9`
 - **Docker / devcontainer:** use `python:3.11-slim` as your base image
-- **`asdf`, `mise`, `uv`, `conda`, `mamba`:** all fine — install any 3.10+
+- **`asdf`, `mise`, `uv`, `conda`, `mamba`:** all fine — target 3.11 or 3.12 (e.g. `uv python install 3.11`)
 
 Then run the engine locally with no external services:
 
