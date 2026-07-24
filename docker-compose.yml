@@ -38,7 +38,7 @@ services:
       # OPENFOLD3_URL: http://openfold3:8025
       # NOVOMCP_QM_URL: http://novomcp-qm:8031
       # NOVOMCP_NNP_URL: http://novomcp-nnp:8032
-      # ADDIE_MODELS_URL: http://addie-models:8033
+      # ADDIE_MODELS_URL: http://addie-models:8025
 
       # Uncomment for persistent OAuth (survive restarts):
       # REDIS_URL: redis://redis:6379/0
@@ -106,9 +106,9 @@ services:
   # addie-models:
   #   image: ghcr.io/novomcp/addie-models:latest
   #   container_name: novomcp-addie-models
-  #   ports: ["8033:8033"]
+  #   ports: ["8033:8025"]   # host 8033 -> container 8025 (avoids the openfold3 host-port)
   #   restart: unless-stopped
-  #   # CPU or GPU. 31 ADMET prediction models.
+  #   # CPU or GPU. ADMET prediction (31 base + 22 TDC overlay). Weights pull from Hugging Face on first boot.
 
 volumes:
   novomcp-audit:
