@@ -1,13 +1,16 @@
 # addie-models
 
-ADMET (absorption, distribution, metabolism, excretion, toxicity) prediction. 31 pretrained ML models covering CYP inhibition/substrate, clearance, half-life, hepatotoxicity, cardiotoxicity (hERG + DICTrank), DILI, Ames, and Tox21 endpoints.
+ADMET (absorption, distribution, metabolism, excretion, toxicity) prediction. **31 base endpoints + a 22-model TDC state-of-the-art overlay** covering CYP inhibition/substrate, clearance, half-life, hepatotoxicity (DILI), cardiotoxicity (hERG + DICTrank), Ames, permeability, solubility, and the Tox21 nuclear-receptor/stress-response panels.
+
+- **Source:** https://github.com/NovoMCP/addie-models
+- **Weights:** https://huggingface.co/NovoMCP/addie-models (~510 MiB, MIT) — pulled automatically on first boot.
 
 ## Pre-reqs
 
 - Docker
-- CPU works; GPU (any NVIDIA) speeds up batch inference ~10×
+- CPU works; GPU (any NVIDIA) speeds up batch inference
 - ~4 GB RAM
-- ~2 GB disk for weights (bundled in the image)
+- ~1 GB disk for weights, **downloaded from Hugging Face on first boot** (no cloud credentials needed)
 
 ## Deploy
 
@@ -21,42 +24,36 @@ docker compose up addie-models
 **Standalone:**
 
 ```bash
-# CPU only
 docker run -d \
   --name novomcp-addie \
-  -p 8033:8033 \
+  -p 8025:8025 \
   --restart unless-stopped \
   ghcr.io/novomcp/addie-models:latest
+# first boot downloads the weights from Hugging Face, then serves on :8025
 
-# With GPU
-docker run -d \
-  --name novomcp-addie \
-  --gpus all \
-  -p 8033:8033 \
-  --restart unless-stopped \
-  ghcr.io/novomcp/addie-models:latest
+# With GPU: add  --gpus all
 ```
 
 ## Wire into the engine
 
 ```bash
-export ADDIE_MODELS_URL=http://localhost:8033
+export ADDIE_MODELS_URL=http://localhost:8025
 ```
 
 ## Verify
 
 ```bash
-curl -s http://localhost:8033/health
-# {"status":"healthy","models_loaded":31,"gpu_available":true|false}
+curl -s http://localhost:8025/health
+# {"status":"healthy","models_loaded":31, ...}
 
-curl -s -X POST http://localhost:8033/predict \
+curl -s -X POST http://localhost:8025/addie/process \
   -H 'Content-Type: application/json' \
-  -d '{"smiles":"CC(=O)Oc1ccccc1C(=O)O"}'
+  -d '{"molecules":[{"id":"aspirin","smiles":"CC(=O)Oc1ccccc1C(=O)O"}]}'
 ```
 
 ## Tools that light up
 
-- `predict_admet`, 31 endpoints per molecule
+- `predict_admet`, ADMET across all endpoints per molecule
 - `get_molecule_profile`, fills the ADMET section (falls back to properties-only without this service)
 - `screen_library`, batch ADMET across a compound list
 - `batch_profile`, same, higher-level wrapper
@@ -65,11 +62,10 @@ curl -s -X POST http://localhost:8033/predict \
 
 | Var | Default | Purpose |
 |---|---|---|
-| `PORT` | `8033` | HTTP listen port |
-| `BATCH_SIZE` | `32` | Molecules per inference batch |
-| `USE_GPU` | `auto` | Force `cpu` or `gpu`; `auto` detects at boot |
+| `PORT` | `8025` | HTTP listen port |
+| `STORAGE_BACKEND` | `HF` | Weights source: `HF` (Hugging Face) \| `S3` \| `AZURE` |
+| `HF_MODEL_REPO` | `NovoMCP/addie-models` | Hugging Face weights repo (when `STORAGE_BACKEND=HF`) |
+| `EXECUTOR_WORKERS` | `8` | Inference thread-pool size |
+| `TDC_USE_GIN` | `true` | Use the GIN-featurized TDC ensembles |
 
-## Speed
-
-- **Single molecule:** ~50 ms (CPU) / ~10 ms (GPU)
-- **Library screen (10,000 compounds):** ~5 min (CPU) / ~30 s (GPU)
+GPU is auto-detected at boot (PyTorch); no flag needed beyond `--gpus all` on the container.
