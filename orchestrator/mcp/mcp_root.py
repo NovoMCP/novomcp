@@ -169,6 +169,26 @@ async def mcp_sse_stream(request: Request):
 
 
 # =============================================================================
+# DELETE endpoint - Streamable HTTP session termination
+# =============================================================================
+
+@router.delete("/")
+async def mcp_delete_session(request: Request):
+    """
+    Streamable HTTP session termination.
+
+    Clients send DELETE with the Mcp-Session-Id header to close a session
+    cleanly on teardown. Without this handler the request returns 405 (harmless
+    but noisy in logs). We drop any tracked session state and return 204.
+    """
+    session_id = request.headers.get("mcp-session-id")
+    if session_id and session_id in _sessions:
+        _sessions.pop(session_id, None)
+        logger.info(f"Session terminated: {session_id}")
+    return Response(status_code=204)
+
+
+# =============================================================================
 # POST endpoint - JSON-RPC handler
 # =============================================================================
 
