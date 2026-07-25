@@ -4,6 +4,9 @@ All notable changes to NovoMCP are recorded here. The format is [Keep a Changelo
 
 ## [Unreleased]
 
+### Added
+- `analysis/trajectory_diagnostic` — read an optimization *series*, not just one molecule: decompose an ADMET/property trajectory into per-axis structure (frozen / climbing / descending / cliff / flat / complex). Pure numpy + scipy, self-tested. First community contribution — thanks @dmarsters (#6).
+
 ## [1.1.3] - 2026-07-24
 
 ### Fixed
