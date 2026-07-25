@@ -1,0 +1,44 @@
+# Developer Certificate of Origin (DCO) check.
+#
+# Every non-merge commit in a pull request must carry a `Signed-off-by:` line
+# (add it with `git commit -s`). This is a provenance attestation — the
+# contributor certifies they wrote the change or have the right to submit it
+# under the project's license. It does NOT transfer rights or relicense; see
+# CONTRIBUTING.md. Self-contained (no third-party action) on purpose.
+
+name: DCO
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  dco:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Check Signed-off-by on every PR commit
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          fail=0
+          # --no-merges: merge commits (e.g. merging main into the branch) are exempt.
+          for c in $(git rev-list --no-merges "$BASE".."$HEAD"); do
+            subject=$(git show -s --format='%s' "$c")
+            if git show -s --format='%B' "$c" | grep -qiE '^Signed-off-by: .+ <.+@.+>'; then
+              echo "  ok   ${c:0:8}  $subject"
+            else
+              echo "::error::commit ${c:0:8} (\"$subject\") has no Signed-off-by — run: git commit --amend -s && git push -f"
+              fail=1
+            fi
+          done
+          if [ "$fail" = "0" ]; then
+            echo "All PR commits carry a Signed-off-by (DCO satisfied)."
+          fi
+          exit $fail

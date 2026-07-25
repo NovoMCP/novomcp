@@ -37,6 +37,22 @@ By opening a PR against this repo you agree that your contribution is licensed u
 
 If either is a blocker, tell us in the PR description and we'll work something out.
 
+## Sign off your commits (DCO)
+
+Every commit in a pull request must carry a `Signed-off-by` line. Add it automatically with:
+
+```bash
+git commit -s -m "your message"
+```
+
+Signing off is the [Developer Certificate of Origin](https://developercertificate.org/): you
+**certify that you wrote the change, or have the right to submit it under this project's license.**
+It's a *provenance attestation* — it does **not** transfer any rights or relicense your work. Your
+contribution stays under the license of the tree it lands in (see above); we do **not** require a CLA.
+
+A CI check enforces this on every PR. Forgot to sign off? Re-run the last commit with
+`git commit --amend -s` (or `git rebase --signoff HEAD~N` for several) and force-push the branch.
+
 ## What NOT to contribute
 
 - **Do not upload weights or datasets to this repo.** Model weights live in companion repos with their own MIT / CC-BY licenses. Datasets live on an open-data host.
