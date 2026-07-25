@@ -51,23 +51,30 @@ their decompositions pinned as a regression snapshot, the modification-specifici
 threshold parameterization, and the endpoint contract. The motif fixtures are **frozen addie-models
 predictions** (64-head panel), so the test pins the *diagnostic*, not the model version.
 
-## Exposing it as an MCP tool (proposed — placement left to maintainers)
+## MCP tool: `analyze_admet_trajectory`
 
-Kept out of `mcp/tools.py` deliberately: credits, funnel-id logging and dispatch are the
-orchestration core's call, not something to guess at from outside. The wiring is thin — build the
-matrix from an existing ADMET path, then analyze:
+Wired in `mcp/tools.py` as `analyze_admet_trajectory` (FREE tier, needs `ADDIE_MODELS_URL`). Give it
+an **ordered** list of SMILES walking one modification and it scores every molecule in a single
+batched `/addie/process` call, then returns the per-endpoint decomposition:
 
-```python
-# executor sketch for a tool like `analyze_admet_trajectory(smiles_series, endpoints=None)`
-from analysis.trajectory_diagnostic import align_series, analyze_optimization_trajectory
-
-async def _run(smiles_series, endpoints=None):
-    # reuse whatever per-molecule ADMET path the tool layer already uses (addie-models):
-    preds = [await predict_admet(s, endpoints=endpoints) for s in smiles_series]   # one dict/step
-    values, axis_names, dropped = align_series(preds)     # fixed-endpoint contract, drops+reports
-    out = analyze_optimization_trajectory(values, axis_names)
-    out["dropped_endpoints"] = dropped
-    return out
+```json
+{
+  "smiles_series": ["CCO","CCCO","CCCCO", "…C12"],   // order IS the trajectory; 3–100 molecules
+  "endpoints": ["cyp3a4_inhibitor_probability", "herg_blocker_probability"],  // optional subset
+  "positions": [2,3,4,"…"],                          // optional real x (carbon count, #Cl, logP)
+  "thresholds": {"flat_abs": 0.05}                   // optional cutoff overrides
+}
 ```
+
+returns `{summary: {climbing: [...], frozen: [...], …}, axes: {endpoint: {class, monotonicity, …}},
+dropped_endpoints: [...], n_molecules, thresholds}`.
+
+Design notes:
+- **Order preserved by index**, not SMILES, so a repeated molecule in a series can't collide.
+- **A failed STEP is fatal** (a trajectory can't have a hole); a failed *endpoint* at some step is
+  dropped for the whole series via `align_series` and reported in `dropped_endpoints`.
+- **Pricing** mirrors `batch_profile` (flat; batched ADMET over ≤100 molecules) — retune in
+  `TOOL_CREDITS` to taste.
+- Tests: `mcp/test_analyze_admet_trajectory.py` (hermetic — fakes the addie call, no service needed).
 
 `positions=` accepts a real quantity (logP, #Cl, carbon count) when the series isn't evenly spaced.

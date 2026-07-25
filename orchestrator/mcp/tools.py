@@ -409,6 +409,7 @@ TOOL_CREDITS: Dict[str, int] = {
     "calculate_properties": 10,       # RDKit + fingerprints
     "get_3d_properties": 15,          # NovoMD conformer generation
     "predict_admet": 20,              # 31 ML model inference
+    "analyze_admet_trajectory": 15,   # batched ADMET over a series (one /addie/process call, <=100 mols) + trajectory read; flat like batch_profile
     "predict_clinical_outcomes": 25,  # Orchestrates chem-props + FAVES + addie-models → novoexpert
     "optimize_molecule": 25,          # MolMIM API + FAVES
 
@@ -1516,6 +1517,45 @@ MCP_TOOLS = {
                 }
             },
             "required": ["smiles"]
+        }
+    },
+
+    "analyze_admet_trajectory": {
+        "name": "analyze_admet_trajectory",
+        "title": "Analyze ADMET Trajectory",
+        "description": "Read an ADMET *series*, not a single molecule. Given an ORDERED list of SMILES that walk one optimization direction (a homologous series, a synthetic route, analogs from one repeating modification), scores every molecule with addie-models and classifies how each ADMET endpoint MOVES along the series: frozen (moved then plateaued — a dead-end you cannot tune further this way), climbing / descending (you are actively driving it), cliff (a single-step discontinuity), flat (this modification is irrelevant to it), or complex (non-monotone). Answers the campaign-level question a per-molecule prediction cannot: which liabilities are dead-ends, which you are worsening, and which you can ignore along this modification. ORDER MATTERS — pass the molecules in modification order. Needs 3–100 molecules.",
+        "tier": ToolTier.FREE,
+        "annotations": {
+            "readOnlyHint": True,
+            "destructiveHint": False
+        },
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "smiles_series": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Ordered SMILES along one modification direction (e.g. a homologous series C2→C12). Order is the trajectory; min 3, max 100.",
+                    "minItems": 3,
+                    "maxItems": 100
+                },
+                "endpoints": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Optional subset of ADMET endpoint names to analyze (e.g. herg_blocker_probability, cyp3a4_inhibitor_probability, aqueous_solubility_log_mol_L). Default: every numeric endpoint addie returns."
+                },
+                "positions": {
+                    "type": "array",
+                    "items": {"type": "number"},
+                    "description": "Optional real x-value per step (carbon count, #Cl, logP) when the series is not evenly spaced. Length must equal smiles_series. Default: 0..n-1."
+                },
+                "thresholds": {
+                    "type": "object",
+                    "description": "Optional classification-cutoff overrides, all optional: flat_abs, mono_rho, freeze_early, freeze_late_frac, cliff_min_jump, cliff_dominance. Defaults suit probabilities in [0,1] (see analysis/trajectory_diagnostic).",
+                    "additionalProperties": {"type": "number"}
+                }
+            },
+            "required": ["smiles_series"]
         }
     },
 
@@ -3052,6 +3092,7 @@ TOOL_LOCAL_REQUIREMENTS: Dict[str, list] = {
     # ADMET prediction — needs addie-models service.
     # Roadmap: v1.3.x or bundled with a deployment guide.
     "predict_admet": ["env:ADDIE_MODELS_URL"],
+    "analyze_admet_trajectory": ["env:ADDIE_MODELS_URL"],
 
     # Credit tracking + file intelligence — need the funnel-backend infra.
     "get_credit_usage":    ["env:FUNNEL_BACKEND_URL"],
@@ -9048,6 +9089,101 @@ class MCPToolExecutor:
             logger.warning(f"batch addie call error: {e}")
             return {}
         return out
+
+    async def _execute_analyze_admet_trajectory(self, args: Dict[str, Any]) -> ToolResult:
+        """Read an ADMET *series*: score every molecule in an ordered list with addie-models,
+        then classify how each endpoint moves along the modification (frozen / climbing /
+        descending / cliff / flat / complex). Thin wrapper over analysis/trajectory_diagnostic —
+        the reasoning a per-molecule predictor cannot give. See that module for the contract."""
+        series = args.get("smiles_series")
+        if not isinstance(series, list) or not series or not all(isinstance(s, str) and s.strip() for s in series):
+            return ToolResult(success=False, error="smiles_series must be a non-empty list of SMILES strings")
+        if len(series) < 3:
+            return ToolResult(success=False, error="smiles_series needs at least 3 molecules to read a trajectory")
+        if len(series) > 100:
+            return ToolResult(success=False, error="smiles_series is capped at 100 molecules per call")
+
+        endpoints = args.get("endpoints")
+        if endpoints is not None and (not isinstance(endpoints, list) or not all(isinstance(e, str) for e in endpoints)):
+            return ToolResult(success=False, error="endpoints must be a list of endpoint-name strings")
+        endpoint_set = set(endpoints) if endpoints else None
+
+        positions = args.get("positions")
+        if positions is not None:
+            if not isinstance(positions, list) or len(positions) != len(series):
+                return ToolResult(success=False, error="positions must be a list the same length as smiles_series")
+            if not all(isinstance(p, (int, float)) and not isinstance(p, bool) for p in positions):
+                return ToolResult(success=False, error="positions must be numbers")
+
+        threshold_overrides = args.get("thresholds") or {}
+        if threshold_overrides and not isinstance(threshold_overrides, dict):
+            return ToolResult(success=False, error="thresholds must be an object of cutoff overrides")
+
+        # 1. Score the whole series in ONE batched addie call (mirrors _predict_admet_batch_addie),
+        #    keeping the FLAT {endpoint: value} predictions and preserving order via an index id
+        #    (index, not SMILES, so a repeated molecule in the series can't collide).
+        api_key = os.getenv("ADDIE_MODELS_API_KEY")
+        molecules = [{"id": str(i), "smiles": s} for i, s in enumerate(series)]
+        try:
+            response = await self._call_service(
+                "addie-models",
+                "/addie/process",
+                {"molecules": molecules, "include_descriptors": True, "include_confidence": True},
+                timeout=120.0,
+                api_key=api_key,
+            )
+        except httpx.TimeoutException:
+            return ToolResult(success=False, error="ADMET prediction timed out (120s limit)")
+        except Exception as e:
+            logger.exception(f"analyze_admet_trajectory addie call failed: {e}")
+            return ToolResult(success=False, error=f"ADMET prediction failed: {str(e)}")
+        if response.status_code != 200:
+            return ToolResult(success=False, error=f"ADMET prediction failed: HTTP {response.status_code}")
+
+        by_id = {r.get("id"): r for r in response.json().get("results", [])}
+
+        # 2. Build one flat numeric record per step, in series order. A whole-molecule failure is
+        #    fatal — a trajectory cannot have a hole (a dropped ENDPOINT is fine; align_series
+        #    handles that; a dropped STEP is not).
+        step_records: List[Dict[str, float]] = []
+        for i, smi in enumerate(series):
+            r = by_id.get(str(i), {})
+            preds = r.get("predictions") or {}
+            if r.get("error") or not preds:
+                return ToolResult(
+                    success=False,
+                    error=f"no ADMET prediction for step {i} ({smi}): {r.get('error') or 'empty result'}",
+                )
+            numeric = {k: v for k, v in preds.items()
+                       if isinstance(v, (int, float)) and not isinstance(v, bool)}
+            if endpoint_set is not None:
+                numeric = {k: v for k, v in numeric.items() if k in endpoint_set}
+            step_records.append(numeric)
+
+        # 3. Align to a fixed endpoint set and classify the trajectory.
+        try:
+            from analysis.trajectory_diagnostic import (
+                align_series, analyze_optimization_trajectory, Thresholds,
+            )
+            values, axis_names, dropped = align_series(step_records)
+            thresholds = Thresholds(**threshold_overrides) if threshold_overrides else Thresholds()
+            result = analyze_optimization_trajectory(
+                values, axis_names, positions=positions, thresholds=thresholds,
+            )
+        except ImportError as e:
+            # scipy is an optional dependency of the analysis module (see analysis/requirements.txt)
+            return ToolResult(success=False, error=str(e))
+        except (ValueError, TypeError) as e:
+            return ToolResult(success=False, error=f"trajectory analysis failed: {str(e)}")
+
+        result["dropped_endpoints"] = dropped
+        result["n_molecules"] = len(series)
+        return ToolResult(
+            success=True,
+            data=result,
+            usage={"queries": len(series), "tool": "analyze_admet_trajectory",
+                   "compute_service": "addie-models"},
+        )
 
     # =========================================================================
     # Clinical Outcomes Prediction (NovoExpert v3)
