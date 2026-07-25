@@ -138,4 +138,4 @@ Cheapest at low steady-state, most complex to configure.
 - **Per docking call**: ~$0.02 (30 seconds of a g5.xlarge spot)
 - **Per MD simulation**: ~$0.30 (10 min on g5.xlarge spot)
 
-This tier is not scripted end-to-end here. The engine's `Spine` interfaces (see `novomcp/mcp/spine.py`) are the extension points for a custom audit sink and metering backend.
+This tier is not scripted end-to-end here. The engine's `Spine` interfaces (see `orchestrator/mcp/spine.py`) are the extension points for a custom audit sink and metering backend.

@@ -25,7 +25,7 @@ novomcp-nnp, and other thin adapters over open primitives), the surfaces
 capability, and the training recipes.
 
 The NOVEL ORCHESTRATION CORE (the tool registry, funnel scaffolding, and
-agent-loop engine — the `novomcp/mcp/` package minus its own wrappers)
+agent-loop engine — the `orchestrator/mcp/` package minus its own wrappers)
 is governed by a SEPARATE license: `LICENSE.core` — Business Source
 License 1.1 with a change date of 2029-07-12 to Apache-2.0. This split
 protects against cloud-provider re-hosting of the core while the OSS
