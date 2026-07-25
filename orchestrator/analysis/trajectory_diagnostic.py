@@ -54,7 +54,9 @@ Example — wrapping a NovoMCP ADMET (addie-models) series:
 from dataclasses import dataclass, asdict
 
 import numpy as np
-from scipy.stats import spearmanr
+# scipy is an optional dependency (Spearman rank correlation) — imported lazily in
+# classify_axis so this module imports, and the engine boots, without it.
+# Install it only to use the trajectory analysis: see analysis/requirements.txt.
 
 # Minimum series length: FROZEN needs an early half AND a late move, so we need at least an early
 # point, a mid point and an endpoint. Below this there is no trajectory to read.
@@ -117,6 +119,14 @@ def classify_axis(v, positions, thresholds=DEFAULT):
     if raw_range < t.flat_abs:
         return {"class": "flat", "raw_range": round(raw_range, 3), "monotonicity": 0.0,
                 "early_range": 0.0, "late_move": 0.0, "cliff_step": None}
+
+    try:
+        from scipy.stats import spearmanr
+    except ImportError as e:  # optional dep — only the trajectory analysis needs it
+        raise ImportError(
+            "trajectory_diagnostic needs scipy. Install it with "
+            "`pip install -r orchestrator/analysis/requirements.txt` (or `pip install scipy`)."
+        ) from e
 
     vn = (v - v.min()) / raw_range                        # normalized shape in [0, 1]
     rho = float(spearmanr(positions, vn).correlation)

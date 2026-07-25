@@ -87,9 +87,9 @@ boto3>=1.35.0
 # builds. Use Python 3.11 or 3.12 (see README) for a wheels-only install.
 pandas>=1.5.0
 numpy<2.0.0
-# scipy: Spearman rank correlation for analysis/trajectory_diagnostic (the series/trajectory read).
-# Ceiling mirrors numpy<2.0.0; floor keeps a scipy that builds against the numpy 1.x line.
-scipy>=1.10,<2.0.0
+# NOTE: scipy is NOT a core dependency. The only code that uses it —
+# analysis/trajectory_diagnostic — imports it lazily and declares it in
+# analysis/requirements.txt, so the engine boots without scipy.
 
 # Cheminformatics (required for scaffold diversity clustering in lead_optimization,
 # SMILES canonicalization fallback, and future structure-based features)

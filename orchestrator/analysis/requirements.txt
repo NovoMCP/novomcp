@@ -1,0 +1,8 @@
+# Optional dependencies for the analysis/ modules (trajectory_diagnostic).
+# The engine core does NOT need these — install only to use the series/trajectory
+# analysis. Install: pip install -r orchestrator/analysis/requirements.txt
+#
+# scipy: Spearman rank correlation. Ceiling mirrors the core numpy<2.0.0 line;
+# floor keeps a scipy that builds against numpy 1.x. Wheels exist for 3.10–3.12
+# (verified in CI).
+scipy>=1.10,<2.0.0
