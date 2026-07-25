@@ -4,9 +4,9 @@ Parameters
 
   Licensor:                    NovoMCP
   Licensed Work:               NovoMCP orchestration core
-                               (the `novomcp/mcp/` package, excluding
+                               (the `orchestrator/mcp/` package, excluding
                                the thin service wrappers under
-                               `novomcp/mcp/connectors/`, which are
+                               `orchestrator/mcp/connectors/`, which are
                                governed by the top-level Apache-2.0 LICENSE)
   Additional Use Grant:        You may make production use of the Licensed
                                Work, provided that your use does not

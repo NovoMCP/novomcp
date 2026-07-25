@@ -135,4 +135,4 @@ Azure Container Apps is the serverless spine equivalent. Scales to zero, ~$0.024
 
 ## Native Entra ID integration
 
-If you're already on Entra ID (Azure AD), the engine's spine supports a custom `AuthGate` that validates Entra tokens. See `novomcp/mcp/spine.py` for the interface. Write an `EntraAuthGate` class that validates OIDC tokens against your tenant and set `NOVO_AUTH=custom`.
+If you're already on Entra ID (Azure AD), the engine's spine supports a custom `AuthGate` that validates Entra tokens. See `orchestrator/mcp/spine.py` for the interface. Write an `EntraAuthGate` class that validates OIDC tokens against your tenant and set `NOVO_AUTH=custom`.

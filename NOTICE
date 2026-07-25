@@ -4,7 +4,7 @@ Copyright 2026 NovoMCP
 This product includes software developed by NovoMCP contributors.
 Licensing:
   * The top-level tree is licensed under Apache License 2.0 (see LICENSE).
-  * The `novomcp/mcp/` orchestration core is licensed under Business
+  * The `orchestrator/mcp/` orchestration core is licensed under Business
     Source License 1.1 with a change date of 2029-07-12 to Apache-2.0
     (see LICENSE.core).
 

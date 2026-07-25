@@ -8,7 +8,7 @@
  * SCHEMA-SYNC POLICY (cross-repo invariant)
  * ─────────────────────────────────────────────────────────────────────────
  * Every Zod inputSchema below MUST stay in sync with the corresponding tool's
- * input schema in novomcp/mcp/tools.py (MCP_TOOLS dict). When you add a
+ * input schema in orchestrator/mcp/tools.py (MCP_TOOLS dict). When you add a
  * parameter to a tool's executor in novomcp, ALSO add it to the Zod
  * schema for that tool here.
  *
@@ -386,7 +386,7 @@ export function createServer(apiKey: string = "", clientTag: string = ""): McpSe
   // per-conversation session id (verified) — so the LLM's own context is the only
   // per-conversation boundary the server can key a funnel on. Hence: have the
   // model mint a per-conversation funnel_id and carry it on every call.
-  // Single source of truth mirrors novomcp/mcp/router.py SERVER_INSTRUCTIONS.
+  // Single source of truth mirrors orchestrator/mcp/router.py SERVER_INSTRUCTIONS.
   // Keep the two in sync (the front serves THIS to Claude; router.py serves it to
   // api.novomcp.com direct clients).
   const FUNNEL_INSTRUCTIONS =

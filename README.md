@@ -72,7 +72,7 @@ The engine's spine is configurable via environment variables:
 | `NOVO_AUDIT` | `local` \| `hosted` | `local` | `local` = JSON-lines to file; `hosted` = certified audit service |
 | `NOVO_AUDIT_PATH` | filesystem path | `~/.novo/audit.jsonl` | Where `FileAuditSink` writes |
 
-Setting any of `NOVO_AUTH` / `NOVO_METER` / `NOVO_AUDIT` to `custom` loads implementations from a `spine_custom` module. Write your own against the three protocols in `novomcp/mcp/spine.py`, `AuthGate`, `CreditMeter`, `AuditSink`, and put the module on the import path. The interfaces are stable.
+Setting any of `NOVO_AUTH` / `NOVO_METER` / `NOVO_AUDIT` to `custom` loads implementations from a `spine_custom` module. Write your own against the three protocols in `orchestrator/mcp/spine.py`, `AuthGate`, `CreditMeter`, `AuditSink`, and put the module on the import path. The interfaces are stable.
 
 ## Surfaces
 
@@ -109,7 +109,7 @@ The spine (auth / metering / audit) is a runtime boundary, the same code runs st
 ## Licensing
 
 - **Top-level tree** (surfaces, wrappers, connectors, protocol docs), **Apache-2.0** (`LICENSE`)
-- **Orchestration core** (`novomcp/mcp/`), **Business Source License 1.1** with a change date of 2029-07-12 to Apache-2.0 (`LICENSE.core`). Non-production use, self-hosting, and modification are permitted immediately.
+- **Orchestration core** (`orchestrator/mcp/`), **Business Source License 1.1** with a change date of 2029-07-12 to Apache-2.0 (`LICENSE.core`). Non-production use, self-hosting, and modification are permitted immediately.
 - **Pre-trained model weights** in companion repositories, **MIT**.
 
 ## Contributing
