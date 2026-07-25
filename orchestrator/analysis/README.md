@@ -17,6 +17,16 @@ worsening, and which you can ignore — along a given optimization axis.** The r
 modification-specific: on the four ADMET motifs in the test, homologation, chlorination, fluorination
 and hydroxylation lock and tune *different* axes (that's `test_modification_specificity`).
 
+## Install
+
+`scipy` is the only extra dependency (Spearman rank correlation), and it's **not** part of the
+engine core — the module imports it lazily, so the engine boots without it. Install it only to use
+this analysis:
+
+```bash
+pip install -r orchestrator/analysis/requirements.txt   # or: pip install scipy
+```
+
 ## Contract & knobs (the two things worth knowing before you trust it)
 
 - **Every cutoff is a parameter.** `Thresholds` carries all six classification constants with a
