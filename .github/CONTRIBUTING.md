@@ -14,7 +14,7 @@ Thanks for taking an interest. NovoMCP is a **reference-quality open-source proj
 1. Fork the public repo.
 2. Create a topic branch off `main`.
 3. Make your change. Keep it focused, one PR = one thing.
-4. Run the smoke test locally (`python novomcp/main_https.py` boots and answers a request).
+4. Run the smoke test locally (`python orchestrator/main_https.py` boots and answers a request).
 5. Open a PR against `main`. Describe *what* changed and *why*.
 
 ## What we look for in a PR
@@ -33,7 +33,7 @@ Merged PRs get credited in the `CHANGELOG` for the next release. Contributors al
 By opening a PR against this repo you agree that your contribution is licensed under:
 
 - **Apache-2.0** if it lands in a path governed by the top-level `LICENSE`
-- **Business Source License 1.1 → Apache-2.0 (change date 2029-07-12)** if it lands in `novomcp/mcp/` (governed by `LICENSE.core`)
+- **Business Source License 1.1 → Apache-2.0 (change date 2029-07-12)** if it lands in `orchestrator/mcp/` (governed by `LICENSE.core`)
 
 If either is a blocker, tell us in the PR description and we'll work something out.
 

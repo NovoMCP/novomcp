@@ -72,7 +72,7 @@ All notable changes to NovoMCP are recorded here. The format is [Keep a Changelo
 ### Licensing
 
 - **Top-level tree** (surfaces, wrappers, connectors, protocol docs): Apache-2.0 (`LICENSE`)
-- **Orchestration core** (`novomcp/mcp/`): Business Source License 1.1 with a change date of 2029-07-12 to Apache-2.0 (`LICENSE.core`)
+- **Orchestration core** (`orchestrator/mcp/`): Business Source License 1.1 with a change date of 2029-07-12 to Apache-2.0 (`LICENSE.core`)
 - **Pre-trained model weights** in companion repositories (e.g., `novoexpert1-tdc-benchmark`): MIT
 
 ### What is not in this repo
