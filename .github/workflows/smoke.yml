@@ -178,3 +178,26 @@ jobs:
       - name: Run analysis tests
         working-directory: orchestrator
         run: pytest analysis/
+
+  tool-tests:
+    # Exercises the analyze_admet_trajectory MCP tool. Unlike analysis-tests, the tool lives in
+    # mcp/tools.py and imports the engine, so it needs the full engine deps (+ scipy for the
+    # trajectory analysis) — hence its own job rather than a step in the light analysis-tests matrix.
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: orchestrator/requirements.txt
+      - name: Install engine + test deps
+        working-directory: orchestrator
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-asyncio -r analysis/requirements.txt
+      - name: Run tool tests
+        working-directory: orchestrator
+        run: pytest mcp/test_analyze_admet_trajectory.py -q
