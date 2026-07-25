@@ -5,6 +5,7 @@ All notable changes to NovoMCP are recorded here. The format is [Keep a Changelo
 ## [Unreleased]
 
 ### Added
+- `analyze_admet_trajectory` — MCP tool that scores an ordered SMILES series in one batched ADMET call and reads how each endpoint moves along the modification (frozen / climbing / descending / cliff / flat / complex); wires `analysis/trajectory_diagnostic` into the tool surface. Thanks @dmarsters (#12).
 - `analysis/trajectory_diagnostic` — read an optimization *series*, not just one molecule: decompose an ADMET/property trajectory into per-axis structure (frozen / climbing / descending / cliff / flat / complex). Pure numpy + scipy, self-tested. First community contribution — thanks @dmarsters (#6).
 
 ## [1.1.3] - 2026-07-24
