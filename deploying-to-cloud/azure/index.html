@@ -2293,7 +2293,7 @@
 <li><strong>Per MD simulation</strong>: ~$0.40 (T4 for 10 min)</li>
 </ul>
 <h2 id="native-entra-id-integration">Native Entra ID integration<a class="headerlink" href="#native-entra-id-integration" title="Permanent link">&para;</a></h2>
-<p>If you're already on Entra ID (Azure AD), the engine's spine supports a custom <code>AuthGate</code> that validates Entra tokens. See <code>novomcp/mcp/spine.py</code> for the interface. Write an <code>EntraAuthGate</code> class that validates OIDC tokens against your tenant and set <code>NOVO_AUTH=custom</code>.</p>
+<p>If you're already on Entra ID (Azure AD), the engine's spine supports a custom <code>AuthGate</code> that validates Entra tokens. See <code>orchestrator/mcp/spine.py</code> for the interface. Write an <code>EntraAuthGate</code> class that validates OIDC tokens against your tenant and set <code>NOVO_AUTH=custom</code>.</p>
 
 
 
