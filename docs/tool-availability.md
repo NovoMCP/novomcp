@@ -110,7 +110,7 @@ Tools that would normally be hidden show up in `tools/list`. Calls to unwired to
 
 ## Why hidden and not visible-with-errors
 
-The alternative would be to always show the full 67 tools and return "service unavailable" when unwired ones are called. That's what NovoMCP used to do. It felt like a broken product.
+The alternative would be to always show the full 68 tools and return "service unavailable" when unwired ones are called. That's what NovoMCP used to do. It felt like a broken product.
 
 Hidden-until-wired means:
 - **Users see a working demo, not a lot of gray options.** First impressions matter.
