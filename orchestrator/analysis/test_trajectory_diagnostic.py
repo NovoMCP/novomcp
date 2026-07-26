@@ -253,3 +253,31 @@ def test_align_series_raises_when_nothing_survives():
     recs = [{"a": 0.1}, {"b": 0.2}, {"c": 0.3}]
     with pytest.raises(ValueError, match="every step"):
         align_series(recs)
+
+
+# ----------------------------------------------------------------------------------------------
+# GROUND-TRUTH: documented ADMET cliffs (issue #11).
+# Frozen addie-models `ames_mutagenicity_probability` trajectories for homolog-lead-in →
+# aromatic-amine series. Aromatic amines are a canonical Ames structural alert (Kazius 2005) and
+# the amine members here are documented human carcinogens — so the discontinuity is real, not
+# constructed. These pin the labeler against real, documented data and lock the validated boundary.
+# ----------------------------------------------------------------------------------------------
+def test_documented_cliff_4_aminobiphenyl():
+    # biphenyl, 4-methyl-, 4-ethyl-, 4-fluoro- (all Ames-negative), then 4-AMINObiphenyl (a
+    # documented human bladder carcinogen) introduced and held. Real addie ames, frozen. The amine
+    # step dominates a clean benign lead-in, so the labeler correctly reads a cliff at that step.
+    ames = [0.214, 0.257, 0.192, 0.362, 0.806, 0.815]
+    c = classify_axis(np.array(ames), np.arange(len(ames)))
+    assert c["class"] == "cliff"
+    assert c["cliff_step"] == 4          # the step that introduces the amine alert
+
+
+def test_documented_cliff_reads_climbing_when_model_baseline_noisy():
+    # Same real cliff (naphthalene homologs → 2-NAPHTHYLAMINE, a documented human carcinogen), but
+    # addie scores the benign fluoro analog high (0.53), so the amine jump is not >2× the next
+    # step → the CONSERVATIVE cliff test declines and it reads 'climbing' (still directionally
+    # correct). This is the validated boundary from issue #11: cliff reliability is bounded by
+    # whether the model holds the non-alert analogs low, NOT by the threshold — a retune to force
+    # this case would manufacture false cliffs elsewhere. Kept as a regression guard on that call.
+    ames = [0.295, 0.478, 0.327, 0.531, 0.847, 0.869]
+    assert classify_axis(np.array(ames), np.arange(len(ames)))["class"] == "climbing"
