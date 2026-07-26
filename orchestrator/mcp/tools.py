@@ -1523,7 +1523,7 @@ MCP_TOOLS = {
     "analyze_admet_trajectory": {
         "name": "analyze_admet_trajectory",
         "title": "Analyze ADMET Trajectory",
-        "description": "Read an ADMET *series*, not a single molecule. Given an ORDERED list of SMILES that walk one optimization direction (a homologous series, a synthetic route, analogs from one repeating modification), scores every molecule with addie-models and classifies how each ADMET endpoint MOVES along the series: frozen (moved then plateaued — a dead-end you cannot tune further this way), climbing / descending (you are actively driving it), cliff (a single-step discontinuity), flat (this modification is irrelevant to it), or complex (non-monotone). Answers the campaign-level question a per-molecule prediction cannot: which liabilities are dead-ends, which you are worsening, and which you can ignore along this modification. ORDER MATTERS — pass the molecules in modification order. Needs 3–100 molecules. CALIBRATION: the labels are heuristic trend reads (Spearman rank correlation + threshold cutoffs), not yet validated against reference SAR series — climbing/descending/flat are directional and robust, but treat cliff/frozen as flags to verify, not settled conclusions.",
+        "description": "Read an ADMET *series*, not a single molecule. Given an ORDERED list of SMILES that walk one optimization direction (a homologous series, a synthetic route, analogs from one repeating modification), scores every molecule with addie-models and classifies how each ADMET endpoint MOVES along the series: frozen (moved then plateaued — a dead-end you cannot tune further this way), climbing / descending (you are actively driving it), cliff (a single-step discontinuity), flat (this modification is irrelevant to it), or complex (non-monotone). Answers the campaign-level question a per-molecule prediction cannot: which liabilities are dead-ends, which you are worsening, and which you can ignore along this modification. ORDER MATTERS — pass the molecules in modification order. Needs 3–100 molecules. CALIBRATION: the labels are heuristic trend reads (Spearman rank correlation + threshold cutoffs), validated against a documented Ames cliff (4-aminobiphenyl fires `cliff` at the alert step). climbing/descending/flat are directional and robust; cliff/frozen are honestly conservative — a real cliff can read as `climbing` when the model's baseline for the non-alert analogs is already elevated (the bound is the model, not the labeler), so verify against the underlying series.",
         "tier": ToolTier.FREE,
         "annotations": {
             "readOnlyHint": True,
@@ -9178,12 +9178,14 @@ class MCPToolExecutor:
 
         result["dropped_endpoints"] = dropped
         result["n_molecules"] = len(series)
-        # Candor: the classifications are heuristic trend reads, not yet validated
-        # against reference SAR. Surface that in the result until calibration lands.
+        # Candor: the classifications are heuristic trend reads. Validated against a
+        # documented Ames cliff (issue #11); the known limitation is model baseline.
         result["calibration"] = (
-            "Threshold-based trend reads, not yet validated against reference SAR series. "
+            "Trend reads validated against a documented Ames cliff (4-aminobiphenyl). "
             "climbing/descending/flat are directional (Spearman-robust); cliff/frozen are "
-            "threshold-sensitive — verify before acting."
+            "honestly conservative — a real cliff can read as 'climbing' when the model's "
+            "baseline for the non-alert analogs is already elevated (the bound is the model, "
+            "not the labeler). Verify against the underlying series."
         )
         return ToolResult(
             success=True,
