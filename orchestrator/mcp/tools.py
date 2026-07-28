@@ -444,7 +444,8 @@ TOOL_CREDITS: Dict[str, int] = {
 
     # Tier 7d: Neural Network Potentials
     "compute_energy": 5,              # NNP energy + forces (ANI-2x/MACE, fast)
-    "optimize_geometry_nnp": 10,      # NNP geometry optimization (ASE BFGS + MACE/ANI-2x)
+    "optimize_geometry_nnp": 10,      # NNP geometry optimization (ASE BFGS or ALCHEMI batched)
+    "batch_geometry_relaxation": 10,  # Per-molecule cost × len(smiles_list) via BATCH_TOOLS
 
     # Tier 8: Omics Tools
     "target_discovery": 10,           # Cosmos omics_targets query
@@ -507,6 +508,7 @@ BATCH_TOOLS: Dict[str, str] = {
     "batch_profile": "smiles_list",
     "screen_library": "smiles_list",
     "dock_molecules": "smiles_list",
+    "batch_geometry_relaxation": "smiles_list",
 }
 
 # Pull row limits by tier (data connectors require Team+)
@@ -2349,7 +2351,7 @@ MCP_TOOLS = {
     "optimize_geometry_nnp": {
         "name": "optimize_geometry_nnp",
         "title": "Geometry Optimization (Neural Potential)",
-        "description": "Atomic geometry refinement via neural network potentials with ASE BFGS. For structure relaxation of atomic coordinates — not property-directed compound optimization (see lead_optimization or optimize_molecule for that). ~100x faster than xTB geometry optimization. Models: ANI-2x (organic, H/C/N/O/F/S/Cl), MACE-MP-0 (universal). Returns relaxed XYZ, final energy, convergence status, step count. LIMITATION: neutral molecules only — charged species (charge≠0) and open-shell (uhf≠0) must use run_qm_calculation instead (xTB supports charge/spin, NNPs do not).",
+        "description": "Atomic geometry refinement via neural network potentials. For structure relaxation of atomic coordinates — not property-directed compound optimization (see lead_optimization or optimize_molecule for that). 1–2 orders of magnitude faster than xTB geometry optimization (system-dependent). Models: ANI-2x (organic, H/C/N/O/F/S/Cl), MACE-MP-0 (universal). Execution engine is selectable via `engine`: `ase` (ASE BFGS optimizer, default) or `alchemi` (routes to the NVIDIA ALCHEMI Toolkit's GPU-batched relaxation dynamics — the same MACE/AIMNet2 potential, executed on ALCHEMI's batched CUDA kernels — when novomcp-nnp is built with that backend). Returns relaxed XYZ, final energy, convergence status, step count. LIMITATION: neutral molecules only — charged species (charge≠0) and open-shell (uhf≠0) must use run_qm_calculation instead (xTB supports charge/spin, NNPs do not).",
         "tier": ToolTier.FREE,
         "annotations": {
             "readOnlyHint": True,
@@ -2365,8 +2367,14 @@ MCP_TOOLS = {
                 "method": {
                     "type": "string",
                     "enum": ["auto", "ani2x", "mace"],
-                    "description": "Neural potential model",
+                    "description": "Neural potential model (the interatomic potential itself)",
                     "default": "auto"
+                },
+                "engine": {
+                    "type": "string",
+                    "enum": ["ase", "alchemi"],
+                    "description": "Execution engine (orthogonal to `method`). 'ase' = ASE BFGS optimizer (default). 'alchemi' = NVIDIA ALCHEMI Toolkit GPU-batched relaxation dynamics; runs the same `method` potential on ALCHEMI's batched CUDA kernels. Requires novomcp-nnp built with the ALCHEMI backend and a CUDA GPU; falls back to a structured service error otherwise.",
+                    "default": "ase"
                 },
                 "fmax": {
                     "type": "number",
@@ -2385,6 +2393,44 @@ MCP_TOOLS = {
                 }
             },
             "required": ["smiles"]
+        }
+    },
+    "batch_geometry_relaxation": {
+        "name": "batch_geometry_relaxation",
+        "title": "Batch Geometry Relaxation (Neural Potential)",
+        "description": "Relax a whole LIBRARY of molecules in one batched pass — many systems per GPU kernel call, not a per-molecule loop. This is the high-throughput primitive that single-molecule optimize_geometry_nnp is not: use it for the geometry-optimization phase of library screens (screen_oled_library, screen_electrolyte_library). Backed by the NVIDIA ALCHEMI Toolkit's batched relaxation dynamics (`engine='alchemi'`, default) running a MACE/AIMNet2 potential on batched CUDA kernels, or a sequential fallback (`engine='ase'`). Returns per-input relaxed XYZ, final energy, and convergence status, in input order; failed inputs are reported per-item without failing the batch. LIMITATION: neutral molecules only (charged/open-shell must use run_qm_calculation). GPU strongly recommended — this tool exists for throughput.",
+        "tier": ToolTier.FREE,
+        "annotations": {
+            "readOnlyHint": True,
+            "destructiveHint": False
+        },
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "smiles_list": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "List of SMILES strings to relax in one batched pass"
+                },
+                "method": {
+                    "type": "string",
+                    "enum": ["auto", "ani2x", "mace"],
+                    "description": "Neural potential model applied to every system in the batch",
+                    "default": "auto"
+                },
+                "engine": {
+                    "type": "string",
+                    "enum": ["ase", "alchemi"],
+                    "description": "Execution engine. 'alchemi' (default) = NVIDIA ALCHEMI Toolkit batched relaxation, all systems co-resident on GPU per kernel call. 'ase' = sequential per-molecule fallback (correct but not accelerated). 'alchemi' requires novomcp-nnp built with the ALCHEMI backend and a CUDA GPU; returns a structured service error otherwise.",
+                    "default": "alchemi"
+                },
+                "fmax": {
+                    "type": "number",
+                    "description": "Force convergence threshold in eV/Å, applied per system (default 0.05)",
+                    "default": 0.05
+                }
+            },
+            "required": ["smiles_list"]
         }
     },
 
@@ -2896,7 +2942,7 @@ COMPUTE_ONLY_TOOLS = {
     "predict_frontier_orbitals", "predict_redox_potential",
     "predict_reaction_thermodynamics", "run_excited_states",
     "search_materials_project", "find_transition_state",
-    "optimize_geometry_nnp", "compute_energy",
+    "optimize_geometry_nnp", "batch_geometry_relaxation", "compute_energy",
     "dock_molecules", "run_molecular_dynamics", "parameterize_metal",
     "get_protein_structure", "predict_structure", "get_structure_result",
     "generate_dynamics",
@@ -3064,6 +3110,7 @@ TOOL_LOCAL_REQUIREMENTS: Dict[str, list] = {
     "predict_redox_potential":         ["env:NOVOMCP_QM_URL"],
     "find_transition_state":           ["env:NOVOMCP_NEB_URL"],
     "optimize_geometry_nnp":           ["env:NOVOMCP_NNP_URL"],
+    "batch_geometry_relaxation":       ["env:NOVOMCP_NNP_URL"],
     "parameterize_metal":              ["env:NOVOMCP_QM_URL"],
 
     # NovoExpert-3 weights — roadmap v1.7.x publishes MIT weights.
@@ -3781,7 +3828,7 @@ MCP_PROMPT_TEMPLATES = {
                 "role": "user",
                 "content": {
                     "type": "text",
-                    "text": "Screen this library of OLED emitter candidates. SMILES list: {smiles_list}\nEmission target: {emission_target} (default: 'any' — rank by general OLED suitability)\n\n**Scope note:** This is a materials-science workflow, NOT a drug discovery funnel. Do NOT call target_discovery, validate_target, predict_admet, check_compliance, or any pipeline-audit/funnel-memory tool. No funnel_id, no save_funnel_stage, no save_funnel_memory. This is an ad-hoc property screen.\n\n**PHASE 1 — Geometry optimization (batch):**\nFor each SMILES, call optimize_geometry_nnp with method='auto' (routes organics to ANI-2x, unusual elements to MACE-MP-0). If a candidate has a charged species or element outside ANI-2x coverage, note it and either retry with method='mace' or fall back to xTB via run_qm_calculation with calculation_type='optimize'. Collect the relaxed xyz geometries. Runtime: ~300-500 ms per candidate.\n\n**PHASE 2 — Frontier-orbital screen:**\nFor each optimized candidate, call predict_frontier_orbitals. You get HOMO, LUMO, HOMO-LUMO gap, S1/T1 from sTDA-xTB, oscillator strength, and a device role classification (phosphorescent / fluorescent / TADF / charge transport / host / not emissive). Also returns detected OLED-relevant motifs (carbazole, triphenylamine, anthracene, pyrene, oxadiazole, triazine, Ir/Pt complexes — 14 motifs total). Cost: 20 credits each.\n\n**PHASE 3 — Excited-state deep-dive (top candidates only):**\nFor the top 5 candidates by frontier-orbital screening (filtered by device role != 'not_emissive' and oscillator strength > 0.01), call run_excited_states for a physics-based singlet/triplet analysis. Use num_states=5. Returns oscillator strengths and singlet-triplet gap — critical for TADF if that's the emission_target. Cost: 25 credits each.\n\n**PHASE 4 — Ranking:**\nRank candidates by:\n- If emission_target is 'tadf': smallest singlet-triplet gap (TADF requires ΔE_ST < 0.3 eV), high oscillator strength, carbazole or donor-acceptor motif detected.\n- If emission_target is 'blue' / 'green' / 'red' / 'deep-blue': S1 energy within the target window (blue ~2.75-3.1 eV / green 2.3-2.6 eV / red 1.8-2.1 eV / deep-blue > 2.95 eV), oscillator strength > 0.1, singlet emission role.\n- If emission_target is 'phosphorescent': T1 within target window, Ir/Pt complex motif detected, high T1 oscillator strength via spin-orbit coupling (approximate).\n- If emission_target is 'any': overall OLED suitability — high oscillator strength, clear device role, reasonable singlet-triplet separation.\n\n**PRESENT RESULTS AS A RANKED TABLE:**\n| Rank | SMILES (truncated to 40 chars) | HOMO (eV) | LUMO (eV) | Gap (eV) | S1 (eV) | T1 (eV) | f_osc | Device Role | Motifs | Verdict |\n\nBelow the table, list:\n- Top 3 candidates with a 1-line rationale each (why they rank high for the emission_target)\n- Any 'not_emissive' candidates with 1-line reason (no chromophore / saturated / too small gap)\n- Total credits spent across all 3 phases\n\nFinish with: \"Ready to deep-dive any of these? I can run excited-state analysis at a larger num_states window, compute redox potentials for electrochemical stability, or check reaction thermodynamics for a synthetic route.\""
+                    "text": "Screen this library of OLED emitter candidates. SMILES list: {smiles_list}\nEmission target: {emission_target} (default: 'any' — rank by general OLED suitability)\n\n**Scope note:** This is a materials-science workflow, NOT a drug discovery funnel. Do NOT call target_discovery, validate_target, predict_admet, check_compliance, or any pipeline-audit/funnel-memory tool. No funnel_id, no save_funnel_stage, no save_funnel_memory. This is an ad-hoc property screen.\n\n**PHASE 1 — Geometry optimization (batch):**\nCall batch_geometry_relaxation ONCE with the full smiles_list and method='auto' (routes organics to ANI-2x, unusual elements to MACE-MP-0). This relaxes the whole library in a single batched pass (engine='alchemi' when the ALCHEMI Toolkit backend is available; sequential fallback otherwise). It returns per-input relaxed xyz + convergence, in order; per-item failures are reported without failing the batch. For any candidate flagged as failed (charged species or element outside coverage), retry that one with optimize_geometry_nnp method='mace', or fall back to xTB via run_qm_calculation with calculation_type='optimize'. Collect the relaxed xyz geometries.\n\n**PHASE 2 — Frontier-orbital screen:**\nFor each optimized candidate, call predict_frontier_orbitals. You get HOMO, LUMO, HOMO-LUMO gap, S1/T1 from sTDA-xTB, oscillator strength, and a device role classification (phosphorescent / fluorescent / TADF / charge transport / host / not emissive). Also returns detected OLED-relevant motifs (carbazole, triphenylamine, anthracene, pyrene, oxadiazole, triazine, Ir/Pt complexes — 14 motifs total). Cost: 20 credits each.\n\n**PHASE 3 — Excited-state deep-dive (top candidates only):**\nFor the top 5 candidates by frontier-orbital screening (filtered by device role != 'not_emissive' and oscillator strength > 0.01), call run_excited_states for a physics-based singlet/triplet analysis. Use num_states=5. Returns oscillator strengths and singlet-triplet gap — critical for TADF if that's the emission_target. Cost: 25 credits each.\n\n**PHASE 4 — Ranking:**\nRank candidates by:\n- If emission_target is 'tadf': smallest singlet-triplet gap (TADF requires ΔE_ST < 0.3 eV), high oscillator strength, carbazole or donor-acceptor motif detected.\n- If emission_target is 'blue' / 'green' / 'red' / 'deep-blue': S1 energy within the target window (blue ~2.75-3.1 eV / green 2.3-2.6 eV / red 1.8-2.1 eV / deep-blue > 2.95 eV), oscillator strength > 0.1, singlet emission role.\n- If emission_target is 'phosphorescent': T1 within target window, Ir/Pt complex motif detected, high T1 oscillator strength via spin-orbit coupling (approximate).\n- If emission_target is 'any': overall OLED suitability — high oscillator strength, clear device role, reasonable singlet-triplet separation.\n\n**PRESENT RESULTS AS A RANKED TABLE:**\n| Rank | SMILES (truncated to 40 chars) | HOMO (eV) | LUMO (eV) | Gap (eV) | S1 (eV) | T1 (eV) | f_osc | Device Role | Motifs | Verdict |\n\nBelow the table, list:\n- Top 3 candidates with a 1-line rationale each (why they rank high for the emission_target)\n- Any 'not_emissive' candidates with 1-line reason (no chromophore / saturated / too small gap)\n- Total credits spent across all 3 phases\n\nFinish with: \"Ready to deep-dive any of these? I can run excited-state analysis at a larger num_states window, compute redox potentials for electrochemical stability, or check reaction thermodynamics for a synthetic route.\""
                 }
             }
         ]
@@ -3792,7 +3839,7 @@ MCP_PROMPT_TEMPLATES = {
                 "role": "user",
                 "content": {
                     "type": "text",
-                    "text": "Screen this library of electrolyte candidates for stability. SMILES list: {smiles_list}\nVoltage window: {voltage_window} (default: 'standard_li_ion' = 0.0-4.2 V vs Li/Li+)\nReference electrode: {reference_electrode} (default: inferred from voltage_window)\n\n**Scope note:** This is a materials-science workflow, NOT a drug discovery funnel. Do NOT call target_discovery, predict_admet, check_compliance, or any pipeline/funnel tool. No funnel_id, no save_funnel_stage, no save_funnel_memory. This is an ad-hoc electrochemical stability screen.\n\n**Window specifications:**\n- standard_li_ion: 0.0-4.2 V vs Li/Li+ (reduction window 0.0, oxidation 4.2)\n- high_voltage_li_ion: 0.0-4.5 V vs Li/Li+\n- na_ion: 0.0-3.8 V vs Na/Na+\n- aqueous: -0.5 to +1.5 V vs SHE (thermodynamic water stability window)\n- custom: ask the user for explicit bounds before proceeding\n\n**PHASE 1 — Geometry optimization (batch):**\nFor each SMILES, call optimize_geometry_nnp with method='auto'. Neutral species only in this phase (redox calc handles charged states internally). If a candidate fails ANI-2x (unusual element), retry with 'mace' or fall back to run_qm_calculation optimize. Collect relaxed geometries.\n\n**PHASE 2 — Redox potential calc (expensive — batch cost warning):**\nFor each optimized candidate, call predict_redox_potential with reference_electrode set per the voltage window. This runs the full xTB thermodynamic cycle: neutral optimization, cation optimization, anion optimization, vertical IP, vertical EA, then converts to oxidation/reduction potentials vs the chosen reference. Per-class SMARTS calibration applies automatically (nitriles 0.003 V MAE, sulfones 0.019 V, carbonates 0.318 V). Returns oxidation_potential_v, reduction_potential_v, stability flags for 4 voltage windows, and a calibration_class field indicating which calibration ran.\n\n**COST WARNING:** 50 credits per candidate. Before Phase 2, tell the user: \"Redox screen on {N} candidates will cost {N*50} credits. This is the expensive step — proceed?\" If the user confirms or the list is ≤ 5, proceed. If > 20 candidates, recommend a 2-pass approach: first pass uses predict_frontier_orbitals (20 credits) as a cheap pre-screen to filter candidates with plausible HOMO/LUMO in the redox window, then full redox only on survivors.\n\n**PHASE 3 — Stability classification:**\nFor each candidate, classify against the requested voltage_window:\n- STABLE: oxidation_potential > window_upper AND reduction_potential < window_lower\n- OXIDATION-LIMITED: oxidation_potential < window_upper (will oxidize at top of window)\n- REDUCTION-LIMITED: reduction_potential > window_lower (will reduce at bottom of window)\n- UNSTABLE: both limits fail\n\nInclude the safety margin: how far below / above the window each candidate sits (e.g. \"oxidation at 4.8 V, 0.6 V headroom vs 4.2 V window\").\n\n**Known boundary — water:**\nIf any SMILES is 'O' (water) or similar, skip the redox call and return a note: \"Water as solute not supported — ALPB self-solvation artifacts produce unreliable values.\"\n\n**PRESENT RESULTS AS A RANKED TABLE:**\n| Rank | SMILES (truncated) | Calibration Class | E_ox (V vs ref) | E_red (V vs ref) | Window Verdict | Margin (V) |\n\nBelow the table:\n- Top 3 stable candidates with 1-line rationale (calibration class MAE, headroom)\n- Any that failed the window with the limiting potential + how far out of window\n- Total credits spent\n- If the screen suggests a specific use case (e.g. high-voltage cathode electrolyte, anode protection additive, ionic-liquid solvent), say so explicitly with reasoning\n\nFinish with: \"Ready to deep-dive? I can check reaction thermodynamics for oxidation/reduction decomposition paths, compute activation barriers via find_transition_state for transition metal side reactions, or pull analog candidates from search_materials_project.\""
+                    "text": "Screen this library of electrolyte candidates for stability. SMILES list: {smiles_list}\nVoltage window: {voltage_window} (default: 'standard_li_ion' = 0.0-4.2 V vs Li/Li+)\nReference electrode: {reference_electrode} (default: inferred from voltage_window)\n\n**Scope note:** This is a materials-science workflow, NOT a drug discovery funnel. Do NOT call target_discovery, predict_admet, check_compliance, or any pipeline/funnel tool. No funnel_id, no save_funnel_stage, no save_funnel_memory. This is an ad-hoc electrochemical stability screen.\n\n**Window specifications:**\n- standard_li_ion: 0.0-4.2 V vs Li/Li+ (reduction window 0.0, oxidation 4.2)\n- high_voltage_li_ion: 0.0-4.5 V vs Li/Li+\n- na_ion: 0.0-3.8 V vs Na/Na+\n- aqueous: -0.5 to +1.5 V vs SHE (thermodynamic water stability window)\n- custom: ask the user for explicit bounds before proceeding\n\n**PHASE 1 — Geometry optimization (batch):**\nCall batch_geometry_relaxation ONCE with the full smiles_list and method='auto' — relaxes the whole library in a single batched pass (engine='alchemi' when the ALCHEMI Toolkit backend is available; sequential fallback otherwise). Neutral species only in this phase (redox calc handles charged states internally). For any candidate the batch reports as failed (unusual element), retry that one with optimize_geometry_nnp method='mace' or fall back to run_qm_calculation optimize. Collect relaxed geometries.\n\n**PHASE 2 — Redox potential calc (expensive — batch cost warning):**\nFor each optimized candidate, call predict_redox_potential with reference_electrode set per the voltage window. This runs the full xTB thermodynamic cycle: neutral optimization, cation optimization, anion optimization, vertical IP, vertical EA, then converts to oxidation/reduction potentials vs the chosen reference. Per-class SMARTS calibration applies automatically (nitriles 0.003 V MAE, sulfones 0.019 V, carbonates 0.318 V). Returns oxidation_potential_v, reduction_potential_v, stability flags for 4 voltage windows, and a calibration_class field indicating which calibration ran.\n\n**COST WARNING:** 50 credits per candidate. Before Phase 2, tell the user: \"Redox screen on {N} candidates will cost {N*50} credits. This is the expensive step — proceed?\" If the user confirms or the list is ≤ 5, proceed. If > 20 candidates, recommend a 2-pass approach: first pass uses predict_frontier_orbitals (20 credits) as a cheap pre-screen to filter candidates with plausible HOMO/LUMO in the redox window, then full redox only on survivors.\n\n**PHASE 3 — Stability classification:**\nFor each candidate, classify against the requested voltage_window:\n- STABLE: oxidation_potential > window_upper AND reduction_potential < window_lower\n- OXIDATION-LIMITED: oxidation_potential < window_upper (will oxidize at top of window)\n- REDUCTION-LIMITED: reduction_potential > window_lower (will reduce at bottom of window)\n- UNSTABLE: both limits fail\n\nInclude the safety margin: how far below / above the window each candidate sits (e.g. \"oxidation at 4.8 V, 0.6 V headroom vs 4.2 V window\").\n\n**Known boundary — water:**\nIf any SMILES is 'O' (water) or similar, skip the redox call and return a note: \"Water as solute not supported — ALPB self-solvation artifacts produce unreliable values.\"\n\n**PRESENT RESULTS AS A RANKED TABLE:**\n| Rank | SMILES (truncated) | Calibration Class | E_ox (V vs ref) | E_red (V vs ref) | Window Verdict | Margin (V) |\n\nBelow the table:\n- Top 3 stable candidates with 1-line rationale (calibration class MAE, headroom)\n- Any that failed the window with the limiting potential + how far out of window\n- Total credits spent\n- If the screen suggests a specific use case (e.g. high-voltage cathode electrolyte, anode protection additive, ionic-liquid solvent), say so explicitly with reasoning\n\nFinish with: \"Ready to deep-dive? I can check reaction thermodynamics for oxidation/reduction decomposition paths, compute activation barriers via find_transition_state for transition metal side reactions, or pull analog candidates from search_materials_project.\""
                 }
             }
         ]
@@ -16158,6 +16205,11 @@ class MCPToolExecutor:
         payload: Dict[str, Any] = {"smiles": smiles}
         if args.get("method"):
             payload["method"] = args["method"]
+        if args.get("engine"):
+            # Execution engine: "ase" (default) or "alchemi" (NVIDIA ALCHEMI
+            # Toolkit GPU-batched relaxation). The service selects the backend;
+            # it returns a structured error if "alchemi" is requested but not built in.
+            payload["engine"] = args["engine"]
         if args.get("fmax") is not None:
             payload["fmax"] = args["fmax"]
         if args.get("charge") is not None:
@@ -16182,6 +16234,42 @@ class MCPToolExecutor:
         except Exception as e:
             logger.exception(f"NNP optimization error for {smiles}: {e}")
             return ToolResult(success=False, error=f"NNP optimization failed: {str(e)}")
+
+    async def _execute_batch_geometry_relaxation(self, args: Dict[str, Any]) -> ToolResult:
+        """Relax a library of molecules in one batched pass (ALCHEMI Toolkit or ASE fallback)."""
+        smiles_list = args.get("smiles_list")
+        if not smiles_list or not isinstance(smiles_list, list):
+            return ToolResult(success=False, error="Missing required parameter: smiles_list (non-empty list of SMILES)")
+
+        payload: Dict[str, Any] = {
+            "smiles_list": smiles_list,
+            # "alchemi" is the whole point of the batched path; the service falls
+            # back to a structured error if that backend isn't built in.
+            "engine": args.get("engine", "alchemi"),
+        }
+        if args.get("method"):
+            payload["method"] = args["method"]
+        if args.get("fmax") is not None:
+            payload["fmax"] = args["fmax"]
+
+        try:
+            response = await self._call_service(
+                "novomcp-nnp",
+                "/api/relax-batch",
+                payload,
+                # Batched relaxation scales with library size; give it headroom.
+                timeout=300.0,
+            )
+
+            if response.status_code != 200:
+                detail = response.text[:300]
+                return ToolResult(success=False, error=f"Batch relaxation failed ({response.status_code}): {detail}")
+
+            data = response.json()
+            return ToolResult(success=True, data=data, usage={"tool": "batch_geometry_relaxation", "batch_size": len(smiles_list)})
+        except Exception as e:
+            logger.exception(f"Batch relaxation error ({len(smiles_list)} molecules): {e}")
+            return ToolResult(success=False, error=f"Batch relaxation failed: {str(e)}")
 
     # =========================================================================
     # Property Prediction (pKa, Solubility, BDE) via novomcp-properties
