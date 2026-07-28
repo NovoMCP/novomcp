@@ -1152,6 +1152,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#alchemi-batched-engine-optional" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ALCHEMI batched engine (optional)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#backend-cheatsheet" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2009,6 +2020,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#alchemi-batched-engine-optional" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ALCHEMI batched engine (optional)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#backend-cheatsheet" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2056,7 +2078,10 @@
 
 
 <h1 id="novomcp-nnp">novomcp-nnp<a class="headerlink" href="#novomcp-nnp" title="Permanent link">&para;</a></h1>
-<p>Neural network potentials for fast geometry optimization and energy prediction. Three backends: <strong>AIMNet2</strong>, <strong>MACE</strong>, and <strong>ANI-2x</strong>. GPU-accelerated; CPU works but is 10–50× slower.</p>
+<p>Neural network potentials for fast geometry optimization and energy prediction. Three model backends: <strong>AIMNet2</strong>, <strong>MACE</strong>, and <strong>ANI-2x</strong>. GPU-accelerated; CPU works but is 10–50× slower.</p>
+<p>Two axes, kept orthogonal:
+- <strong><code>method</code></strong> — <em>which potential</em> runs (<code>aimnet2</code> / <code>mace</code> / <code>ani-2x</code>).
+- <strong><code>engine</code></strong> — <em>how it executes</em>: <code>ase</code> (ASE BFGS optimizer, default) or <code>alchemi</code> (the <a href="https://github.com/NVIDIA/nvalchemi-toolkit">NVIDIA ALCHEMI Toolkit</a> GPU-batched relaxation dynamics running the same <code>method</code> potential on batched CUDA kernels). The ALCHEMI engine is what powers <code>batch_geometry_relaxation</code>, which relaxes a whole library in one batched pass instead of a per-molecule loop.</p>
 <h2 id="pre-reqs">Pre-reqs<a class="headerlink" href="#pre-reqs" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Docker</li>
@@ -2090,8 +2115,9 @@
 </span></code></pre></div>
 <h2 id="tools-that-light-up">Tools that light up<a class="headerlink" href="#tools-that-light-up" title="Permanent link">&para;</a></h2>
 <ul>
-<li><code>optimize_geometry_nnp</code>, fast NNP geometry optimization</li>
-<li>Backend selection is a tool argument (<code>backend: "aimnet2" | "mace" | "ani-2x"</code>); default is <code>aimnet2</code></li>
+<li><code>optimize_geometry_nnp</code>, fast single-molecule NNP geometry optimization</li>
+<li><code>batch_geometry_relaxation</code>, library relaxation in one batched pass (built for the geometry phase of <code>screen_oled_library</code> / <code>screen_electrolyte_library</code>)</li>
+<li>Model selection is the <code>method</code> argument (<code>auto | ani2x | mace</code>); execution engine is the <code>engine</code> argument (<code>ase | alchemi</code>)</li>
 </ul>
 <h2 id="env-vars">Env vars<a class="headerlink" href="#env-vars" title="Permanent link">&para;</a></h2>
 <table>
@@ -2111,15 +2137,27 @@
 <tr>
 <td><code>DEFAULT_BACKEND</code></td>
 <td><code>aimnet2</code></td>
-<td>Backend when caller doesn't specify</td>
+<td>Model backend when caller doesn't specify <code>method</code></td>
 </tr>
 <tr>
 <td><code>USE_GPU</code></td>
 <td><code>auto</code></td>
 <td>Force <code>cpu</code> or <code>gpu</code>; <code>auto</code> detects at boot</td>
 </tr>
+<tr>
+<td><code>ALCHEMI_ENABLED</code></td>
+<td><code>false</code></td>
+<td>Enable the <code>engine=alchemi</code> GPU-batched path (requires the <code>nvalchemi-toolkit</code> extra + a CUDA 12/13 GPU). When <code>false</code>, requests with <code>engine=alchemi</code> get a structured <code>503 alchemi backend not built</code> error.</td>
+</tr>
 </tbody>
 </table>
+<h2 id="alchemi-batched-engine-optional">ALCHEMI batched engine (optional)<a class="headerlink" href="#alchemi-batched-engine-optional" title="Permanent link">&para;</a></h2>
+<p>The <code>engine=alchemi</code> path routes relaxation through the NVIDIA ALCHEMI Toolkit's batched dynamics — many systems co-resident on the GPU per kernel call. It runs the same <code>method</code> potential you'd use otherwise (MACE / AIMNet2); ALCHEMI is the <em>execution</em> layer, not a new model.</p>
+<ul>
+<li><strong>Build:</strong> the image must install the toolkit extra — <code>pip install 'nvalchemi-toolkit[cu13]' --extra-index-url https://download.pytorch.org/whl/cu130 --extra-index-url https://pypi.nvidia.com</code> (CUDA 12/13 only; no CPU wheels). Keep it an <em>optional</em> build arg so the base image stays CPU-installable.</li>
+<li><strong>Endpoints:</strong> <code>POST /api/optimize-geometry</code> accepts <code>engine</code> for single molecules; <code>POST /api/relax-batch</code> accepts <code>{smiles_list, method, engine, fmax}</code> and returns per-input relaxed XYZ + energy + convergence in input order, with per-item failures reported inline (a bad SMILES never fails the batch).</li>
+<li><strong>Status:</strong> the toolkit is public beta (<code>API subject to change</code>) — pin the version and keep the adapter thin so upstream churn is contained to one module.</li>
+</ul>
 <h2 id="backend-cheatsheet">Backend cheatsheet<a class="headerlink" href="#backend-cheatsheet" title="Permanent link">&para;</a></h2>
 <ul>
 <li><strong>AIMNet2</strong>, best all-round accuracy for organics containing H/C/N/O/S/F/Cl. Recommended default.</li>
