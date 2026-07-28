@@ -4,7 +4,11 @@ All notable changes to NovoMCP are recorded here. The format is [Keep a Changelo
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-07-28
+
 ### Added
+- `optimize_geometry_nnp` — new `engine` argument (`ase` | `alchemi`), orthogonal to `method`. `engine="alchemi"` routes the same NNP relaxation through the [NVIDIA ALCHEMI Toolkit](https://github.com/NVIDIA/nvalchemi-toolkit) GPU-batched dynamics when novomcp-nnp is built with that backend; `ase` (default) keeps the existing ASE BFGS path. ALCHEMI drops in behind a tool agents already call — no new surface to learn.
+- `batch_geometry_relaxation` — MCP tool that relaxes a whole library in one batched pass (many systems per GPU kernel) rather than a per-molecule loop, backed by the ALCHEMI Toolkit engine with a sequential fallback. Now the geometry phase of `screen_oled_library` / `screen_electrolyte_library`. Per-item failures are reported inline without failing the batch.
 - `analyze_admet_trajectory` — MCP tool that scores an ordered SMILES series in one batched ADMET call and reads how each endpoint moves along the modification (frozen / climbing / descending / cliff / flat / complex); wires `analysis/trajectory_diagnostic` into the tool surface. Thanks @dmarsters (#12).
 - `analysis/trajectory_diagnostic` — read an optimization *series*, not just one molecule: decompose an ADMET/property trajectory into per-axis structure (frozen / climbing / descending / cliff / flat / complex). Pure numpy + scipy, self-tested. First community contribution — thanks @dmarsters (#6).
 
@@ -102,7 +106,8 @@ INFO  Uvicorn running on http://0.0.0.0:8018
 
 Then `curl http://localhost:8018/health` returns `{"status":"healthy","service":"novomcp","redis":"disabled","services_available":31}` and `curl -X POST http://localhost:8018/mcp/tools/calculate_properties -H 'Authorization: Bearer x' -d '{"arguments":{"smiles":"CCO"}}'` returns real RDKit values.
 
-[Unreleased]: https://github.com/NovoMCP/novomcp/compare/v1.1.3...HEAD
+[Unreleased]: https://github.com/NovoMCP/novomcp/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/NovoMCP/novomcp/compare/v1.1.3...v1.2.0
 [1.1.3]: https://github.com/NovoMCP/novomcp/compare/v1.1.2...v1.1.3
 [1.1.2]: https://github.com/NovoMCP/novomcp/compare/v1.1.1...v1.1.2
 [1.1.1]: https://github.com/NovoMCP/novomcp/compare/v1.1.0...v1.1.1

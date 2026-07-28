@@ -124,6 +124,7 @@ TEMPLATE_MANIFESTS: Dict[str, List[str]] = {
         "save_funnel_stage",
     ],
     "screen_oled_library": [
+        "batch_geometry_relaxation",
         "optimize_geometry_nnp",
         "predict_frontier_orbitals",
         "run_excited_states",
@@ -131,6 +132,7 @@ TEMPLATE_MANIFESTS: Dict[str, List[str]] = {
         "compute_energy",
     ],
     "screen_electrolyte_library": [
+        "batch_geometry_relaxation",
         "optimize_geometry_nnp",
         "predict_redox_potential",
         "predict_frontier_orbitals",
