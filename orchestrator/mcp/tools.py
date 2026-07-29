@@ -2255,6 +2255,12 @@ MCP_TOOLS = {
                     "type": "boolean",
                     "description": "Use quick mode for faster but less thorough search",
                     "default": False
+                },
+                "engine": {
+                    "type": "string",
+                    "enum": ["crest", "alchemi"],
+                    "description": "Search engine. 'crest' (default) = CREST/GFN2-xTB metadynamics sampling. 'alchemi' = ETKDG generation + NVIDIA ALCHEMI Toolkit batched MACE-MP-0 relaxation on GPU (whole ensemble in one pass; faster than CREST, better energies than the MMFF fallback). Falls back to CREST when a GPU/toolkit isn't wired.",
+                    "default": "crest"
                 }
             },
             "required": ["smiles"]
@@ -15931,6 +15937,7 @@ class MCPToolExecutor:
                     "max_conformers": max_conformers,
                     "energy_window": args.get("energy_window", 6.0),
                     "quick": quick,
+                    "engine": args.get("engine", "crest"),
                 },
                 timeout=30.0,  # Just enough for submission (async) or quick sync
             )
