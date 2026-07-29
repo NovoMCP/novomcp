@@ -2316,6 +2316,12 @@ MCP_TOOLS = {
                     "enum": ["auto", "ani2x", "mace"],
                     "description": "Neural potential model. 'auto' selects ANI-2x for organic molecules, MACE for others.",
                     "default": "auto"
+                },
+                "engine": {
+                    "type": "string",
+                    "enum": ["ase", "alchemi"],
+                    "description": "Execution engine. 'ase' (default) evaluates via ANI-2x/MACE. 'alchemi' = NVIDIA ALCHEMI Toolkit MACE-MP-0 forward pass on GPU (batched-capable). Falls back to ASE when a GPU/toolkit isn't wired.",
+                    "default": "ase"
                 }
             },
             "required": ["smiles"]
@@ -16176,7 +16182,7 @@ class MCPToolExecutor:
             response = await self._call_service(
                 "novomcp-nnp",
                 "/api/compute-energy",
-                {"smiles": smiles, "method": method},
+                {"smiles": smiles, "method": method, "engine": args.get("engine", "ase")},
                 timeout=30.0,
             )
 
