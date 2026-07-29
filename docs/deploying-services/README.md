@@ -53,6 +53,8 @@ If the env var is unset, the tool returns a structured `service unavailable` err
 
 Full env-var list per service is documented in each service's page.
 
+**After deploying, confirm it actually computes** — a running container isn't a working tool. [`verifying-services.md`](./verifying-services.md) gives a one-shot "real data, not just `/health`" check per service (with the exact call the engine makes and the real output to expect), plus the GPU cold-start and inbound-auth gotchas.
+
 ## Deployment tiers
 
 **Tier 1, Turnkey CPU-only** (a laptop is enough):
@@ -86,7 +88,7 @@ AWS Marketplace and GCP Cloud Marketplace listings under development.
 - [`novomcp-nnp.md`](./novomcp-nnp.md), neural network potentials (AIMNet2, MACE, ANI-2x)
 - [`novomcp-neb.md`](./novomcp-neb.md), transition-state search (CI-NEB)
 
-Every service follows the same pattern: docker image at `ghcr.io/novomcp/<service>:latest`, env var `<SERVICE_NAME_UPPER>_URL` wires the engine to it, structured errors when unreachable.
+Every service follows the same pattern: docker image at `ghcr.io/ariharrisonlab/<service>:latest`, env var `<SERVICE_NAME_UPPER>_URL` wires the engine to it, structured errors when unreachable.
 
 ## Building from source
 
