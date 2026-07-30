@@ -34,6 +34,16 @@ import redis.asyncio as aioredis
 from mcp.tree_search_tools import TREE_SEARCH_TOOLS, TREE_SEARCH_CREDITS, TreeSearchExecutor
 from version import __version__ as ENGINE_VERSION
 
+# The in-process cheminformatics + public-API search primitives are sourced
+# from the open-source novomcp-lite package (novomcp_tools), so the engine and
+# the OSS subset share ONE implementation and cannot drift. The engine layers
+# its enrichment DB / ADMET / FAVES / credits on top of these primitives.
+from novomcp_tools.chem import (
+    compute_properties as _lite_compute_properties,
+    compute_sa_score as _lite_compute_sa_score,
+)
+from novomcp_tools import search as _lite_search
+
 logger = logging.getLogger(__name__)
 
 # Ertl–Schuffenhauer synthetic accessibility (1=easy … 10=hard) via RDKit's
@@ -44,23 +54,12 @@ _SASCORER = None
 
 
 def _compute_sa_score(smiles):
-    global _SASCORER
-    try:
-        from rdkit import Chem
-        if _SASCORER is None:
-            import os as _os, sys as _sys
-            from rdkit.Chem import RDConfig
-            _sa_dir = _os.path.join(RDConfig.RDContribDir, "SA_Score")
-            if _sa_dir not in _sys.path:
-                _sys.path.append(_sa_dir)
-            import sascorer as _sc
-            _SASCORER = _sc
-        mol = Chem.MolFromSmiles(smiles or "")
-        if mol is None:
-            return None
-        return round(_SASCORER.calculateScore(mol), 2)
-    except Exception:
-        return None
+    """Synthetic accessibility (Ertl–Schuffenhauer), 1=easy … 10=hard.
+
+    Delegated to novomcp-lite so the engine and the OSS package share one
+    implementation. Returns None on any failure.
+    """
+    return _lite_compute_sa_score(smiles)
 
 
 class ToolTier(str, Enum):
@@ -5209,63 +5208,13 @@ class MCPToolExecutor:
             return {"smiles": smiles, "error": str(e), "source": "faves_context_free"}
 
     async def _compute_basic_properties(self, smiles: str) -> Dict[str, Any]:
-        """Compute basic molecular properties in-process via RDKit.
+        """Basic molecular properties in-process via RDKit.
 
-        No network dependency — works on any install where RDKit is
-        importable (which is true for the default pip install). Used both
-        as the fallback when chem-props is unreachable and as the
-        first-choice source when no downstream service is configured.
+        Delegated to novomcp-lite (``novomcp_tools.chem.compute_properties``)
+        so the engine and the OSS package share one implementation. No network
+        dependency; returns ``{"error": ...}`` on a bad SMILES or missing RDKit.
         """
-        try:
-            from rdkit import Chem
-            from rdkit.Chem import Descriptors, QED, Lipinski, Crippen, rdMolDescriptors
-        except ImportError:
-            return {"error": "RDKit not installed — pip install rdkit"}
-
-        try:
-            mol = Chem.MolFromSmiles(smiles)
-            if mol is None:
-                return {"error": f"Invalid SMILES: {smiles}"}
-
-            mw = Descriptors.MolWt(mol)
-            logp = Crippen.MolLogP(mol)
-            tpsa = Descriptors.TPSA(mol)
-            hbd = Lipinski.NumHDonors(mol)
-            hba = Lipinski.NumHAcceptors(mol)
-            rot_bonds = Lipinski.NumRotatableBonds(mol)
-            aromatic_rings = rdMolDescriptors.CalcNumAromaticRings(mol)
-            heavy_atoms = mol.GetNumHeavyAtoms()
-
-            # Lipinski Rule-of-Five violations
-            lipinski_violations = sum([
-                mw > 500,
-                logp > 5,
-                hbd > 5,
-                hba > 10,
-            ])
-
-            try:
-                qed_score = QED.qed(mol)
-            except Exception:
-                qed_score = None
-
-            return {
-                "molecular_weight": round(mw, 3),
-                "exact_mass": round(Descriptors.ExactMolWt(mol), 4),
-                "logp": round(logp, 3),
-                "tpsa": round(tpsa, 2),
-                "hbd": hbd,
-                "hba": hba,
-                "rotatable_bonds": rot_bonds,
-                "aromatic_rings": aromatic_rings,
-                "heavy_atoms": heavy_atoms,
-                "qed": round(qed_score, 3) if qed_score is not None else None,
-                "lipinski_violations": lipinski_violations,
-                "lipinski_pass": lipinski_violations == 0,
-            }
-        except Exception as e:
-            logger.warning(f"In-process RDKit property computation failed: {e}")
-            return {"error": str(e)}
+        return _lite_compute_properties(smiles)
 
     # =========================================================================
     # Free Tier Tools
@@ -9727,90 +9676,21 @@ class MCPToolExecutor:
     # =========================================================================
 
     async def _execute_search_biorxiv(self, args: Dict[str, Any]) -> ToolResult:
-        """
-        Search bioRxiv/medRxiv preprint servers.
-        Uses the bioRxiv API: https://api.biorxiv.org/
+        """Search bioRxiv/medRxiv preprints (public API).
 
-        bioRxiv's /details endpoint returns papers in 100-item pages by date,
-        not by query. We fetch one page, filter in-memory, and fall back to a
-        shorter date window on timeout.
+        Delegated to novomcp-lite (``novomcp_tools.search.search_biorxiv``).
         """
         query = args.get("query")
-        server = args.get("server", "biorxiv")
-        top_k = min(args.get("top_k", 10), 30)
-        days_back = args.get("days_back", 180)  # Reduced default from 365 to 180
-
         if not query:
             return ToolResult(success=False, error="Missing required parameter: query")
-
         try:
-            from datetime import datetime, timedelta
-
-            async def _fetch_biorxiv(window_days: int, timeout_s: float) -> list:
-                """Fetch one 100-paper page from bioRxiv within the given window."""
-                end_date = datetime.now().strftime("%Y-%m-%d")
-                start_date = (datetime.now() - timedelta(days=window_days)).strftime("%Y-%m-%d")
-                api_url = f"https://api.biorxiv.org/details/{server}/{start_date}/{end_date}/0/100"
-                async with httpx.AsyncClient(timeout=timeout_s) as client:
-                    response = await client.get(api_url)
-                    response.raise_for_status()
-                    return response.json().get("collection", [])
-
-            # Try the requested window first (60s timeout — bioRxiv can be slow)
-            collection = []
-            start_date = (datetime.now() - timedelta(days=days_back)).strftime("%Y-%m-%d")
-            end_date = datetime.now().strftime("%Y-%m-%d")
-            try:
-                collection = await _fetch_biorxiv(days_back, 60.0)
-            except (httpx.TimeoutException, httpx.ReadTimeout):
-                # Fallback: try a 60-day window with shorter timeout
-                logger.warning(f"bioRxiv timeout on {days_back}-day window, retrying with 60-day window")
-                try:
-                    collection = await _fetch_biorxiv(60, 30.0)
-                    start_date = (datetime.now() - timedelta(days=60)).strftime("%Y-%m-%d")
-                except (httpx.TimeoutException, httpx.ReadTimeout):
-                    logger.warning("bioRxiv timeout on 60-day fallback — returning empty results")
-                    collection = []
-
-            # Filter results by query (case-insensitive search in title and abstract)
-            # Support multi-term queries: match if ANY whitespace-split term appears
-            query_terms = [t.strip().lower() for t in query.split() if len(t.strip()) >= 3]
-            if not query_terms:
-                query_terms = [query.lower()]
-            matching_papers = []
-
-            for paper in collection:
-                title = paper.get("title", "").lower()
-                abstract = paper.get("abstract", "").lower()
-
-                # Match if any term appears in title or abstract
-                if any(term in title or term in abstract for term in query_terms):
-                    matching_papers.append({
-                        "doi": paper.get("doi"),
-                        "title": paper.get("title"),
-                        "abstract": paper.get("abstract", "")[:500] + "..." if len(paper.get("abstract", "")) > 500 else paper.get("abstract", ""),
-                        "authors": paper.get("authors"),
-                        "date": paper.get("date"),
-                        "category": paper.get("category"),
-                        "server": server,
-                        "url": f"https://www.{server}.org/content/{paper.get('doi')}"
-                    })
-
-                    if len(matching_papers) >= top_k:
-                        break
-
-            return ToolResult(
-                success=True,
-                data={
-                    "query": query,
-                    "server": server,
-                    "date_range": f"{start_date} to {end_date}",
-                    "total_results": len(matching_papers),
-                    "preprints": matching_papers
-                },
-                usage={"queries": 1, "tool": "search_biorxiv"}
+            data = await _lite_search.search_biorxiv(
+                query,
+                server=args.get("server", "biorxiv"),
+                top_k=args.get("top_k", 10),
+                days_back=args.get("days_back", 180),
             )
-
+            return ToolResult(success=True, data=data, usage={"queries": 1, "tool": "search_biorxiv"})
         except httpx.HTTPStatusError as e:
             logger.warning(f"bioRxiv HTTP {e.response.status_code}: {str(e)[:200]}")
             return ToolResult(
@@ -9834,7 +9714,7 @@ class MCPToolExecutor:
         if not query:
             return ToolResult(success=False, error="Missing required parameter: query")
 
-        # Validate ChEMBL ID if the query looks like one
+        # Validate ChEMBL ID if the query looks like one (engine-side check)
         from core.validators import validate_chembl_query
         chembl_val = await validate_chembl_query(query)
         if not chembl_val.valid:
@@ -9843,249 +9723,49 @@ class MCPToolExecutor:
                 error=chembl_val.message or f"ChEMBL query '{query}' not valid.",
             )
 
-        async def _get_with_retry(client, url, retries=3):
-            """GET with exponential backoff on transient upstream failures.
-            The EBI ChEMBL API is occasionally flaky (5xx / timeouts); retry a
-            few times, then surface the error unchanged — no fallback data."""
-            delay = 0.5
-            response = None
-            for attempt in range(retries):
-                try:
-                    response = await client.get(url)
-                    if response.status_code >= 500 and attempt < retries - 1:
-                        await asyncio.sleep(delay)
-                        delay *= 2
-                        continue
-                    response.raise_for_status()
-                    return response
-                except (httpx.TimeoutException, httpx.TransportError):
-                    if attempt < retries - 1:
-                        await asyncio.sleep(delay)
-                        delay *= 2
-                        continue
-                    raise
-            # Final attempt still 5xx — raise for the outer handler.
-            response.raise_for_status()
-            return response
-
         try:
-            base_url = "https://www.ebi.ac.uk/chembl/api/data"
-            results = []
-
-            async with httpx.AsyncClient(timeout=30.0) as client:
-                if search_type == "compound":
-                    # Search for molecules by name
-                    url = f"{base_url}/molecule/search.json?q={query}&limit={top_k}"
-                    response = await _get_with_retry(client, url)
-                    data = response.json()
-
-                    for mol in data.get("molecules", []):
-                        results.append({
-                            "chembl_id": mol.get("molecule_chembl_id"),
-                            "name": mol.get("pref_name"),
-                            "molecule_type": mol.get("molecule_type"),
-                            "max_phase": mol.get("max_phase"),
-                            "molecular_formula": mol.get("molecule_properties", {}).get("full_molformula") if mol.get("molecule_properties") else None,
-                            "molecular_weight": mol.get("molecule_properties", {}).get("full_mwt") if mol.get("molecule_properties") else None,
-                            "smiles": mol.get("molecule_structures", {}).get("canonical_smiles") if mol.get("molecule_structures") else None,
-                            "first_approval": mol.get("first_approval"),
-                            "oral": mol.get("oral"),
-                            "indication_class": mol.get("indication_class")
-                        })
-
-                elif search_type == "target":
-                    # Search for targets
-                    url = f"{base_url}/target/search.json?q={query}&limit={top_k}"
-                    response = await _get_with_retry(client, url)
-                    data = response.json()
-
-                    for target in data.get("targets", []):
-                        results.append({
-                            "chembl_id": target.get("target_chembl_id"),
-                            "name": target.get("pref_name"),
-                            "target_type": target.get("target_type"),
-                            "organism": target.get("organism"),
-                            "target_components": [
-                                {"accession": c.get("accession"), "description": c.get("component_description")}
-                                for c in target.get("target_components", [])[:3]
-                            ]
-                        })
-
-                elif search_type == "activity":
-                    # Search for bioactivity data
-                    # First find the target/compound, then get activities
-                    url = f"{base_url}/activity/search.json?q={query}&limit={top_k}"
-                    response = await _get_with_retry(client, url)
-                    data = response.json()
-
-                    for activity in data.get("activities", []):
-                        results.append({
-                            "activity_id": activity.get("activity_id"),
-                            "molecule_chembl_id": activity.get("molecule_chembl_id"),
-                            "target_chembl_id": activity.get("target_chembl_id"),
-                            "target_name": activity.get("target_pref_name"),
-                            "assay_type": activity.get("assay_type"),
-                            "standard_type": activity.get("standard_type"),
-                            "standard_value": activity.get("standard_value"),
-                            "standard_units": activity.get("standard_units"),
-                            "pchembl_value": activity.get("pchembl_value")
-                        })
-
-            return ToolResult(
-                success=True,
-                data={
-                    "query": query,
-                    "search_type": search_type,
-                    "total_results": len(results),
-                    "results": results,
-                    "tool_suggestions": [
-                        self._tool_suggestion(
-                            "get_molecule_profile",
-                            "Get full profile (ADMET, compliance) for any ChEMBL compound SMILES"
-                        ),
-                        self._tool_suggestion(
-                            "search_similar",
-                            "Find structurally similar molecules in the enriched compound index"
-                        )
-                    ]
-                },
-                usage={"queries": 1, "tool": "search_chembl"}
+            # Delegated to novomcp-lite (novomcp_tools.search.search_chembl);
+            # the engine adds its tool suggestions on top.
+            data = await _lite_search.search_chembl(
+                query, search_type=search_type, top_k=top_k
             )
-
+            data["tool_suggestions"] = [
+                self._tool_suggestion(
+                    "get_molecule_profile",
+                    "Get full profile (ADMET, compliance) for any ChEMBL compound SMILES"
+                ),
+                self._tool_suggestion(
+                    "search_similar",
+                    "Find structurally similar molecules in the enriched compound index"
+                )
+            ]
+            return ToolResult(success=True, data=data, usage={"queries": 1, "tool": "search_chembl"})
         except Exception as e:
             logger.exception(f"Error in search_chembl: {e}")
             return ToolResult(success=False, error=f"ChEMBL search failed: {str(e)}")
 
     async def _execute_search_clinical_trials(self, args: Dict[str, Any]) -> ToolResult:
-        """
-        Search ClinicalTrials.gov for clinical studies.
-        Uses the ClinicalTrials.gov API v2: https://clinicaltrials.gov/api/v2/
+        """Search ClinicalTrials.gov (public API v2).
+
+        Delegated to novomcp-lite (``novomcp_tools.search.search_clinical_trials``).
         """
         query = args.get("query")
         condition = args.get("condition")
-        status = args.get("status") or "ALL"
-        phase = args.get("phase") or "ALL"
-        top_k = min(args.get("top_k", 10), 25)
 
         if not query and not condition:
             return ToolResult(success=False, error="Missing required parameter: query or condition")
 
         try:
-            # Build query parameters — use query.cond for disease terms,
-            # query.term for everything else to avoid 400s on complex queries
-            params = {
-                "pageSize": top_k,
-                "format": "json",
-                "countTotal": "true"
-            }
-
-            if condition:
-                # Explicit condition field — use dedicated API parameter
-                params["query.cond"] = condition
-                if query:
-                    params["query.term"] = query[:200]
-            elif query:
-                params["query.term"] = query[:200]
-
-            # Add status filter
-            if status != "ALL":
-                status_map = {
-                    "RECRUITING": "RECRUITING",
-                    "ACTIVE_NOT_RECRUITING": "ACTIVE_NOT_RECRUITING",
-                    "COMPLETED": "COMPLETED",
-                    "TERMINATED": "TERMINATED"
-                }
-                if status in status_map:
-                    params["filter.overallStatus"] = status_map[status]
-
-            # Add phase filter
-            if phase != "ALL":
-                phase_map = {
-                    "PHASE1": "PHASE1",
-                    "PHASE2": "PHASE2",
-                    "PHASE3": "PHASE3",
-                    "PHASE4": "PHASE4"
-                }
-                if phase in phase_map:
-                    params["filter.phase"] = phase_map[phase]
-
-            url = "https://clinicaltrials.gov/api/v2/studies"
-
-            async with httpx.AsyncClient(timeout=30.0) as client:
-                response = await client.get(url, params=params)
-
-                # ClinicalTrials.gov v2 API rejects complex queries — simplify and retry
-                if response.status_code == 400:
-                    query_val = params.get("query.term") or params.get("query.cond", "")
-                    # Keep only first 3 words, strip special characters
-                    simplified = " ".join(query_val.split()[:3])
-                    logger.warning(f"ClinicalTrials.gov 400 on '{query_val}', retrying with '{simplified}'")
-                    # Remove filters that may also cause issues
-                    retry_params = {"pageSize": top_k, "format": "json", "query.term": simplified}
-                    response = await client.get(url, params=retry_params)
-
-                response.raise_for_status()
-                data = response.json()
-
-            trials = []
-            for study in data.get("studies", []):
-                protocol = study.get("protocolSection", {})
-                id_module = protocol.get("identificationModule", {})
-                status_module = protocol.get("statusModule", {})
-                design_module = protocol.get("designModule", {})
-                desc_module = protocol.get("descriptionModule", {})
-                conditions_module = protocol.get("conditionsModule", {})
-                interventions_module = protocol.get("armsInterventionsModule", {})
-                sponsor_module = protocol.get("sponsorCollaboratorsModule", {})
-                eligibility_module = protocol.get("eligibilityModule", {})
-
-                trials.append({
-                    "nct_id": id_module.get("nctId"),
-                    "title": id_module.get("briefTitle"),
-                    "status": status_module.get("overallStatus"),
-                    "phase": ", ".join(design_module.get("phases", [])),
-                    "study_type": design_module.get("studyType"),
-                    "conditions": conditions_module.get("conditions", [])[:5],
-                    "interventions": [
-                        {"type": i.get("type"), "name": i.get("name")}
-                        for i in interventions_module.get("interventions", [])[:3]
-                    ],
-                    "sponsor": sponsor_module.get("leadSponsor", {}).get("name"),
-                    "enrollment": eligibility_module.get("maximumAge"),
-                    "start_date": status_module.get("startDateStruct", {}).get("date"),
-                    "completion_date": status_module.get("completionDateStruct", {}).get("date"),
-                    "brief_summary": desc_module.get("briefSummary", "")[:300] + "..." if len(desc_module.get("briefSummary", "")) > 300 else desc_module.get("briefSummary", ""),
-                    "url": f"https://clinicaltrials.gov/study/{id_module.get('nctId')}"
-                })
-
-            result_data = {
-                    "query": query or condition,
-                    "status_filter": status,
-                    "phase_filter": phase,
-                    "total_results": len(trials),
-                    "total_count": data.get("totalCount", len(trials)),
-                    "trials": trials,
-            }
-
-            # Soft diagnostic when no results found — never reject, just explain
-            if not trials:
-                search_term = condition or query
-                result_data["message"] = (
-                    f"No clinical trials found for '{search_term}'"
-                    f"{' with status=' + status if status != 'ALL' else ''}"
-                    f"{' and phase=' + phase if phase != 'ALL' else ''}. "
-                    f"Try a broader search term, remove status/phase filters, "
-                    f"or check spelling. ClinicalTrials.gov uses MeSH terms — "
-                    f"e.g., 'neoplasms' instead of 'cancer', 'glioblastoma' "
-                    f"instead of 'brain cancer'."
-                )
-
-            return ToolResult(
-                success=True,
-                data=result_data,
-                usage={"queries": 1, "tool": "search_clinical_trials"}
+            data = await _lite_search.search_clinical_trials(
+                query=query,
+                condition=condition,
+                status=args.get("status") or "ALL",
+                phase=args.get("phase") or "ALL",
+                top_k=args.get("top_k", 10),
             )
-
+            return ToolResult(
+                success=True, data=data, usage={"queries": 1, "tool": "search_clinical_trials"}
+            )
         except httpx.TimeoutException as e:
             logger.warning(f"ClinicalTrials.gov timeout: {e}")
             return ToolResult(
