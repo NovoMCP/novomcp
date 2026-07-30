@@ -4,6 +4,8 @@ All notable changes to NovoMCP are recorded here. The format is [Keep a Changelo
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-07-30
+
 ### Changed
 - The in-process cheminformatics and public-API search primitives (`calculate_properties`, `get_molecule_info`, `get_molecule_profile`, `batch_profile`, `screen_library`, `search_chembl`, `search_clinical_trials`, `search_biorxiv`) are now sourced from the open-source [novomcp-lite](https://github.com/NovoMCP/novomcp-lite) package (`novomcp_tools`) rather than an inlined copy. The engine and the OSS subset now share one implementation — same fields, same numbers, no drift — with the engine layering its enrichment DB / ADMET / FAVES / credits on top. No behavior change for callers.
 
