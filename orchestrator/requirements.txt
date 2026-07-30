@@ -95,6 +95,12 @@ numpy<2.0.0
 # SMILES canonicalization fallback, and future structure-based features)
 rdkit==2024.9.4
 
+# In-process chem + public-API search primitives (calculate_properties,
+# get_molecule_info/profile, batch_profile, screen_library, search_chembl/
+# clinical_trials/biorxiv) are sourced from the open-source novomcp-lite
+# package so the engine and the OSS subset share ONE implementation (no drift).
+novomcp-lite @ git+https://github.com/NovoMCP/novomcp-lite@v0.1.0
+
 # PDB structure parsing (required for audit_system / intake classifier — moved
 # from gromacs-md to eliminate GPU cold-start dependency)
 MDAnalysis>=2.7.0
