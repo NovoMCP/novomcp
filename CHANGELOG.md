@@ -4,6 +4,12 @@ All notable changes to NovoMCP are recorded here. The format is [Keep a Changelo
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-07-30
+
+### Added
+- `run_conformer_search` — new `engine` argument (`crest` | `alchemi`), orthogonal to `method`. `engine="alchemi"` generates an ETKDG ensemble and relaxes + ranks it in one batched GPU pass (MACE-MP-0 + FIRE) via the [NVIDIA ALCHEMI Toolkit](https://github.com/NVIDIA/nvalchemi-toolkit) when novomcp-qm is built with that backend — a fast path for when CREST's exhaustive metadynamics isn't required. `crest` (default) keeps the existing xTB/CREST path, and any host without a GPU falls back to it automatically. (#22)
+- `compute_energy` — new `engine` argument (`ase` | `alchemi`), orthogonal to `method`. `engine="alchemi"` computes single-point energy + forces across a batch in one GPU forward pass (MACE-MP-0) via the ALCHEMI Toolkit when novomcp-nnp is built with that backend; `ase` (default) keeps the existing path. Completes the ALCHEMI engine axis across the NNP/QM compute tools — geometry, energy, and conformers. (#23)
+
 ## [1.2.0] - 2026-07-28
 
 ### Added
