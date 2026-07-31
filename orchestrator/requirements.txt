@@ -97,9 +97,9 @@ rdkit==2024.9.4
 
 # In-process chem + public-API search primitives (calculate_properties,
 # get_molecule_info/profile, batch_profile, screen_library, search_chembl/
-# clinical_trials/biorxiv) are sourced from the open-source novomcp-lite
-# package so the engine and the OSS subset share ONE implementation (no drift).
-novomcp-lite @ git+https://github.com/NovoMCP/novomcp-lite@v0.1.0
+# clinical_trials/biorxiv) come from the open-source novomcp-lite package,
+# so the engine and the package share one implementation.
+novomcp-lite>=0.1,<0.2
 
 # PDB structure parsing (required for audit_system / intake classifier — moved
 # from gromacs-md to eliminate GPU cold-start dependency)
