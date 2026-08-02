@@ -11,7 +11,7 @@ One engine. Two domains. Four surfaces.
 Molecular intelligence is scattered — RDKit in one notebook, an ADMET model in another, a docking rig on a cluster, a compliance check in a spreadsheet, literature search in a browser tab. Wiring all of it into something an AI agent can actually *call* is the work nobody wants to redo per project. NovoMCP collapses it into one engine:
 
 - **Agent-callable by default.** 68 tools over MCP JSON-RPC plus a curated REST API — the same catalog whether you drive it from Claude Desktop, Cursor, a script, or the discovery funnel.
-- **Runs on your laptop, day one.** 11 tools work fully local with no API keys and no cloud. The rest unlock as you deploy compute or bring data — nothing is gated behind a signup to get started.
+- **Runs on your laptop, day one.** 11 tools work with no API keys and nothing to provision. (Three of the 11 default tools query public APIs — ChEMBL, ClinicalTrials.gov, bioRxiv; the rest are fully offline.) The rest unlock as you deploy compute or bring data — nothing is gated behind a signup to get started.
 - **An engine, not a wrapper.** Intent recognition, orchestration planning, semantic tool search, and a governed 11-stage discovery funnel are built in — not left as an exercise for the caller.
 - **Pluggable where it counts.** Auth, metering, audit, and LLM provider each swap via env vars, so the same core runs unauthenticated on a laptop or metered-and-audited in production.
 
@@ -25,7 +25,7 @@ New here? [Boot it in 2 minutes](quickstart.md), then see [how it fits together]
 
     ---
 
-    Boot the engine on your laptop in 2 minutes. No API keys, no cloud dependencies.
+    Boot the engine on your laptop in 2 minutes. No API keys, nothing to provision — it runs on your hardware.
 
     [Quickstart :octicons-arrow-right-24:](quickstart.md)
 
@@ -57,8 +57,8 @@ New here? [Boot it in 2 minutes](quickstart.md), then see [how it fits together]
 
 ## What it does
 
-- **11 tools work fully local** out of a 67-tool catalog. The rest unlock as you deploy compute services, provide your own data, or subscribe to hosted APIs. See [Tool availability](tool-availability.md) for the full map.
-- **Full 67-tool catalog** spans cheminformatics (properties, similarity, filtering), ADMET prediction, docking, molecular dynamics, protein structure prediction, quantum-mechanical calculations, literature/patent search, regulatory compliance
+- **11 tools work fully local** out of a 68-tool catalog. The rest unlock as you deploy compute services, provide your own data, or subscribe to hosted APIs. See [Tool availability](tool-availability.md) for the full map.
+- **Full 68-tool catalog** spans cheminformatics (properties, similarity, filtering), ADMET prediction, docking, molecular dynamics, protein structure prediction, quantum-mechanical calculations, literature/patent search, regulatory compliance
 - **REST API** with a curated OpenAPI 3.1 spec at `/v1/openapi.json`
 - **MCP JSON-RPC** at `/mcp/` — usable from any MCP-compatible client (Claude Desktop, Cursor, Codex, Zed, Cline, and others)
 - **Autonomous discovery funnel** — trigger with "Novo AG" or "agm" from any MCP client, returns an 11-stage protocol for the LLM to execute

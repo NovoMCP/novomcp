@@ -55,7 +55,7 @@ flowchart TB
 
 ## What runs with nothing wired
 
-Out of the 67-tool catalog, **11 tools work fully local** the moment the engine boots — molecular profiling and cheminformatics computed in-process via RDKit, plus the MCP handshake and funnel protocol. No compute services, no data pack, no LLM key, no cloud. See [Tool availability](tool-availability.md) for the exact map of what's on by default and what each service unlocks.
+Out of the 68-tool catalog, **11 tools work fully local** the moment the engine boots — molecular profiling and cheminformatics computed in-process via RDKit, plus the MCP handshake and funnel protocol. No compute services to deploy, no data pack, no LLM key. (Three of the 11 — the ChEMBL / ClinicalTrials.gov / bioRxiv searches — query public APIs; the rest are fully offline.) See [Tool availability](tool-availability.md) for the exact map of what's on by default and what each service unlocks.
 
 ## What a tool call does
 

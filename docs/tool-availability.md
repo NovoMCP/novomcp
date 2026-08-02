@@ -1,6 +1,6 @@
 # Tool availability
 
-NovoMCP ships a 67-tool catalog. Which ones are actually usable depends on what you've wired up. The engine only exposes tools whose dependencies are met — no tool clutter, no "unavailable" errors on tools you can't run.
+NovoMCP ships a 68-tool catalog. Which ones are actually usable depends on what you've wired up. The engine only exposes tools whose dependencies are met — no tool clutter, no "unavailable" errors on tools you can't run.
 
 ## The three states
 
@@ -99,7 +99,7 @@ Unlocks: `search_materials_project`.
 
 ## Debug mode
 
-To see the full 67-tool catalog regardless of what's wired:
+To see the full 68-tool catalog regardless of what's wired:
 
 ```bash
 export NOVOMCP_SHOW_HIDDEN_TOOLS=1
@@ -115,11 +115,11 @@ The alternative would be to always show the full 68 tools and return "service un
 Hidden-until-wired means:
 - **Users see a working demo, not a lot of gray options.** First impressions matter.
 - **`tools/list` is the truth.** Every tool in it works. LLM clients that pick tools autonomously (Claude, Cursor, Zed) never try something that will fail.
-- **Progressive disclosure.** As users add services, tools appear. The 13-tool starter set grows into the full catalog only when they've earned it by configuring what backs it.
+- **Progressive disclosure.** As users add services, tools appear. The 11-tool starter set grows into the full catalog only when they've earned it by configuring what backs it.
 
 ## Related
 
-- [Quickstart](quickstart.md) — get the 13 default tools running
+- [Quickstart](quickstart.md) — get the 11 default tools running
 - [Deploying services](deploying-services/README.md) — wire up compute services to unlock more tools
 - [Optional data services](optional-data-services.md) — data + auxiliary services
 - [Product roadmap](https://github.com/NovoMCP/novomcp/blob/main/docs/product-roadmap.md) *(private)* — timing on which tools ship in which release

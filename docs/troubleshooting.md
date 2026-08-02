@@ -47,7 +47,7 @@ python main_https.py
 
 ### Engine boots but tools/list returns fewer tools than expected
 
-**Symptoms:** You expected the full 67-tool catalog, but `tools/list` shows only 11 (or some small number).
+**Symptoms:** You expected the full 68-tool catalog, but `tools/list` shows only 11 (or some small number).
 
 **Cause:** This is by design. Tools whose service or data dependencies aren't wired locally are hidden from `tools/list` — no "unavailable" errors on tools you can't run. See [tool availability](tool-availability.md) for the full map of what unlocks what.
 
