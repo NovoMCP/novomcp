@@ -53,13 +53,42 @@ If it says `Python 3.10.x` or newer, skip ahead. Otherwise install a supported v
 
 ## Install and run
 
+### Fastest — `uvx` (no clone, no venv)
+
+Run the engine straight from PyPI in one command:
+
+```bash
+uvx novomcp
+```
+
+[`uvx`](https://docs.astral.sh/uv/) fetches the `novomcp` package into a throwaway environment and launches the engine — nothing to clone or install. The first run downloads the dependency set (rdkit, MDAnalysis, …), so give it a minute; later runs are cached.
+
+!!! tip "Just want the lightweight cheminformatics subset?"
+    `uvx --from 'novomcp-lite[mcp]' novomcp-lite` starts a **stdio** MCP server in seconds — RDKit properties/profiling + public-API search, no backend. The full engine imports the same code, so the two never drift. See [novomcp-lite](https://github.com/NovoMCP/novomcp-lite).
+
+### `pip install`
+
+Into a virtual environment you control:
+
+```bash
+python3.11 -m venv .venv && source .venv/bin/activate
+pip install novomcp
+novomcp
+```
+
+`novomcp` is the console command — it boots the MCP + REST server.
+
+### From source
+
+For hacking on the engine itself:
+
 ```bash
 git clone https://github.com/NovoMCP/novomcp.git
 cd novomcp/orchestrator
 python3.11 -m venv .venv && source .venv/bin/activate
 python -m pip install --upgrade pip
-pip install -r requirements.txt
-python main_https.py
+pip install -e .
+python main_https.py      # or: novomcp
 ```
 
 The engine boots with:
