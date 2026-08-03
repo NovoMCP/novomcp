@@ -1,6 +1,6 @@
 # Quickstart
 
-Boot the NovoMCP engine locally in about 2 minutes. No API keys, no cloud dependencies.
+Boot the NovoMCP engine locally in about 2 minutes. No API keys, nothing to provision — it runs on your hardware.
 
 ## Requirements
 
