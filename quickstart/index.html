@@ -716,6 +716,45 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Install and run">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fastest-uvx-no-clone-no-venv" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fastest — uvx (no clone, no venv)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pip-install" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        pip install
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#from-source" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        From source
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1974,6 +2013,45 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Install and run">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fastest-uvx-no-clone-no-venv" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fastest — uvx (no clone, no venv)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pip-install" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        pip install
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#from-source" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        From source
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -2125,12 +2203,30 @@
 </div>
 </div>
 <h2 id="install-and-run">Install and run<a class="headerlink" href="#install-and-run" title="Permanent link">&para;</a></h2>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/NovoMCP/novomcp.git
-</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="nb">cd</span><span class="w"> </span>novomcp/orchestrator
-</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>python3.11<span class="w"> </span>-m<span class="w"> </span>venv<span class="w"> </span>.venv<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">source</span><span class="w"> </span>.venv/bin/activate
-</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>python<span class="w"> </span>-m<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>--upgrade<span class="w"> </span>pip
-</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>pip<span class="w"> </span>install<span class="w"> </span>-r<span class="w"> </span>requirements.txt
-</span><span id="__span-5-6"><a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>python<span class="w"> </span>main_https.py
+<h3 id="fastest-uvx-no-clone-no-venv">Fastest — <code>uvx</code> (no clone, no venv)<a class="headerlink" href="#fastest-uvx-no-clone-no-venv" title="Permanent link">&para;</a></h3>
+<p>Run the engine straight from PyPI in one command:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>uvx<span class="w"> </span>novomcp
+</span></code></pre></div>
+<p><a href="https://docs.astral.sh/uv/"><code>uvx</code></a> fetches the <code>novomcp</code> package into a throwaway environment and launches the engine — nothing to clone or install. The first run downloads the dependency set (rdkit, MDAnalysis, …), so give it a minute; later runs are cached.</p>
+<div class="admonition tip">
+<p class="admonition-title">Just want the lightweight cheminformatics subset?</p>
+<p><code>uvx --from 'novomcp-lite[mcp]' novomcp-lite</code> starts a <strong>stdio</strong> MCP server in seconds — RDKit properties/profiling + public-API search, no backend. The full engine imports the same code, so the two never drift. See <a href="https://github.com/NovoMCP/novomcp-lite">novomcp-lite</a>.</p>
+</div>
+<h3 id="pip-install"><code>pip install</code><a class="headerlink" href="#pip-install" title="Permanent link">&para;</a></h3>
+<p>Into a virtual environment you control:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>python3.11<span class="w"> </span>-m<span class="w"> </span>venv<span class="w"> </span>.venv<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">source</span><span class="w"> </span>.venv/bin/activate
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>pip<span class="w"> </span>install<span class="w"> </span>novomcp
+</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>novomcp
+</span></code></pre></div>
+<p><code>novomcp</code> is the console command — it boots the MCP + REST server.</p>
+<h3 id="from-source">From source<a class="headerlink" href="#from-source" title="Permanent link">&para;</a></h3>
+<p>For hacking on the engine itself:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/NovoMCP/novomcp.git
+</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="nb">cd</span><span class="w"> </span>novomcp/orchestrator
+</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>python3.11<span class="w"> </span>-m<span class="w"> </span>venv<span class="w"> </span>.venv<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">source</span><span class="w"> </span>.venv/bin/activate
+</span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>python<span class="w"> </span>-m<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>--upgrade<span class="w"> </span>pip
+</span><span id="__span-7-5"><a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </span>.
+</span><span id="__span-7-6"><a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>python<span class="w"> </span>main_https.py<span class="w">      </span><span class="c1"># or: novomcp</span>
 </span></code></pre></div>
 <p>The engine boots with:</p>
 <ul>
@@ -2142,38 +2238,38 @@
 <h2 id="first-requests">First requests<a class="headerlink" href="#first-requests" title="Permanent link">&para;</a></h2>
 <p>In another shell:</p>
 <h3 id="health-check">Health check<a class="headerlink" href="#health-check" title="Permanent link">&para;</a></h3>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>curl<span class="w"> </span>-s<span class="w"> </span>http://localhost:8018/health<span class="w"> </span><span class="p">|</span><span class="w"> </span>python3<span class="w"> </span>-m<span class="w"> </span>json.tool
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>curl<span class="w"> </span>-s<span class="w"> </span>http://localhost:8018/health<span class="w"> </span><span class="p">|</span><span class="w"> </span>python3<span class="w"> </span>-m<span class="w"> </span>json.tool
 </span></code></pre></div>
 <p>Expected: <code>{"status": "healthy", ...}</code>.</p>
 <h3 id="list-tools">List tools<a class="headerlink" href="#list-tools" title="Permanent link">&para;</a></h3>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>curl<span class="w"> </span>-s<span class="w"> </span>http://localhost:8018/mcp/tools<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="w">  </span>-H<span class="w"> </span><span class="s1">&#39;Authorization: Bearer x&#39;</span><span class="w"> </span><span class="se">\</span>
-</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="w">  </span><span class="p">|</span><span class="w"> </span>python3<span class="w"> </span>-m<span class="w"> </span>json.tool
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>curl<span class="w"> </span>-s<span class="w"> </span>http://localhost:8018/mcp/tools<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="w">  </span>-H<span class="w"> </span><span class="s1">&#39;Authorization: Bearer x&#39;</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-9-3"><a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="w">  </span><span class="p">|</span><span class="w"> </span>python3<span class="w"> </span>-m<span class="w"> </span>json.tool
 </span></code></pre></div>
 <p><code>LocalAuthGate</code> accepts any bearer token — <code>x</code> works fine. Returns the 11 always-available tools; the other 56 in the catalog appear as you wire their backing services (see <a href="../tool-availability/">tool-availability.md</a>).</p>
 <h3 id="get-a-molecule-profile-aspirin">Get a molecule profile (aspirin)<a class="headerlink" href="#get-a-molecule-profile-aspirin" title="Permanent link">&para;</a></h3>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>curl<span class="w"> </span>-s<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://localhost:8018/mcp/tools/get_molecule_profile<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="w">  </span>-H<span class="w"> </span><span class="s1">&#39;Authorization: Bearer x&#39;</span><span class="w"> </span><span class="se">\</span>
-</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="w">  </span>-H<span class="w"> </span><span class="s1">&#39;Content-Type: application/json&#39;</span><span class="w"> </span><span class="se">\</span>
-</span><span id="__span-8-4"><a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{&quot;arguments&quot;: {&quot;smiles&quot;: &quot;CC(=O)Oc1ccccc1C(=O)O&quot;}}&#39;</span><span class="w"> </span><span class="se">\</span>
-</span><span id="__span-8-5"><a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="w">  </span><span class="p">|</span><span class="w"> </span>python3<span class="w"> </span>-m<span class="w"> </span>json.tool
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>curl<span class="w"> </span>-s<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://localhost:8018/mcp/tools/get_molecule_profile<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="w">  </span>-H<span class="w"> </span><span class="s1">&#39;Authorization: Bearer x&#39;</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-10-3"><a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="w">  </span>-H<span class="w"> </span><span class="s1">&#39;Content-Type: application/json&#39;</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-10-4"><a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a><span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{&quot;arguments&quot;: {&quot;smiles&quot;: &quot;CC(=O)Oc1ccccc1C(=O)O&quot;}}&#39;</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-10-5"><a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a><span class="w">  </span><span class="p">|</span><span class="w"> </span>python3<span class="w"> </span>-m<span class="w"> </span>json.tool
 </span></code></pre></div>
 <p>Returns properties (MW, logP, TPSA, QED, Lipinski) computed on-the-fly via RDKit. <code>admet_available</code> will be <code>false</code> because the ADMET service (<code>addie-models</code>) isn't wired locally — that's expected. See <a href="../deploying-services/">Deploying services</a> to enable ADMET.</p>
 <h3 id="mcp-json-rpc-handshake">MCP JSON-RPC handshake<a class="headerlink" href="#mcp-json-rpc-handshake" title="Permanent link">&para;</a></h3>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>curl<span class="w"> </span>-s<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://localhost:8018/mcp/<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="w">  </span>-H<span class="w"> </span><span class="s1">&#39;Authorization: Bearer x&#39;</span><span class="w"> </span><span class="se">\</span>
-</span><span id="__span-9-3"><a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="w">  </span>-H<span class="w"> </span><span class="s1">&#39;Content-Type: application/json&#39;</span><span class="w"> </span><span class="se">\</span>
-</span><span id="__span-9-4"><a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{</span>
-</span><span id="__span-9-5"><a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="s1">    &quot;jsonrpc&quot;: &quot;2.0&quot;,</span>
-</span><span id="__span-9-6"><a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a><span class="s1">    &quot;id&quot;: 1,</span>
-</span><span id="__span-9-7"><a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a><span class="s1">    &quot;method&quot;: &quot;initialize&quot;,</span>
-</span><span id="__span-9-8"><a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a><span class="s1">    &quot;params&quot;: {&quot;protocolVersion&quot;: &quot;2024-11-05&quot;, &quot;capabilities&quot;: {}}</span>
-</span><span id="__span-9-9"><a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a><span class="s1">  }&#39;</span><span class="w"> </span><span class="se">\</span>
-</span><span id="__span-9-10"><a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a><span class="w">  </span><span class="p">|</span><span class="w"> </span>python3<span class="w"> </span>-m<span class="w"> </span>json.tool
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>curl<span class="w"> </span>-s<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://localhost:8018/mcp/<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-11-2"><a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="w">  </span>-H<span class="w"> </span><span class="s1">&#39;Authorization: Bearer x&#39;</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-11-3"><a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a><span class="w">  </span>-H<span class="w"> </span><span class="s1">&#39;Content-Type: application/json&#39;</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-11-4"><a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a><span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{</span>
+</span><span id="__span-11-5"><a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a><span class="s1">    &quot;jsonrpc&quot;: &quot;2.0&quot;,</span>
+</span><span id="__span-11-6"><a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a><span class="s1">    &quot;id&quot;: 1,</span>
+</span><span id="__span-11-7"><a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a><span class="s1">    &quot;method&quot;: &quot;initialize&quot;,</span>
+</span><span id="__span-11-8"><a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a><span class="s1">    &quot;params&quot;: {&quot;protocolVersion&quot;: &quot;2024-11-05&quot;, &quot;capabilities&quot;: {}}</span>
+</span><span id="__span-11-9"><a id="__codelineno-11-9" name="__codelineno-11-9" href="#__codelineno-11-9"></a><span class="s1">  }&#39;</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-11-10"><a id="__codelineno-11-10" name="__codelineno-11-10" href="#__codelineno-11-10"></a><span class="w">  </span><span class="p">|</span><span class="w"> </span>python3<span class="w"> </span>-m<span class="w"> </span>json.tool
 </span></code></pre></div>
 <p>Returns server info, capabilities, and the funnel-id instructions blurb. This is the endpoint MCP-compatible clients (Claude Desktop, Cursor, Zed) connect to.</p>
 <h3 id="audit-sink">Audit sink<a class="headerlink" href="#audit-sink" title="Permanent link">&para;</a></h3>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>tail<span class="w"> </span>-3<span class="w"> </span>~/.novo/audit.jsonl
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>tail<span class="w"> </span>-3<span class="w"> </span>~/.novo/audit.jsonl
 </span></code></pre></div>
 <p>Every tool call is logged as a JSON-lines row. Structure: <code>event</code>, <code>timestamp</code>, <code>payload</code> (tool, funnel_id, success, credits, duration, surface).</p>
 <h2 id="what-next">What next<a class="headerlink" href="#what-next" title="Permanent link">&para;</a></h2>
