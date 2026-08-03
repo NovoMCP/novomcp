@@ -1,0 +1,5 @@
+# Ensure the sdist is self-sufficient: `python -m build` builds the wheel FROM
+# the sdist, so files read at build time (requirements.txt, via dynamic deps)
+# and runtime data must be present in the sdist.
+include requirements.txt
+recursive-include src/novomcp *.json *.yaml
