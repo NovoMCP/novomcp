@@ -85,9 +85,9 @@ from novomcp.mcp.mcp_root import router as mcp_root_router, setup_mcp_root
 # docs/NovoMCP/Product/api/v1-developability-report.md.
 from novomcp.routers.developability_report import router as developability_report_router
 
-# Configure logging
+# Configure logging (accept LOG_LEVEL in any case, e.g. "info" or "INFO")
 logging.basicConfig(
-    level=os.getenv("LOG_LEVEL", "INFO"),
+    level=os.getenv("LOG_LEVEL", "INFO").upper(),
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     force=True  # Ensure app logging isn't suppressed by uvicorn defaults
 )
@@ -1433,12 +1433,21 @@ async def proxy_to_service(service_name: str, method: str, path: str, data: Opti
 
 # Log registered routes at startup
 # Main entry point
-if __name__ == "__main__":
+def main():
+    """Console entrypoint (``novomcp``): boot the engine — MCP + REST server.
+
+    Same as ``python main_https.py``; registered as the ``novomcp`` command so a
+    pip install exposes a one-word launcher. Honors PORT and LOG_LEVEL env vars.
+    """
     uvicorn.run(
         app,
         host="0.0.0.0",
         port=PORT,
         log_level=os.getenv("LOG_LEVEL", "info").lower()
     )
+
+
+if __name__ == "__main__":
+    main()
 # Deployment triggered at Tue Aug 27 13:50:56 PDT 2025
 # Fixed ALB association Tue Aug 27 13:52:49 PDT 2025
