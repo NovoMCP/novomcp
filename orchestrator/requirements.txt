@@ -19,7 +19,7 @@ python-dotenv>=1.0.1
 # Pydantic for validation
 pydantic==2.11.1
 pydantic-settings==2.8.1
-email-validator==2.1.0
+email-validator>=2.1.0.post1,<3
 
 # WebSocket support
 websockets==12.0

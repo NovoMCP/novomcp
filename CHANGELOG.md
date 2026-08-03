@@ -4,6 +4,11 @@ All notable changes to NovoMCP are recorded here. The format is [Keep a Changelo
 
 ## [Unreleased]
 
+## [1.4.2] - 2026-08-03
+
+### Fixed
+- Unpin `email-validator` (was exact-pinned to `2.1.0`, which PyPI later yanked). The exact pin on a yanked release made strict resolvers (`uv` / `uvx`) refuse the engine and silently fall back to an older version; `pip install novomcp` and `uvx novomcp` now both resolve. No behavior change.
+
 ## [1.4.1] - 2026-08-03
 
 ### Added
