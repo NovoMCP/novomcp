@@ -4,6 +4,11 @@ All notable changes to NovoMCP are recorded here. The format is [Keep a Changelo
 
 ## [Unreleased]
 
+## [1.4.1] - 2026-08-03
+
+### Added
+- `pip install novomcp` — the engine is now a Python package with a one-word `novomcp` console command that boots the MCP + REST server. Everything is namespaced under `novomcp.` (src-layout) so it installs cleanly alongside other packages; `python main_https.py` still works from a source checkout. Packaging only — no behavior change.
+
 ## [1.4.0] - 2026-07-30
 
 ### Changed
