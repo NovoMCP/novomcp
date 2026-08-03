@@ -4,6 +4,11 @@ All notable changes to NovoMCP are recorded here. The format is [Keep a Changelo
 
 ## [Unreleased]
 
+## [1.4.3] - 2026-08-03
+
+### Fixed
+- Package license metadata now reflects the licensing already described by `LICENSE` + `LICENSE.core`: the distribution is declared `Apache-2.0 AND BUSL-1.1` (the orchestration core under BSL 1.1) and the inaccurate "OSI Approved :: Apache" classifier is dropped. Metadata only — no code and no license terms changed.
+
 ## [1.4.2] - 2026-08-03
 
 ### Fixed
