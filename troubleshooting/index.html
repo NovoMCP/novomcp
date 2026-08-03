@@ -2194,7 +2194,7 @@
 </span></code></pre></div>
 <h2 id="boot">Boot<a class="headerlink" href="#boot" title="Permanent link">&para;</a></h2>
 <h3 id="engine-boots-but-toolslist-returns-fewer-tools-than-expected">Engine boots but tools/list returns fewer tools than expected<a class="headerlink" href="#engine-boots-but-toolslist-returns-fewer-tools-than-expected" title="Permanent link">&para;</a></h3>
-<p><strong>Symptoms:</strong> You expected the full 67-tool catalog, but <code>tools/list</code> shows only 11 (or some small number).</p>
+<p><strong>Symptoms:</strong> You expected the full 68-tool catalog, but <code>tools/list</code> shows only 11 (or some small number).</p>
 <p><strong>Cause:</strong> This is by design. Tools whose service or data dependencies aren't wired locally are hidden from <code>tools/list</code> — no "unavailable" errors on tools you can't run. See <a href="../tool-availability/">tool availability</a> for the full map of what unlocks what.</p>
 <p><strong>Fix:</strong> either configure the service (see <a href="../deploying-services/">deploying services</a>) or turn on debug mode to see everything:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">NOVOMCP_SHOW_HIDDEN_TOOLS</span><span class="o">=</span><span class="m">1</span>
