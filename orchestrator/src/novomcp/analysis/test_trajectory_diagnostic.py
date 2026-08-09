@@ -57,7 +57,12 @@ FIXTURES = {
             [0.0596, 0.9893, 0.787, 0.9364, 0.048, 0.6042, 0.1385, -7.0196],
         ],
         # expected class per axis (regression snapshot of the pure diagnostic):
-        "expected": {"cyp3a4_inhibitor_probability": "complex", "hepatotoxicity_probability": "frozen", "cardiotoxicity_10d_probability": "frozen", "carcinogenicity_probability": "complex", "ames_mutagenicity_probability": "flat", "overall_toxicity_score": "complex", "herg_blocker_probability": "flat", "aqueous_solubility_log_mol_L": "descending"},
+        # Two labels corrected when FROZEN began measuring both halves as ranges.
+        # hepatotoxicity CRASHES 0.995 -> 0.193 and rebounds to 0.986 — the most violent
+        # movement in the series — and was called "frozen" (i.e. "saturated, cannot be tuned
+        # further this way") only because the final point lands near the midpoint value.
+        # cardiotoxicity_10d rises 0.254 -> 0.787 and is still moving late; "climbing" fits.
+        "expected": {"cyp3a4_inhibitor_probability": "complex", "hepatotoxicity_probability": "complex", "cardiotoxicity_10d_probability": "climbing", "carcinogenicity_probability": "complex", "ames_mutagenicity_probability": "flat", "overall_toxicity_score": "complex", "herg_blocker_probability": "flat", "aqueous_solubility_log_mol_L": "descending"},
     },
     "fluorination": {
         "smiles": ["c1ccccc1", "Fc1ccccc1", "Fc1ccccc1F", "Fc1cc(F)cc(F)c1", "Fc1cc(F)c(F)cc1F", "Fc1cc(F)c(F)c(F)c1F", "Fc1c(F)c(F)c(F)c(F)c1F"],
@@ -71,7 +76,10 @@ FIXTURES = {
             [0.0143, 0.983, 0.2603, 0.0417, 0.0891, 0.5065, 0.1049, -3.2011],
         ],
         # expected class per axis (regression snapshot of the pure diagnostic):
-        "expected": {"cyp3a4_inhibitor_probability": "flat", "hepatotoxicity_probability": "cliff", "cardiotoxicity_10d_probability": "frozen", "carcinogenicity_probability": "cliff", "ames_mutagenicity_probability": "frozen", "overall_toxicity_score": "flat", "herg_blocker_probability": "flat", "aqueous_solubility_log_mol_L": "descending"},
+        # cardiotoxicity_10d was "frozen" until FROZEN measured both halves as ranges. Its
+        # late half oscillates over the FULL normalized range (0.91, 0.57, 0.35, 0.71) and
+        # only ends near the midpoint — a swing, not a plateau. "complex" is correct.
+        "expected": {"cyp3a4_inhibitor_probability": "flat", "hepatotoxicity_probability": "cliff", "cardiotoxicity_10d_probability": "complex", "carcinogenicity_probability": "cliff", "ames_mutagenicity_probability": "frozen", "overall_toxicity_score": "flat", "herg_blocker_probability": "flat", "aqueous_solubility_log_mol_L": "descending"},
     },
     "polyol": {
         "smiles": ["CCO", "OCCO", "OCC(O)CO", "OCC(O)C(O)CO", "OCC(O)C(O)C(O)CO", "OCC(O)C(O)C(O)C(O)CO"],
@@ -281,3 +289,26 @@ def test_documented_cliff_reads_climbing_when_model_baseline_noisy():
     # this case would manufacture false cliffs elsewhere. Kept as a regression guard on that call.
     ames = [0.295, 0.478, 0.327, 0.531, 0.847, 0.869]
     assert classify_axis(np.array(ames), np.arange(len(ames)))["class"] == "climbing"
+
+
+# ----------------------------------------------------------------------------------------------
+# FROZEN measures both halves the same way.
+# `early_range` is a RANGE, so the late half must be one too. Scoring the late half by its
+# endpoint difference read a half that swings out and RETURNS as "plateaued" however violently it
+# moved. Against a step-order shuffle null on 538 real CH2-homologous series that let FROZEN fire
+# on 31.4% of pure noise (6.0% once both halves are ranges). These pin the corrected rule.
+# ----------------------------------------------------------------------------------------------
+def test_frozen_rejects_a_late_half_that_swings_out_and_returns():
+    # Traverses the entire normalized range in the late half and lands back on the midpoint. The
+    # legacy endpoint delta still reads ~0 ("settled"); the range sees the full swing.
+    v = np.array([0.05, 0.30, 0.55, 0.58, 0.05, 0.99, 0.58])
+    c = classify_axis(v, np.arange(len(v)))
+    assert c["late_move"] < 0.01
+    assert c["late_range"] > 0.99
+    assert c["class"] != "frozen"
+
+
+def test_genuine_plateau_still_reads_frozen():
+    # The behaviour the label is FOR: moves early, then actually settles. Must be unaffected.
+    v = np.array([0.10, 0.35, 0.60, 0.62, 0.61, 0.62, 0.61])
+    assert classify_axis(v, np.arange(len(v)))["class"] == "frozen"

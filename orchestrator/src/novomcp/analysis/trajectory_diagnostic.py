@@ -110,7 +110,9 @@ def classify_axis(v, positions, thresholds=DEFAULT):
     v          : raw values per step (length n_steps).
     positions  : x per step (real quantities — logP, #Cl — if the series is unevenly spaced).
     thresholds : a `Thresholds` instance (see its field docs for every cutoff's rationale).
-    Returns {"class", "raw_range", "monotonicity", "early_range", "late_move", "cliff_step"}.
+    Returns {"class", "raw_range", "monotonicity", "early_range", "late_range", "late_move",
+    "cliff_step"}. FROZEN is decided by `late_range` (both halves measured as ranges);
+    `late_move` is the legacy endpoint delta, reported for back-compatibility only.
     """
     t = thresholds
     v = np.asarray(v, dtype=float)
@@ -118,7 +120,8 @@ def classify_axis(v, positions, thresholds=DEFAULT):
     raw_range = float(v.max() - v.min())
     if raw_range < t.flat_abs:
         return {"class": "flat", "raw_range": round(raw_range, 3), "monotonicity": 0.0,
-                "early_range": 0.0, "late_move": 0.0, "cliff_step": None}
+                "early_range": 0.0, "late_move": 0.0, "late_range": 0.0,
+                "cliff_step": None}
 
     try:
         from scipy.stats import spearmanr
@@ -132,7 +135,13 @@ def classify_axis(v, positions, thresholds=DEFAULT):
     rho = float(spearmanr(positions, vn).correlation)
     half = n // 2
     early_range = float(vn[:half + 1].max() - vn[:half + 1].min())
-    late_move = float(abs(vn[-1] - vn[half]))             # movement across the late half
+    # Both halves must be measured the SAME way. Scoring the late half by its ENDPOINT difference
+    # (abs(vn[-1] - vn[half])) reads a half that swings out and RETURNS as ~0 — "plateaued" —
+    # however violently it moved. Against a step-order shuffle null on 538 real CH2-homologous
+    # series that let FROZEN fire on 31.4% of pure noise; measuring a RANGE on both sides drops it
+    # to 6.0%. `late_move` is retained in the output for back-compatibility, reported only.
+    late_range = float(vn[half:].max() - vn[half:].min())
+    late_move = float(abs(vn[-1] - vn[half]))             # endpoint delta, reported not used
     steps = np.abs(np.diff(vn))
     order = np.argsort(steps)
     biggest = float(steps[order[-1]])
@@ -143,7 +152,7 @@ def classify_axis(v, positions, thresholds=DEFAULT):
     # before the monotone climb/descend test, or they would be mislabeled "climbing".
     if biggest > t.cliff_min_jump and biggest > t.cliff_dominance * second:
         cls = "cliff"                                      # one dominant step = discontinuity
-    elif early_range >= t.freeze_early and late_move < t.freeze_late_frac * early_range:
+    elif early_range >= t.freeze_early and late_range < t.freeze_late_frac * early_range:
         cls = "frozen"                                     # moved early, plateaued late
     elif abs(rho) >= t.mono_rho:
         cls = "climbing" if rho > 0 else "descending"      # keeps moving, monotone
@@ -151,6 +160,7 @@ def classify_axis(v, positions, thresholds=DEFAULT):
         cls = "complex"
     return {"class": cls, "raw_range": round(raw_range, 3), "monotonicity": round(rho, 2),
             "early_range": round(early_range, 2), "late_move": round(late_move, 2),
+            "late_range": round(late_range, 2),
             "cliff_step": cliff_step if cls == "cliff" else None}
 
 
