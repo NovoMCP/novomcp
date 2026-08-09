@@ -274,7 +274,17 @@ def test_documented_cliff_4_aminobiphenyl():
     # biphenyl, 4-methyl-, 4-ethyl-, 4-fluoro- (all Ames-negative), then 4-AMINObiphenyl (a
     # documented human bladder carcinogen) introduced and held. Real addie ames, frozen. The amine
     # step dominates a clean benign lead-in, so the labeler correctly reads a cliff at that step.
+    # The SMILES sit beside the values so the fixture can be RE-DERIVED against a live addie
+    # rather than reconstructed from the prose above — verified 2026-08-09 to regenerate all six
+    # values exactly on the 64-head panel.
+    smiles = ["c1ccc(-c2ccccc2)cc1",        # biphenyl
+              "Cc1ccc(-c2ccccc2)cc1",       # 4-methylbiphenyl
+              "CCc1ccc(-c2ccccc2)cc1",      # 4-ethylbiphenyl
+              "Fc1ccc(-c2ccccc2)cc1",       # 4-fluorobiphenyl
+              "Nc1ccc(-c2ccccc2)cc1",       # 4-AMINObiphenyl — the alert
+              "Cc1ccc(-c2ccc(N)cc2)cc1"]    # amine held, methyl added
     ames = [0.214, 0.257, 0.192, 0.362, 0.806, 0.815]
+    assert len(smiles) == len(ames)         # keeps the pin load-bearing, not decorative
     c = classify_axis(np.array(ames), np.arange(len(ames)))
     assert c["class"] == "cliff"
     assert c["cliff_step"] == 4          # the step that introduces the amine alert
@@ -287,7 +297,15 @@ def test_documented_cliff_reads_climbing_when_model_baseline_noisy():
     # correct). This is the validated boundary from issue #11: cliff reliability is bounded by
     # whether the model holds the non-alert analogs low, NOT by the threshold — a retune to force
     # this case would manufacture false cliffs elsewhere. Kept as a regression guard on that call.
+    # SMILES pinned for the same reason as the biphenyl case above, and verified the same way.
+    smiles = ["c1ccc2ccccc2c1",             # naphthalene
+              "Cc1ccc2ccccc2c1",            # 2-methylnaphthalene
+              "CCc1ccc2ccccc2c1",           # 2-ethylnaphthalene
+              "Fc1ccc2ccccc2c1",            # 2-fluoronaphthalene — the high benign analog (0.53)
+              "Nc1ccc2ccccc2c1",            # 2-NAPHTHYLAMINE — the alert
+              "Cc1ccc2cc(N)ccc2c1"]         # amine held, methyl added
     ames = [0.295, 0.478, 0.327, 0.531, 0.847, 0.869]
+    assert len(smiles) == len(ames)
     assert classify_axis(np.array(ames), np.arange(len(ames)))["class"] == "climbing"
 
 
