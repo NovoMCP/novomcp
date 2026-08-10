@@ -2034,27 +2034,29 @@
 
 
 <h1 id="novomcp-properties">novomcp-properties<a class="headerlink" href="#novomcp-properties" title="Permanent link">&para;</a></h1>
-<p>Trained ML models for physicochemical properties: pKa, aqueous solubility, and bond dissociation energy (BDE). CPU-only.</p>
+<p>Trained ML models for physicochemical properties: pKa, aqueous solubility, and bond dissociation energy (BDE). CPU-only. Model weights load from Hugging Face on first start — no cloud credentials required.</p>
 <h2 id="pre-reqs">Pre-reqs<a class="headerlink" href="#pre-reqs" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Docker</li>
 <li>~4 GB RAM</li>
 <li>No GPU</li>
-<li>~500 MB disk for weights (bundled)</li>
+<li>Network access on first boot (weights download from Hugging Face)</li>
+<li>For the charge-based pKa routes (sulfonamides / aromatic N–H): a running <a href="../novomcp-qm/">novomcp-qm</a> service supplying per-atom charges. Without it, those routes are unavailable and pKa is served by the general model only.</li>
 </ul>
 <h2 id="deploy">Deploy<a class="headerlink" href="#deploy" title="Permanent link">&para;</a></h2>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>docker<span class="w"> </span>run<span class="w"> </span>-d<span class="w"> </span><span class="se">\</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span>--name<span class="w"> </span>novomcp-properties<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">  </span>-p<span class="w"> </span><span class="m">8036</span>:8036<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">  </span>-p<span class="w"> </span><span class="m">8030</span>:8030<span class="w"> </span><span class="se">\</span>
 </span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="w">  </span>--restart<span class="w"> </span>unless-stopped<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="w">  </span>ghcr.io/NovoMCP/novomcp-properties:latest
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="w">  </span>ghcr.io/novomcp/novomcp-properties:latest
 </span></code></pre></div>
 <h2 id="wire-into-the-engine">Wire into the engine<a class="headerlink" href="#wire-into-the-engine" title="Permanent link">&para;</a></h2>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">NOVOMCP_PROPERTIES_URL</span><span class="o">=</span>http://localhost:8036
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">NOVOMCP_PROPERTIES_URL</span><span class="o">=</span>http://localhost:8030
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="nb">export</span><span class="w"> </span><span class="nv">NOVOMCP_QM_URL</span><span class="o">=</span>http://localhost:8031<span class="w">   </span><span class="c1"># required for the charge-based pKa routes</span>
 </span></code></pre></div>
 <h2 id="verify">Verify<a class="headerlink" href="#verify" title="Permanent link">&para;</a></h2>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>curl<span class="w"> </span>-s<span class="w"> </span>http://localhost:8036/health
-</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="c1"># {&quot;status&quot;:&quot;healthy&quot;,&quot;models&quot;:[&quot;pka&quot;,&quot;solubility&quot;,&quot;bde&quot;]}</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>curl<span class="w"> </span>-s<span class="w"> </span>http://localhost:8030/health
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="c1"># {&quot;status&quot;:&quot;healthy&quot;, ...}</span>
 </span></code></pre></div>
 <h2 id="tools-that-light-up">Tools that light up<a class="headerlink" href="#tools-that-light-up" title="Permanent link">&para;</a></h2>
 <ul>
@@ -2074,8 +2076,23 @@
 <tbody>
 <tr>
 <td><code>PORT</code></td>
-<td><code>8036</code></td>
+<td><code>8030</code></td>
 <td>HTTP listen port</td>
+</tr>
+<tr>
+<td><code>STORAGE_BACKEND</code></td>
+<td><code>HF</code></td>
+<td>Weights backend: <code>HF</code> | <code>LOCAL</code> | <code>S3</code></td>
+</tr>
+<tr>
+<td><code>HF_MODEL_REPO</code></td>
+<td><code>NovoMCP/novomcp-properties</code></td>
+<td>Hugging Face weights repo</td>
+</tr>
+<tr>
+<td><code>NOVOMCP_QM_URL</code></td>
+<td>–</td>
+<td>novomcp-qm endpoint for per-atom charges (charge-based pKa routes)</td>
 </tr>
 <tr>
 <td><code>BATCH_SIZE</code></td>
@@ -2086,9 +2103,10 @@
 </table>
 <h2 id="notes">Notes<a class="headerlink" href="#notes" title="Permanent link">&para;</a></h2>
 <ul>
-<li>pKa model: Chemprop trained on IUPAC dataset; benchmarked against SAMPL8.</li>
+<li>pKa model: a routed ensemble — a per-atom-charge specialist for sulfonamides / aromatic N–H, and a general model for everything else; each route reports an uncertainty estimate. Benchmarked on SAMPL7.</li>
 <li>Solubility model: pre-trained on AqSolDB, fine-tuned on BigSolDB with temperature as an input feature.</li>
 <li>BDE model: alfabet pretrained network.</li>
+<li>If weights can't be loaded, the affected predictor reports unavailable and its endpoints return <code>503</code> rather than serving a silent fallback.</li>
 <li>All three are stateless, safe to scale horizontally behind a load balancer for high-throughput screening.</li>
 </ul>
 
