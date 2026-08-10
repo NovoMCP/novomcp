@@ -2108,7 +2108,7 @@
 </table>
 <h2 id="notes">Notes<a class="headerlink" href="#notes" title="Permanent link">&para;</a></h2>
 <ul>
-<li><strong>pKa weights are NonCommercial.</strong> The pKa model is trained primarily on the IUPAC Dissociation Constants (CC-BY-NC-4.0), so its weights ship separately under CC-BY-NC-4.0 (<code>NovoMCP/novomcp-pka</code>) and are opt-in: set <code>HF_PKA_MODEL_REPO</code> for <strong>non-commercial</strong> use. Left unset, the pKa endpoints return <code>503</code> (solubility and BDE are unaffected). The service code is Apache-2.0; only the pKa weights carry the NonCommercial term.</li>
+<li><strong>pKa weights are NonCommercial / ShareAlike.</strong> The pKa model is trained primarily on the IUPAC Dissociation Constants (CC-BY-NC-4.0) plus ChEMBL (CC-BY-SA 3.0), so its weights ship separately under CC-BY-NC-SA-4.0 (<code>NovoMCP/novomcp-pka</code>) and are opt-in: set <code>HF_PKA_MODEL_REPO</code> for <strong>non-commercial</strong> use. Left unset, the pKa endpoints return <code>503</code> (solubility and BDE are unaffected). The service code is Apache-2.0; only the pKa weights carry the NonCommercial / ShareAlike terms.</li>
 <li>pKa model: a routed ensemble — a per-atom-charge specialist for sulfonamides / aromatic N–H, and a general model for everything else; each route reports an uncertainty estimate. Benchmarked on SAMPL7.</li>
 <li>Solubility model: pre-trained on AqSolDB, fine-tuned on BigSolDB with temperature as an input feature.</li>
 <li>BDE model: alfabet pretrained network.</li>
