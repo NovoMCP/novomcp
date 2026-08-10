@@ -39,6 +39,7 @@ services:
       # NOVOMCP_QM_URL: http://novomcp-qm:8031
       # NOVOMCP_NNP_URL: http://novomcp-nnp:8032
       # ADDIE_MODELS_URL: http://addie-models:8025
+      # NOVOMCP_PROPERTIES_URL: http://novomcp-properties:8030
 
       # Uncomment for persistent OAuth (survive restarts):
       # REDIS_URL: redis://redis:6379/0

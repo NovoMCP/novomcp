@@ -171,7 +171,6 @@ def _build_service_entry(
 _SERVICE_DEFAULTS = [
     ("auth", "AUTH_SERVICE_URL", "", "AUTH_SERVICE_API_KEY", ""),
     # CONSOLIDATED: db-manager now routes to managed backend (unified service)
-    # Azure Container Apps internal URL
     ("db-manager", "DB_MANAGER_URL", "", "DB_MANAGER_API_KEY", ""),
     (
         "molecular-worker",
@@ -180,9 +179,9 @@ _SERVICE_DEFAULTS = [
         "MOLECULAR_WORKER_API_KEY",
         "",
     ),
-    ("red-team", "RED_TEAM_URL", "", "RED_TEAM_API_KEY", ""),  # Not migrated to Azure
-    ("zinc-integration", "ZINC_URL", "", "ZINC_API_KEY", ""),  # Not migrated to Azure
-    # MolMIM Optimizer - NVIDIA MolMIM API proxy (migrated to Azure)
+    ("red-team", "RED_TEAM_URL", "", "RED_TEAM_API_KEY", ""),
+    ("zinc-integration", "ZINC_URL", "", "ZINC_API_KEY", ""),
+    # MolMIM Optimizer - NVIDIA MolMIM API proxy
     (
         "molmim-optimizer",
         "MOLMIM_URL",
@@ -193,7 +192,7 @@ _SERVICE_DEFAULTS = [
     (
         "negative-data",
         "NEGATIVE_DATA_URL",
-        "",  # Not migrated to Azure
+        "",
         "NEGATIVE_DATA_API_KEY",
         "",
     ),
@@ -207,7 +206,7 @@ _SERVICE_DEFAULTS = [
     (
         "drugsynthmc",
         "DRUGSYNTHMC_URL",
-        "",  # Not migrated to Azure
+        "",
         "DRUGSYNTHMC_API_KEY",
         "",
     ),
@@ -221,22 +220,22 @@ _SERVICE_DEFAULTS = [
     (
         "knowledge-graph",
         "KNOWLEDGE_GRAPH_URL",
-        "",  # Not migrated to Azure
+        "",
         "KNOWLEDGE_GRAPH_API_KEY",
         "",
     ),
     (
         "molecular-intelligence",
         "MOL_INTEL_URL",
-        "",  # Not migrated to Azure
+        "",
         "MOL_INTEL_API_KEY",
         "",
     ),
-    ("openmd", "OPENMD_URL", "", "OPENMD_API_KEY", ""),  # Not migrated to Azure
+    ("openmd", "OPENMD_URL", "", "OPENMD_API_KEY", ""),
     (
         "attachment-processor",
         "ATTACHMENT_PROCESSOR_URL",
-        "",  # Not migrated to Azure
+        "",
         "ATTACHMENT_PROCESSOR_API_KEY",
         "",
     ),
@@ -262,7 +261,7 @@ _SERVICE_DEFAULTS = [
         "GROMACS_PROCESSOR_API_KEY",
         "",
     ),
-    # Quantum computing service using Azure Quantum (migrated from AWS Braket)
+    # Quantum computing service
     (
         "novo-quantum",
         "NOVO_QUANTUM_URL",
@@ -270,7 +269,7 @@ _SERVICE_DEFAULTS = [
         "NOVO_QUANTUM_API_KEY",
         "",  # Set via NOVO_QUANTUM_API_KEY env var
     ),
-    # OpenFold3 - NVIDIA protein structure prediction API proxy (migrated to Azure)
+    # OpenFold3 - NVIDIA protein structure prediction API proxy
     (
         "openfold3",
         "OPENFOLD3_URL",
@@ -278,7 +277,7 @@ _SERVICE_DEFAULTS = [
         "OPENFOLD3_API_KEY",
         "",  # Set via OPENFOLD3_API_KEY env var
     ),
-    # NovoMD - Molecular Dynamics Service (Azure Container Apps)
+    # NovoMD - Molecular Dynamics Service
     (
         "novomd",
         "NOVOMD_URL",
@@ -286,7 +285,7 @@ _SERVICE_DEFAULTS = [
         "NOVOMD_API_KEY",
         "",  # Set via NOVOMD_API_KEY env var
     ),
-    # ADDIE Models - ML ADMET prediction service (Azure Container Apps)
+    # ADDIE Models - ML ADMET prediction service
     (
         "addie-models",
         "ADDIE_MODELS_URL",
@@ -294,7 +293,7 @@ _SERVICE_DEFAULTS = [
         "ADDIE_MODELS_API_KEY",
         "",  # Set via ADDIE_MODELS_API_KEY env var
     ),
-    # NovoMCP Properties - pKa, solubility, BDE prediction (Azure Container Apps)
+    # NovoMCP Properties - pKa, solubility, BDE prediction
     (
         "novomcp-properties",
         "NOVOMCP_PROPERTIES_URL",
@@ -302,7 +301,7 @@ _SERVICE_DEFAULTS = [
         "NOVOMCP_PROPERTIES_API_KEY",
         "",  # Set via NOVOMCP_PROPERTIES_API_KEY env var
     ),
-    # NovoMCP QM Engine - xTB, CREST conformers, strain energy (Azure Container Apps)
+    # NovoMCP QM Engine - xTB, CREST conformers, strain energy
     (
         "novomcp-qm",
         "NOVOMCP_QM_URL",
@@ -310,7 +309,7 @@ _SERVICE_DEFAULTS = [
         "NOVOMCP_QM_API_KEY",
         "",  # Set via NOVOMCP_QM_API_KEY env var
     ),
-    # NovoMCP NNP - Neural network potentials: ANI-2x, MACE-MP-0 (Azure Container Apps)
+    # NovoMCP NNP - Neural network potentials: ANI-2x, MACE-MP-0
     (
         "novomcp-nnp",
         "NOVOMCP_NNP_URL",
@@ -318,7 +317,7 @@ _SERVICE_DEFAULTS = [
         "NOVOMCP_NNP_API_KEY",
         "",  # Set via NOVOMCP_NNP_API_KEY env var
     ),
-    # NovoMCP NEB - Transition state search via tblite GFN2-xTB + ASE CI-NEB (Azure Container Apps)
+    # NovoMCP NEB - Transition state search via tblite GFN2-xTB + ASE CI-NEB
     (
         "novomcp-neb",
         "NOVOMCP_NEB_URL",
@@ -662,7 +661,7 @@ CORS_ORIGINS = [
         # the browser complete the round-trip when the request comes
         # from a developer running the Word add-in or Chrome extension
         # locally. The previous env-var gate (CORS_ALLOW_LOCALHOST) had
-        # opaque rollout behavior on Azure Container Apps; hardcoding
+        # opaque rollout behavior in some environments; hardcoding
         # is more predictable.
         "https://localhost:3000",
         "https://localhost:3002",
