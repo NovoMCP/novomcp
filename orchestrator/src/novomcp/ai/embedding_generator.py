@@ -53,13 +53,9 @@ class EmbeddingGenerator:
     def _load_azure_config(self) -> Dict[str, str]:
         """Load Azure OpenAI configuration from environment variables.
 
-        The previous implementation pulled config from AWS Secrets Manager
-        with a hardcoded fallback literal (an API key + endpoint + deployment
-        embedded in source). Both were removed during the AWS->Azure
-        migration cleanup: Container Apps inject AZURE_OPENAI_API_KEY and
-        AZURE_OPENAI_ENDPOINT at runtime, matching every other consumer
-        in this codebase. If the env vars are unset the API call will fail
-        loud with an auth error rather than silently routing to a stale key.
+        AZURE_OPENAI_API_KEY and AZURE_OPENAI_ENDPOINT are read from the
+        environment at runtime. If the env vars are unset the API call will
+        fail loud with an auth error rather than silently routing to a stale key.
         """
         config = {
             'api_key': os.getenv('AZURE_OPENAI_API_KEY', ''),
