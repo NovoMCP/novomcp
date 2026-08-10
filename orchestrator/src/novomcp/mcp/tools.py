@@ -1524,7 +1524,7 @@ MCP_TOOLS = {
     "analyze_admet_trajectory": {
         "name": "analyze_admet_trajectory",
         "title": "Analyze ADMET Trajectory",
-        "description": "Read an ADMET *series*, not a single molecule. Given an ORDERED list of SMILES that walk one optimization direction (a homologous series, a synthetic route, analogs from one repeating modification), scores every molecule with addie-models and classifies how each ADMET endpoint MOVES along the series: frozen (moved then plateaued — a dead-end you cannot tune further this way), climbing / descending (you are actively driving it), cliff (a single-step discontinuity), flat (this modification is irrelevant to it), or complex (non-monotone). Answers the campaign-level question a per-molecule prediction cannot: which liabilities are dead-ends, which you are worsening, and which you can ignore along this modification. ORDER MATTERS — pass the molecules in modification order. Needs 3–100 molecules. CALIBRATION: the labels are heuristic trend reads (Spearman rank correlation + threshold cutoffs), validated against a documented Ames cliff (4-aminobiphenyl fires `cliff` at the alert step). climbing/descending/flat are directional and robust; cliff/frozen are honestly conservative — a real cliff can read as `climbing` when the model's baseline for the non-alert analogs is already elevated (the bound is the model, not the labeler), so verify against the underlying series.",
+        "description": "Read an ADMET *series*, not a single molecule. Given an ORDERED list of SMILES that walk one optimization direction (a homologous series, a synthetic route, analogs from one repeating modification), scores every molecule with addie-models and classifies how each ADMET endpoint MOVES along the series: frozen (moved then plateaued — a dead-end you cannot tune further this way), climbing / descending (you are actively driving it), cliff (a single-step discontinuity), flat (this modification is irrelevant to it), or complex (non-monotone). Answers the campaign-level question a per-molecule prediction cannot: which liabilities are dead-ends, which you are worsening, and which you can ignore along this modification. ORDER MATTERS — pass the molecules in modification order. Needs 3–100 molecules. CALIBRATION: the labels are trend reads (Spearman rank correlation + threshold cutoffs). `cliff` is validated against a documented Ames cliff (4-aminobiphenyl fires `cliff` at the alert step). `frozen` is validated as PREDICTIVE on 54,312 real homologous series: axes it labels on a prefix move +0.108 SD less over the held-out tail than others, beyond a step-order null no permutation in 500 reached (issue #36) — quote that excess, not the raw contrast, since the null is not zero. climbing/descending/flat are directional and robust; cliff is honestly conservative — a real cliff can read as `climbing` when the model's baseline for the non-alert analogs is already elevated (the bound is the model, not the labeler), so verify against the underlying series.",
         "tier": ToolTier.FREE,
         "annotations": {
             "readOnlyHint": True,
@@ -9189,11 +9189,14 @@ class MCPToolExecutor:
         # Candor: the classifications are heuristic trend reads. Validated against a
         # documented Ames cliff (issue #11); the known limitation is model baseline.
         result["calibration"] = (
-            "Trend reads validated against a documented Ames cliff (4-aminobiphenyl). "
-            "climbing/descending/flat are directional (Spearman-robust); cliff/frozen are "
-            "honestly conservative — a real cliff can read as 'climbing' when the model's "
-            "baseline for the non-alert analogs is already elevated (the bound is the model, "
-            "not the labeler). Verify against the underlying series."
+            "cliff validated against a documented Ames cliff (4-aminobiphenyl); frozen "
+            "validated as predictive on 54,312 real homologous series (+0.108 SD less "
+            "held-out-tail movement than other labels, beyond a step-order null no permutation "
+            "in 500 reached; issue #36) — that excess is the effect size, not the raw contrast, "
+            "because the null is not zero. climbing/descending/flat are directional "
+            "(Spearman-robust); cliff remains honestly conservative — a real cliff can read as "
+            "'climbing' when the model's baseline for the non-alert analogs is already elevated "
+            "(the bound is the model, not the labeler). Verify against the underlying series."
         )
         return ToolResult(
             success=True,

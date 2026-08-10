@@ -7,7 +7,14 @@ an N-methyl — and watch a whole property vector move. This module reads the TR
 you, for each property axis, whether ALONG THIS modification it is:
 
   FROZEN     — moved early then plateaued: structurally saturated. You CANNOT tune it further by
-               continuing this modification (a dead-end liability).
+               continuing this modification (a dead-end liability). VALIDATED: on 54,312 real
+               CH2-homologous series from the open corpus, axes labelled FROZEN on a 60% prefix
+               moved measurably less over the held-out tail than climbing/descending/complex ones
+               — +0.108 SD beyond a step-order null that no permutation in 500 reached (z=12.4).
+               The effect survives a flat-prefix baseline, so it is not merely "the prefix barely
+               moved". Quote the excess-over-null (+0.108), not the raw contrast (+0.177): the
+               null is not zero, because FROZEN preferentially selects low-variance axes. See
+               issue #36.
   CLIMBING   — monotone up with the modification: you are actively DRIVING it.
   DESCENDING — monotone down.
   CLIFF      — a single-step threshold jump: a discontinuity to watch.
