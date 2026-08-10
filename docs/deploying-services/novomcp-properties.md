@@ -46,12 +46,14 @@ curl -s http://localhost:8030/health
 |---|---|---|
 | `PORT` | `8030` | HTTP listen port |
 | `STORAGE_BACKEND` | `HF` | Weights backend: `HF` \| `LOCAL` \| `S3` |
-| `HF_MODEL_REPO` | `NovoMCP/novomcp-properties` | Hugging Face weights repo |
+| `HF_MODEL_REPO` | `NovoMCP/novomcp-properties` | Hugging Face weights repo (permissive: solubility) |
+| `HF_PKA_MODEL_REPO` | – | NonCommercial pKa weights repo, opt-in (e.g. `NovoMCP/novomcp-pka`) |
 | `NOVOMCP_QM_URL` | – | novomcp-qm endpoint for per-atom charges (charge-based pKa routes) |
 | `BATCH_SIZE` | `64` | Molecules per batch |
 
 ## Notes
 
+- **pKa weights are NonCommercial.** The pKa model is trained primarily on the IUPAC Dissociation Constants (CC-BY-NC-4.0), so its weights ship separately under CC-BY-NC-4.0 (`NovoMCP/novomcp-pka`) and are opt-in: set `HF_PKA_MODEL_REPO` for **non-commercial** use. Left unset, the pKa endpoints return `503` (solubility and BDE are unaffected). The service code is Apache-2.0; only the pKa weights carry the NonCommercial term.
 - pKa model: a routed ensemble — a per-atom-charge specialist for sulfonamides / aromatic N–H, and a general model for everything else; each route reports an uncertainty estimate. Benchmarked on SAMPL7.
 - Solubility model: pre-trained on AqSolDB, fine-tuned on BigSolDB with temperature as an input feature.
 - BDE model: alfabet pretrained network.
