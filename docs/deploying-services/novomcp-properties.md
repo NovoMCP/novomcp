@@ -1,35 +1,37 @@
 # novomcp-properties
 
-Trained ML models for physicochemical properties: pKa, aqueous solubility, and bond dissociation energy (BDE). CPU-only.
+Trained ML models for physicochemical properties: pKa, aqueous solubility, and bond dissociation energy (BDE). CPU-only. Model weights load from Hugging Face on first start — no cloud credentials required.
 
 ## Pre-reqs
 
 - Docker
 - ~4 GB RAM
 - No GPU
-- ~500 MB disk for weights (bundled)
+- Network access on first boot (weights download from Hugging Face)
+- For the charge-based pKa routes (sulfonamides / aromatic N–H): a running [novomcp-qm](./novomcp-qm.md) service supplying per-atom charges. Without it, those routes are unavailable and pKa is served by the general model only.
 
 ## Deploy
 
 ```bash
 docker run -d \
   --name novomcp-properties \
-  -p 8036:8036 \
+  -p 8030:8030 \
   --restart unless-stopped \
-  ghcr.io/NovoMCP/novomcp-properties:latest
+  ghcr.io/novomcp/novomcp-properties:latest
 ```
 
 ## Wire into the engine
 
 ```bash
-export NOVOMCP_PROPERTIES_URL=http://localhost:8036
+export NOVOMCP_PROPERTIES_URL=http://localhost:8030
+export NOVOMCP_QM_URL=http://localhost:8031   # required for the charge-based pKa routes
 ```
 
 ## Verify
 
 ```bash
-curl -s http://localhost:8036/health
-# {"status":"healthy","models":["pka","solubility","bde"]}
+curl -s http://localhost:8030/health
+# {"status":"healthy", ...}
 ```
 
 ## Tools that light up
@@ -42,12 +44,16 @@ curl -s http://localhost:8036/health
 
 | Var | Default | Purpose |
 |---|---|---|
-| `PORT` | `8036` | HTTP listen port |
+| `PORT` | `8030` | HTTP listen port |
+| `STORAGE_BACKEND` | `HF` | Weights backend: `HF` \| `LOCAL` \| `S3` |
+| `HF_MODEL_REPO` | `NovoMCP/novomcp-properties` | Hugging Face weights repo |
+| `NOVOMCP_QM_URL` | – | novomcp-qm endpoint for per-atom charges (charge-based pKa routes) |
 | `BATCH_SIZE` | `64` | Molecules per batch |
 
 ## Notes
 
-- pKa model: Chemprop trained on IUPAC dataset; benchmarked against SAMPL8.
+- pKa model: a routed ensemble — a per-atom-charge specialist for sulfonamides / aromatic N–H, and a general model for everything else; each route reports an uncertainty estimate. Benchmarked on SAMPL7.
 - Solubility model: pre-trained on AqSolDB, fine-tuned on BigSolDB with temperature as an input feature.
 - BDE model: alfabet pretrained network.
+- If weights can't be loaded, the affected predictor reports unavailable and its endpoints return `503` rather than serving a silent fallback.
 - All three are stateless, safe to scale horizontally behind a load balancer for high-throughput screening.
