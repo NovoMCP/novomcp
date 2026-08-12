@@ -179,7 +179,7 @@ _SERVICE_DEFAULTS = [
     # MolMIM Optimizer - NVIDIA MolMIM API proxy
     (
         "molmim-optimizer",
-        "MOLMIM_URL",
+        "MOLMIM_OPTIMIZER_URL",
         "",
         "MOLMIM_API_KEY",
         "",  # Set via MOLMIM_API_KEY env var
@@ -243,7 +243,7 @@ _SERVICE_DEFAULTS = [
     ),
     (
         "lead-optimization",
-        "LEAD_OPT_URL",
+        "LEAD_OPTIMIZATION_URL",
         "",
         "LEAD_OPT_API_KEY",
         "",
@@ -255,7 +255,7 @@ _SERVICE_DEFAULTS = [
         "AUTODOCK_GPU_API_KEY",
         "",
     ),
-    ("gromacs-md", "GROMACS_URL", "", "GROMACS_API_KEY", ""),
+    ("gromacs-md", "GROMACS_MD_URL", "", "GROMACS_API_KEY", ""),
     (
         "gromacs-processor",
         "GROMACS_PROCESSOR_URL",

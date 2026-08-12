@@ -269,7 +269,7 @@ class ServiceConfig:
                 "lead-optimization": {
                     "url": _resolve_service_url(
                         "lead-optimization",
-                        "LEAD_OPT_URL",
+                        "LEAD_OPTIMIZATION_URL",
                         "",
                     ),
                     "api_key": os.getenv("LEAD_OPT_API_KEY"),

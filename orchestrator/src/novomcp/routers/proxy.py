@@ -150,12 +150,12 @@ SERVICE_URLS = {
     ),
     "lead-optimization": _resolve_service_url(
         "lead-optimization",
-        "LEAD_OPT_URL",
+        "LEAD_OPTIMIZATION_URL",
         "",
     ),
     "gromacs-md": _resolve_service_url(
         "gromacs-md",
-        "GROMACS_URL",
+        "GROMACS_MD_URL",
         "",
     ),
     "novo-quantum": _resolve_service_url(
