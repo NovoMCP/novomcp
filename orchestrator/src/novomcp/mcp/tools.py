@@ -4602,7 +4602,7 @@ class MCPToolExecutor:
     # =========================================================================
 
     # Services that use "API-Key" header instead of "X-API-Key"
-    _API_KEY_HEADER_SERVICES = {"gromacs-md", "gromacs-processor", "novo-quantum", "aws-braket-quantum", "alphaflow"}
+    _API_KEY_HEADER_SERVICES = {"gromacs-md", "novo-quantum", "aws-braket-quantum", "alphaflow"}
 
     # ── GPU scale-from-zero envelope ────────────────────────────────────────
     # The four GPU HTTP services (autodock-gpu, openfold3, alphaflow,
