@@ -37,7 +37,7 @@ You have one active compound and want structurally similar molecules to explore 
 
 ## Workflow 4 — Run the discovery funnel
 
-For end-to-end target-to-candidate exploration, the engine ships a governed **11-stage discovery funnel** — target discovery → validation → literature → known actives → ADMET → compliance → lead optimization → docking → clinical-outcomes gate → MD → patient stratification. Trigger it from any MCP client with "Novo AG" or `agm`; the engine returns the staged protocol for the assistant to execute, pausing for your input at each gate (human-in-the-loop, not a black box). The heavier stages (docking, MD, structure prediction) run once you've deployed the corresponding [compute services](deploying-services/README.md).
+For end-to-end target-to-candidate exploration, the engine ships a governed **11-stage discovery funnel** — target discovery → validation → literature → known actives → ADMET → compliance → lead optimization → docking → developability review → MD → patient stratification. Trigger it from any MCP client with "Novo AG" or `agm`; the engine returns the staged protocol for the assistant to execute, pausing for your input at each gate (human-in-the-loop, not a black box). The heavier stages (docking, MD, structure prediction) run once you've deployed the corresponding [compute services](deploying-services/README.md).
 
 ## Workflow 5 — Call tools directly from a script
 

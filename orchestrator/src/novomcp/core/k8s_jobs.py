@@ -54,7 +54,7 @@ import yaml
 logger = logging.getLogger("novomcp.k8s_jobs")
 
 # ConfigMap holding the Job template lives at <job_template_name>-template
-# (matches the `${APP_NAME}-job-template` produced by deploy-on-bastion.sh
+# (matches the `${APP_NAME}-job-template` produced by the deploy script
 TEMPLATE_CM_SUFFIX = "-template"
 TEMPLATE_KEY = "job-template.yaml"
 

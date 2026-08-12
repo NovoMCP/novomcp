@@ -199,7 +199,7 @@ class Molecule(BaseModel):
     quantum: Optional[QuantumResult] = Field(default=None, description="Quantum validation result")
 
     # Compliance
-    compliance_passed: Optional[bool] = Field(default=None, description="FAVES compliance status")
+    compliance_passed: Optional[bool] = Field(default=None, description="Compliance status")
     compliance_issues: List[str] = Field(default_factory=list, description="Compliance issues (if any)")
 
     # Optimization

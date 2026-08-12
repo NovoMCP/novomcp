@@ -31,7 +31,3 @@ License 1.1 with a change date of 2029-07-12 to Apache-2.0. This split
 protects against cloud-provider re-hosting of the core while the OSS
 project establishes itself, and converts to fully permissive on the
 change date. See `LICENSE.core` for the full terms.
-
-The FAVES framework paper (published separately on ChemRxiv) is licensed
-CC-BY-NC-ND 4.0. That license does NOT apply to any code in this
-repository; it governs only the manuscript.

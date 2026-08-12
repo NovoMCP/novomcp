@@ -31,11 +31,6 @@ def _resolve_service_url(service_name: str, env_var: str, default_url: str) -> s
             or os.getenv("MOLECULAR_INTEL_URL")
             or os.getenv("MOL_INTEL_URL")
         )
-    if not env_override and service_name == "faves-compliance":
-        env_override = (
-            os.getenv("NOVOMCP_COMPLIANCE_URL")
-            or os.getenv("NOVOMCP_MOLECULE_INDEX_URL")
-        )
     if env_override:
         return env_override
 
@@ -80,8 +75,13 @@ SERVICE_URLS = {
         "DRUGSYNTHMC_URL",
         "",
     ),
-    "faves-compliance": _resolve_service_url(
-        "faves-compliance",
+    "molecule-index": _resolve_service_url(
+        "molecule-index",
+        "NOVOMCP_MOLECULE_INDEX_URL",
+        "",
+    ),
+    "compliance": _resolve_service_url(
+        "compliance",
         "NOVOMCP_COMPLIANCE_URL",
         "",
     ),
@@ -177,7 +177,8 @@ SERVICE_API_KEYS = {
     "auth": os.getenv("AUTH_SERVICE_API_KEY"),
     "novo-quantum": os.getenv("NOVO_QUANTUM_API_KEY"),
     "lead-optimization": os.getenv("LEAD_OPT_API_KEY"),
-    "faves-compliance": os.getenv("NOVOMCP_COMPLIANCE_API_KEY"),
+    "molecule-index": os.getenv("NOVOMCP_MOLECULE_INDEX_API_KEY"),
+    "compliance": os.getenv("NOVOMCP_COMPLIANCE_API_KEY"),
     "molmim-optimizer": os.getenv("MOLMIM_OPTIMIZER_API_KEY"),
     "openfold3": os.getenv("OPENFOLD3_API_KEY"),
     "autodock-gpu": os.getenv("AUTODOCK_GPU_API_KEY") or os.getenv("AUTODOCK_API_KEY"),
@@ -317,12 +318,12 @@ async def proxy_chem_props(path: str, request: Request):
     body = await request.body() if request.method in ["POST", "PUT", "PATCH"] else None
     return await proxy_request("chem-props", path, request, request.method, body)
 
-# FAVES Compliance routes
-@router.api_route("/faves-compliance/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"])
-async def proxy_faves(path: str, request: Request):
-    """Proxy requests to faves-compliance service"""
+# Molecule Index routes
+@router.api_route("/molecule-index/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"])
+async def proxy_molecule_index(path: str, request: Request):
+    """Proxy requests to molecule-index service"""
     body = await request.body() if request.method in ["POST", "PUT", "PATCH"] else None
-    return await proxy_request("faves-compliance", path, request, request.method, body)
+    return await proxy_request("molecule-index", path, request, request.method, body)
 
 # Molecular Worker routes
 @router.api_route("/molecular-worker/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"])

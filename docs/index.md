@@ -68,9 +68,7 @@ New here? [Boot it in 2 minutes](quickstart.md), then see [how it fits together]
 
 By design, the following ship separately:
 
-- **FAVES certified hosted API** — the operational commitments (SLA, audit-log retention, drift monitoring, IQ/OQ/PQ) that a regulated submission needs, delivered as a paid service at `api.novomcp.com`. The V4 framework paper is [published on Zenodo](https://zenodo.org/) under CC-BY-NC-ND 4.0. The **open reference implementation** of the framework ships in this OSS release as the `faves-compliance` Docker image — run locally for triage, route the shortlist through the hosted API when you need the certified record-of-audit.
-- **Curated 122M-molecule enriched corpus** — publishing to AWS Open Data / Kaggle / Zenodo as a downloadable dataset. Cached lookups happen through the FAVES compliance service when configured.
-- **Trained clinical outcomes model weights** — NovoExpert-3, separate license.
+- **Curated 122M-molecule enriched corpus** — publishing to AWS Open Data / Kaggle / Zenodo as a downloadable dataset. Cached lookups happen through the molecule-index service when configured.
 
 None of these are required for the engine to run.
 

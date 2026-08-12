@@ -56,7 +56,6 @@ export async function GET() {
       molecule_index: !!process.env.NOVOMCP_MOLECULE_INDEX_URL,
       omics: !!process.env.NOVOMCP_DB_HOST,
       literature: !!process.env.PINECONE_API_KEY,
-      clinical_outcomes: !!process.env.NOVOEXPERT_URL,
       materials: !!process.env.MP_API_KEY,
     },
   });

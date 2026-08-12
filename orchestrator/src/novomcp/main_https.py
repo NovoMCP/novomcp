@@ -80,11 +80,6 @@ from novomcp.mcp.llm_admin import llm_admin_router as mcp_llm_admin_router
 from novomcp.mcp.oauth import router as oauth_router, setup_oauth
 from novomcp.mcp.mcp_root import router as mcp_root_router, setup_mcp_root
 
-# REST-only flagship route: /v1/developability-report. NOT an MCP tool; lives
-# alongside the MCP routers but is a separate top-level operation. See
-# docs/NovoMCP/Product/api/v1-developability-report.md.
-from novomcp.routers.developability_report import router as developability_report_router
-
 # Configure logging (accept LOG_LEVEL in any case, e.g. "info" or "INFO")
 logging.basicConfig(
     level=os.getenv("LOG_LEVEL", "INFO").upper(),
@@ -211,7 +206,14 @@ _SERVICE_DEFAULTS = [
         "",
     ),
     (
-        "faves-compliance",
+        "molecule-index",
+        "NOVOMCP_MOLECULE_INDEX_URL",
+        "",
+        "NOVOMCP_MOLECULE_INDEX_API_KEY",
+        "not-required",
+    ),
+    (
+        "compliance",
         "NOVOMCP_COMPLIANCE_URL",
         "",
         "NOVOMCP_COMPLIANCE_API_KEY",
@@ -324,17 +326,6 @@ _SERVICE_DEFAULTS = [
         "",
         "NOVOMCP_NEB_API_KEY",
         "",  # Set via NOVOMCP_NEB_API_KEY env var
-    ),
-    # NovoExpert - Phase I clinical clearance prediction (v3) + future clinical models
-    # Pure inference service: takes pre-built feature dict, returns calibrated
-    # probability + SHAP + domain competence assessment. Feature orchestration
-    # happens in novomcp before the call.
-    (
-        "novoexpert",
-        "NOVOEXPERT_URL",
-        "",
-        "NOVOEXPERT_API_KEY",
-        "",  # Set via NOVOEXPERT_API_KEY env var (novoexpert-api-key-2026-...)
     ),
 ]
 
@@ -475,7 +466,8 @@ async def lifespan(app: FastAPI):
     # Initialize NovoMCP (Model Context Protocol for Claude)
     try:
         mcp_service_urls = {
-            "faves-compliance": SERVICE_REGISTRY.get("faves-compliance", {}).get("url", ""),
+            "molecule-index": SERVICE_REGISTRY.get("molecule-index", {}).get("url", ""),
+            "compliance": SERVICE_REGISTRY.get("compliance", {}).get("url", ""),
             "molmim-optimizer": SERVICE_REGISTRY.get("molmim-optimizer", {}).get("url", ""),
             "openfold3": SERVICE_REGISTRY.get("openfold3", {}).get("url", ""),
             # V2 tools - added for get_3d_properties, calculate_properties, predict_admet
@@ -496,8 +488,6 @@ async def lifespan(app: FastAPI):
             "novomcp-neb": SERVICE_REGISTRY.get("novomcp-neb", {}).get("url", ""),
             # AlphaFlow - conformational dynamics
             "alphaflow": os.getenv("ALPHAFLOW_URL", ""),
-            # NovoExpert - Phase I clinical clearance prediction
-            "novoexpert": SERVICE_REGISTRY.get("novoexpert", {}).get("url", ""),
         }
         mcp_internal_key = os.getenv("MCP_INTERNAL_API_KEY", API_KEY)
         setup_mcp(mcp_service_urls, mcp_internal_key, redis_client)
@@ -565,7 +555,7 @@ async def lifespan(app: FastAPI):
         for route in sorted(mcp_routes):
             logger.info(f"  - {route}")
     logger.info("Service configurations loaded:")
-    for service_name in ["addie-models", "chem-props", "faves-compliance", "lead-optimization", "autodock-gpu", "gromacs-md"]:
+    for service_name in ["addie-models", "chem-props", "molecule-index", "lead-optimization", "autodock-gpu", "gromacs-md"]:
         config = service_config_manager.get_service_config(service_name)
         if config and config.get("url"):
             logger.info(f"  {service_name}: {config['url']} (API Key: {'Present' if config.get('api_key') else 'Missing'})")
@@ -734,69 +724,6 @@ async def _block_internal_paths_on_public_host(request: Request, call_next):
 add_internal_routes(app)
 
 
-# Structured 422 handler scoped to /v1/developability-report. Mirrors the
-# error envelope pattern in mcp/router.py:316-321 — callers see a stable
-# `detail.error_code` plus message instead of FastAPI's raw Pydantic dump.
-# Other routes keep FastAPI's default 422 shape (proxy router etc. depend on
-# it). The discriminated-union mismatch on `screen_format` becomes
-# `error_code="unsupported_screen_format"` per brief section 7.2.
-from fastapi.exceptions import RequestValidationError  # noqa: E402
-from starlette.responses import JSONResponse as _StarletteJSONResponse  # noqa: E402
-
-
-@app.exception_handler(RequestValidationError)
-async def _validation_error_handler(request: Request, exc: RequestValidationError):
-    """Structured 422 for /v1/developability-report; default shape elsewhere.
-
-    For the developability-report path, detect a discriminated-union mismatch
-    on `screen_format` and emit `error_code="unsupported_screen_format"`.
-    Other validation errors on that path get `error_code="validation_error"`
-    with the raw Pydantic error list under `detail.errors`. All other paths
-    fall back to FastAPI's default 422 envelope.
-    """
-    path = request.url.path
-    if not path.startswith("/v1/developability-report"):
-        # Default FastAPI behavior for every other route.
-        return _StarletteJSONResponse(
-            status_code=422,
-            content={"detail": exc.errors()},
-        )
-
-    errors = exc.errors()
-    # Pydantic v2 surfaces discriminated-union mismatches as type
-    # "union_tag_invalid" with loc including the discriminator field.
-    is_screen_format = any(
-        err.get("type") in ("union_tag_invalid", "union_tag_not_found")
-        or ("screen_format" in (err.get("loc") or ()))
-        for err in errors
-    )
-    if is_screen_format:
-        return _StarletteJSONResponse(
-            status_code=422,
-            content={
-                "detail": {
-                    "error_code": "unsupported_screen_format",
-                    "message": (
-                        "Unsupported screen_format. Mode A v1 accepts "
-                        "'generic' or 'lincs'. Mode B/C are out of scope."
-                    ),
-                    "supported_formats": ["generic", "lincs"],
-                    "errors": errors,
-                },
-            },
-        )
-    return _StarletteJSONResponse(
-        status_code=422,
-        content={
-            "detail": {
-                "error_code": "validation_error",
-                "message": "Request body failed schema validation.",
-                "errors": errors,
-            },
-        },
-    )
-
-
 # OpenAPI spec for the REST API. Two sources, in priority order:
 #   1. A curated `openapi.json` next to main_https.py (production deploys ship
 #      a hand-tuned spec generated by scripts/gen_openapi.py).
@@ -835,26 +762,6 @@ app.include_router(service_health_router, prefix="/novomcp", tags=["service-heal
 # NovoMCP - Model Context Protocol for Claude integration
 # Exposed at /mcp for SSE connections and tool calls (legacy)
 app.include_router(mcp_router, tags=["NovoMCP"])
-
-# Developability report endpoint(s). Two routes mounted from the same module:
-#   /v1/tools/developability_report  — canonical catalog-shape route per the
-#                                       2026-06-15 design unification: 69 MCP
-#                                       tools + 2 API-only tools share one
-#                                       call pattern (`{"arguments": ...}` in,
-#                                       `{"result": ..., "usage": ...}` out).
-#                                       Marked `x-mcp-exposed: false` so the
-#                                       OpenAPI consumers distinguish it from
-#                                       the MCP-served tools.
-#   /v1/developability-report        — deprecated alias retained for the
-#                                       T2-D evaluation harness + demo script
-#                                       that ship against the legacy URL.
-#
-# MUST be registered BEFORE mcp_v1_router because FastAPI route matching is
-# registration-order; the parametric /v1/tools/{tool_name} in mcp_v1_router
-# would otherwise shadow this explicit /v1/tools/developability_report path
-# and return "Tool not found: developability_report" (the MCP catalog
-# handler doesn't know about API-only tools).
-app.include_router(developability_report_router, tags=["NovoMCP v1 — Developability Report"])
 
 # Versioned customer REST API alias (/v1/tools, /v1/tools/{name}, ...)
 app.include_router(mcp_v1_router, tags=["NovoMCP v1"])
@@ -925,7 +832,7 @@ async def root(request: Request):
         "protein-structure prediction, and metal-site parameterization."
         if is_compute else
         "Novo — the NovoMCP computational chemistry engine: 122M pre-computed "
-        "molecules and 69 in-silico tools spanning ADMET, FAVES compliance, "
+        "molecules and in-silico tools spanning ADMET, "
         "literature, and autonomous discovery funnels."
     )
     return {

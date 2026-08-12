@@ -30,11 +30,10 @@ interface Variant {
   tanimoto_to_seed?: number;
   patent_risk?: string;
   patent_note?: string;
-  compliance_status?: string;
   prior_art?: {
     // disclosed: true → disclosed in PubChem/local 122M
     // disclosed: false → novel (lookup ran, no match)
-    // disclosed: null → lookup did not run (FAVES service unreachable, Redis miss + PubChem unavailable, etc.)
+    // disclosed: null → lookup did not run (Redis miss + PubChem unavailable, etc.)
     disclosed?: boolean | null;
     pubchem_cid?: string | null;
     disclosure_source?: string | null;
@@ -173,13 +172,6 @@ const PROPERTIES: PropertyDef[] = [
     color: (_v) => VAR_MUTED,
     isNumeric: false,
   },
-  // Compliance
-  {
-    key: "compliance_status", label: "Compliance", group: "Compliance",
-    format: (v) => typeof v === "string" ? v : "—",
-    color: (_v) => VAR_MUTED,
-    isNumeric: false,
-  },
 ];
 
 // Unique groups in order
@@ -245,16 +237,6 @@ function PatentBadge({ risk }: { risk?: string }) {
 }
 
 // =============================================================================
-// Compliance Badge
-// =============================================================================
-
-function ComplianceBadge({ status }: { status?: string }) {
-  if (!status) return <span style={{ color: "var(--text-muted)" }}>—</span>;
-  const cls = status === "clean" ? "success" : status === "flagged" ? "danger" : "warning";
-  return <span className={`badge ${cls}`}>{status}</span>;
-}
-
-// =============================================================================
 // Prior Art Badge (InChIKey-based disclosure check)
 // =============================================================================
 
@@ -276,7 +258,7 @@ function PriorArtBadge({ priorArt }: { priorArt?: Variant["prior_art"] }) {
     return <span className="badge danger" title={title}>{label}</span>;
   }
   // disclosed === null (or any other non-boolean) — lookup ran but did not return
-  // a verdict (FAVES service unreachable, Redis miss, PubChem rate-limited, etc.).
+  // a verdict (Redis miss, PubChem rate-limited, etc.).
   // Distinct from a true "—" so we don't silently mislead the chemist into
   // treating it as novel.
   return (
@@ -566,7 +548,6 @@ function ComparisonTable({
                 </div>,
                 <div key={`s-${prop.key}`} style={{ ...valueCell, background: "var(--bg-warm)" }}>
                   {prop.key === "patent_risk" ? <PatentBadge risk={seedVal as string} /> :
-                   prop.key === "compliance_status" ? <ComplianceBadge status={seedVal as string} /> :
                    prop.key === "prior_art" ? <PriorArtBadge priorArt={seedVal as Variant["prior_art"]} /> :
                    <span style={{
                      fontFamily: prop.isNumeric ? "var(--font-mono)" : undefined,
@@ -581,7 +562,6 @@ function ComparisonTable({
                   return (
                     <div key={`v-${prop.key}-${i}`} style={valueCell}>
                       {prop.key === "patent_risk" ? <PatentBadge risk={val as string} /> :
-                       prop.key === "compliance_status" ? <ComplianceBadge status={val as string} /> :
                        prop.key === "prior_art" ? <PriorArtBadge priorArt={val as Variant["prior_art"]} /> :
                        <span style={{
                          fontFamily: prop.isNumeric ? "var(--font-mono)" : undefined,

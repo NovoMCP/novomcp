@@ -90,7 +90,6 @@ nav:
       - Overview: deploying-services/README.md
       - chem-props (RDKit): deploying-services/chem-props.md
       - addie-models (ADMET): deploying-services/addie-models.md
-      - faves-compliance: deploying-services/faves-compliance.md
       - autodock-gpu (GPU): deploying-services/autodock-gpu.md
       - gromacs-md (GPU): deploying-services/gromacs-md.md
       - openfold3 (GPU): deploying-services/openfold3.md
@@ -105,7 +104,6 @@ nav:
       - Azure: deploying-to-cloud/azure.md
   - Engineering stories:
       - Overview: engineering-stories/README.md
-      - Tree-guided retrieval (122M molecules): engineering-stories/tree-guided-retrieval-122m-molecules.md
       - Server-side tool search: engineering-stories/server-side-tool-search.md
       - Fallback state as first-class: engineering-stories/fallback-state-first-class.md
       - False-alarm memory: engineering-stories/false-alarm-memory.md

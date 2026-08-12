@@ -1,31 +1,25 @@
-"""Org BYO-LLM key vault (Phase-2a).
+"""Org BYO-LLM key vault (OSS engine).
 
-Owned by novomcp (managed backend is out-of-repo). Non-secret metadata
-lives in Aurora (`research.mcp_llm_config`); the API key lives in AWS Secrets
-Manager (`novomcp/llm-key/{org_id}`), mirroring the bridge-connector pattern in
-`mcp/connectors/vault_client.py`. The agent runtime reads via
-`get_org_llm_config()`; the admin endpoints (`mcp/llm_admin.py`) write via
-`set_org_llm_config()` / `delete_org_llm_config()`.
-
-Everything degrades to None on error so the agent endpoint can reply
-"llm_not_configured" rather than 500.
+In the public engine there is no external secret store, so per-org LLM keys
+are supplied through environment variables and read by the agent runtime's
+own `_env_llm_config()` fallback. This module keeps the interface
+(`get_org_llm_config()`, `get_org_llm_status()`, `set_org_llm_config()`,
+`delete_org_llm_config()`) so callers import and run unchanged; the org-key
+lookups degrade to None so the agent endpoint replies "llm_not_configured"
+rather than 500. A managed backend supplies a real vault out-of-repo.
 """
 from __future__ import annotations
 
-import json
 import logging
 import os
 import re
 from typing import Optional
-
-import boto3
 
 from novomcp.core.db_helper import execute_sql, query_sql
 
 logger = logging.getLogger(__name__)
 
 LLM_SECRET_PREFIX = os.getenv("LLM_SECRET_PREFIX", "novomcp/llm-key/")
-AWS_REGION = os.getenv("AWS_REGION", "us-east-1")
 SUPPORTED_PROVIDERS = {"anthropic", "openai", "gemini", "mistral", "cohere"}
 
 
@@ -34,35 +28,10 @@ def _secret_name(org_id: str) -> str:
     return f"{LLM_SECRET_PREFIX}{safe}"
 
 
-def _secrets_client():
-    return boto3.client("secretsmanager", region_name=AWS_REGION)
-
-
 async def get_org_llm_config(org_id: Optional[str]) -> Optional[dict]:
-    """Full config including the decrypted api_key — for the agent runtime.
-    None if unset / unreachable / malformed."""
-    if not org_id:
-        return None
-    try:
-        rows = await query_sql(
-            "SELECT provider, model, base_url, secret_name FROM research.mcp_llm_config WHERE org_id = %s",
-            (org_id,),
-        )
-    except Exception as exc:
-        logger.warning("llm-config db read failed for org %s: %s", org_id, exc)
-        return None
-    if not rows:
-        return None
-    row = rows[0]
-    try:
-        secret = _secrets_client().get_secret_value(SecretId=row["secret_name"])
-        api_key = json.loads(secret["SecretString"]).get("api_key")
-    except Exception as exc:
-        logger.warning("llm-config secret fetch failed for org %s: %s", org_id, exc)
-        return None
-    if not api_key:
-        return None
-    return {"provider": row["provider"], "model": row["model"], "api_key": api_key, "base_url": row.get("base_url")}
+    """Per-org LLM keys are not stored in the OSS engine; always None so the
+    agent runtime falls back to its environment-variable LLM config."""
+    return None
 
 
 async def get_org_llm_status(org_id: Optional[str]) -> Optional[dict]:
@@ -105,16 +74,13 @@ async def set_org_llm_config(
         raise ValueError("model and api_key are required")
 
     name = _secret_name(org_id)
-    payload = json.dumps({"api_key": api_key})
-    sm = _secrets_client()
-    try:
-        sm.create_secret(
-            Name=name,
-            SecretString=payload,
-            Tags=[{"Key": "Project", "Value": "novomcp"}, {"Key": "org_id", "Value": org_id}, {"Key": "kind", "Value": "llm-key"}],
-        )
-    except sm.exceptions.ResourceExistsException:
-        sm.put_secret_value(SecretId=name, SecretString=payload)
+    # OSS engine: no external secret store. The API key is not persisted here;
+    # supply it via the agent runtime's environment-variable LLM config. Only
+    # the non-secret metadata is recorded in Aurora.
+    logger.warning(
+        "LLM key vault not configured in the OSS engine; storing metadata only "
+        "for org %s (set the LLM key via environment variables)", org_id
+    )
 
     await execute_sql(
         """
@@ -137,11 +103,6 @@ async def delete_org_llm_config(org_id: Optional[str]) -> bool:
     """Remove an org's LLM config (secret + metadata)."""
     if not org_id:
         return False
-    rows = await query_sql("SELECT secret_name FROM research.mcp_llm_config WHERE org_id = %s", (org_id,))
-    if rows:
-        try:
-            _secrets_client().delete_secret(SecretId=rows[0]["secret_name"], ForceDeleteWithoutRecovery=True)
-        except Exception as exc:
-            logger.warning("llm-config secret delete failed for org %s: %s", org_id, exc)
+    # OSS engine: no external secret store to purge; drop the metadata row only.
     await execute_sql("DELETE FROM research.mcp_llm_config WHERE org_id = %s", (org_id,))
     return True

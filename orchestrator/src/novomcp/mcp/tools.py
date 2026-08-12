@@ -2,16 +2,16 @@
 NovoMCP Tool Definitions
 
 Data Flow:
-1. Known molecules (present in the enriched index) → Return pre-computed ADMET + FAVES
-2. Novel molecules (not in DB) → Run FAVES context-free check on-the-fly
+1. Known molecules (present in the enriched index) → Return pre-computed ADMET
+2. Novel molecules (not in DB) → Compute basic properties on-the-fly
 3. Context-dependent queries → Runtime evaluation with user-provided context
 4. 3D properties → On-demand computation via NovoMD
 5. Literature/Patents → Pinecone vector search
 
 Services:
-- enriched-search: Query the enriched molecule index (parquet) — returns pre-computed data
-- faves-compliance: On-the-fly FAVES for novel molecules + context-dependent compliance
-- molmim-optimizer: Molecular optimization (auto-runs FAVES on output)
+- molecule-index: Query the enriched molecule index — returns pre-computed data
+- compliance: Optional generic compliance/observability hook (NOVOMCP_COMPLIANCE_URL)
+- molmim-optimizer: Molecular optimization
 - openfold3: Protein structure prediction
 - novomd: 3D molecular properties (geometry, energy, electrostatics, surface/volume, coordinates)
 - chem-props: RDKit property calculations (Lipinski, QED, SA_Score, etc.)
@@ -37,7 +37,7 @@ from novomcp.version import __version__ as ENGINE_VERSION
 # The in-process cheminformatics + public-API search primitives are sourced
 # from the open-source novomcp-lite package (novomcp_tools), so the engine and
 # the OSS subset share ONE implementation and cannot drift. The engine layers
-# its enrichment DB / ADMET / FAVES / credits on top of these primitives.
+# its enrichment DB / ADMET / credits on top of these primitives.
 from novomcp_tools.chem import (
     compute_properties as _lite_compute_properties,
     compute_sa_score as _lite_compute_sa_score,
@@ -47,7 +47,7 @@ from novomcp_tools import search as _lite_search
 logger = logging.getLogger(__name__)
 
 # Ertl–Schuffenhauer synthetic accessibility (1=easy … 10=hard) via RDKit's
-# contrib sascorer. The chem-props/FAVES services return an unreliable SA
+# contrib sascorer. The chem-props service returns an unreliable SA
 # (observed flat 1.0 — aspirin came back 1.0 vs the real ~1.58), so we compute
 # it locally wherever we surface sa_score. Lazy import; None on any failure.
 _SASCORER = None
@@ -60,6 +60,36 @@ def _compute_sa_score(smiles):
     implementation. Returns None on any failure.
     """
     return _lite_compute_sa_score(smiles)
+
+
+def _pairwise_tanimoto(seed_smiles: str, variant_smiles_list) -> Dict[str, float]:
+    """In-process Morgan-fingerprint Tanimoto of a seed against each variant.
+
+    Returns {variant_smiles: tanimoto} for every variant whose SMILES parses.
+    RDKit-only — no network dependency. Missing/invalid inputs are skipped.
+    """
+    out: Dict[str, float] = {}
+    try:
+        from rdkit import Chem, DataStructs
+        from rdkit.Chem import AllChem
+    except Exception:
+        return out
+    seed_mol = Chem.MolFromSmiles(seed_smiles) if seed_smiles else None
+    if seed_mol is None:
+        return out
+    seed_fp = AllChem.GetMorganFingerprintAsBitVect(seed_mol, 2, nBits=2048)
+    for v in (variant_smiles_list or []):
+        if not v:
+            continue
+        try:
+            vm = Chem.MolFromSmiles(v)
+            if vm is None:
+                continue
+            vfp = AllChem.GetMorganFingerprintAsBitVect(vm, 2, nBits=2048)
+            out[v] = float(DataStructs.TanimotoSimilarity(seed_fp, vfp))
+        except Exception:
+            continue
+    return out
 
 
 class ToolTier(str, Enum):
@@ -389,9 +419,9 @@ TOOL_CREDITS: Dict[str, int] = {
     "list_files": 0,                   # Free - file inventory
 
     # Tier 2: Enriched Lookup (2-5 credits)
-    "get_molecule_profile": 2,        # Database lookup + FAVES check
+    "get_molecule_profile": 2,        # Database lookup
     "get_protein_structure": 5,       # PDB fetch (free) or OpenFold3 fallback (+100)
-    "check_compliance": 3,            # FAVES context evaluation
+    "check_compliance": 3,            # Generic compliance hook (NOVOMCP_COMPLIANCE_URL)
 
     # Tier 3: Search/Filter (5-10 credits)
     "search_similar": 5,              # Vector similarity search
@@ -409,8 +439,7 @@ TOOL_CREDITS: Dict[str, int] = {
     "get_3d_properties": 15,          # NovoMD conformer generation
     "predict_admet": 20,              # 31 ML model inference
     "analyze_admet_trajectory": 15,   # batched ADMET over a series (one /addie/process call, <=100 mols) + trajectory read; flat like batch_profile
-    "predict_clinical_outcomes": 25,  # Orchestrates chem-props + FAVES + addie-models → novoexpert
-    "optimize_molecule": 25,          # MolMIM API + FAVES
+    "optimize_molecule": 25,          # MolMIM API
 
     # Tier 5: Heavy Compute (50-100 credits)
     "screen_library": 50,             # Batch screening
@@ -570,7 +599,7 @@ MCP_TOOLS = {
     "get_molecule_profile": {
         "name": "get_molecule_profile",
         "title": "Get Molecule Profile",
-        "description": "Full molecular profile — the PRIMARY tool for profiling any molecule. Always returns live RDKit physicochemical properties (MW, logP, TPSA, HBD/HBA, rotatable bonds, aromatic rings, QED, Lipinski pass) and RDKit-based structural alerts (PAINS, Brenk). ADMET predictions and regulatory compliance are attached when the corresponding optional services are configured; otherwise those blocks come back null with an availability flag — never an error.",
+        "description": "Full molecular profile — the PRIMARY tool for profiling any molecule. Always returns live RDKit physicochemical properties (MW, logP, TPSA, HBD/HBA, rotatable bonds, aromatic rings, QED, Lipinski pass) and RDKit-based structural alerts (PAINS, Brenk). ADMET predictions are attached when the optional ADMET service is configured; otherwise that block comes back null with an availability flag — never an error.",
         "tier": ToolTier.FREE,
         "annotations": {
             "readOnlyHint": True,
@@ -642,7 +671,7 @@ MCP_TOOLS = {
     "get_platform_info": {
         "name": "get_platform_info",
         "title": "Get Platform Info",
-        "description": "Get NovoMCP platform information including subscription tiers, available tools per tier, database statistics, ADMET capabilities, compliance lists, and credit usage. Use info_type='usage' to see your organization's credit balance and consumption.",
+        "description": "Get NovoMCP platform information including subscription tiers, available tools per tier, database statistics, ADMET capabilities, and credit usage. Use info_type='usage' to see your organization's credit balance and consumption.",
         "tier": ToolTier.FREE,
         "annotations": {
             "readOnlyHint": True,
@@ -653,8 +682,8 @@ MCP_TOOLS = {
             "properties": {
                 "info_type": {
                     "type": "string",
-                    "enum": ["all", "tiers", "database", "admet", "compliance", "usage", "update"],
-                    "description": "Type of info to retrieve: 'all' (default), 'tiers' (subscription features), 'database' (stats), 'admet' (available predictions), 'compliance' (controlled substance lists), 'usage' (credit balance and consumption), 'update' (current engine version + whether a newer release is available)"
+                    "enum": ["all", "tiers", "database", "admet", "usage", "update"],
+                    "description": "Type of info to retrieve: 'all' (default), 'tiers' (subscription features), 'database' (stats), 'admet' (available predictions), 'usage' (credit balance and consumption), 'update' (current engine version + whether a newer release is available)"
                 },
                 "org_id": {
                     "type": "string",
@@ -777,7 +806,7 @@ MCP_TOOLS = {
     "search_similar": {
         "name": "search_similar",
         "title": "Search Similar Molecules",
-        "description": "Find structurally similar molecules by Morgan fingerprint Tanimoto similarity against a configured molecule index. Returns matches with their physicochemical properties; ADMET and compliance blocks attached when those optional services are configured.",
+        "description": "Find structurally similar molecules by Morgan fingerprint Tanimoto similarity against a configured molecule index. Returns matches with their physicochemical properties; ADMET blocks attached when the optional ADMET service is configured.",
         "tier": ToolTier.FREE,
         "annotations": {
             "readOnlyHint": True,
@@ -822,7 +851,7 @@ MCP_TOOLS = {
     "filter_molecules": {
         "name": "filter_molecules",
         "title": "Filter Molecules",
-        "description": "Filter a configured molecule index by physicochemical property ranges (MW, logP, TPSA, HBD/HBA, rotatable bonds, QED). Returns matches with their properties; ADMET and compliance blocks attached per-molecule when those optional services are configured.",
+        "description": "Filter a configured molecule index by physicochemical property ranges (MW, logP, TPSA, HBD/HBA, rotatable bonds, QED). Returns matches with their properties; ADMET blocks attached per-molecule when the optional ADMET service is configured.",
         "tier": ToolTier.FREE,
         "annotations": {
             "readOnlyHint": True,
@@ -863,7 +892,7 @@ MCP_TOOLS = {
     "batch_profile": {
         "name": "batch_profile",
         "title": "Batch Profile Molecules",
-        "description": "Batch version of get_molecule_profile: RDKit physicochemical properties and structural alerts for up to 100 molecules in one call. ADMET (toxicity, CYP metabolism, nuclear receptors, stress response) and compliance blocks are attached when the corresponding optional services are configured. Set include_admet=false for faster properties-only screening.",
+        "description": "Batch version of get_molecule_profile: RDKit physicochemical properties and structural alerts for up to 100 molecules in one call. ADMET (toxicity, CYP metabolism, nuclear receptors, stress response) is attached when the optional ADMET service is configured. Set include_admet=false for faster properties-only screening.",
         "tier": ToolTier.FREE,
         "annotations": {
             "readOnlyHint": True,
@@ -894,7 +923,7 @@ MCP_TOOLS = {
     "optimize_molecule": {
         "name": "optimize_molecule",
         "title": "Optimize Molecule",
-        "description": "Property-directed molecular optimization using NVIDIA MolMIM (generative AI). Given a seed molecule and target objectives (QED, LogP, TPSA, similarity), generates structurally similar variants biased toward the desired property profile. Returns 3-10 optimized SMILES with property deltas vs seed, each auto-checked for FAVES compliance. Keeps structural similarity high (Tanimoto > 0.4 typical) — for diverse scaffold hopping, use lead_optimization instead.",
+        "description": "Property-directed molecular optimization using NVIDIA MolMIM (generative AI). Given a seed molecule and target objectives (QED, LogP, TPSA, similarity), generates structurally similar variants biased toward the desired property profile. Returns 3-10 optimized SMILES with property deltas vs seed. Keeps structural similarity high (Tanimoto > 0.4 typical) — for diverse scaffold hopping, use lead_optimization instead.",
         "tier": ToolTier.FREE,
         "annotations": {
             "readOnlyHint": True,
@@ -1560,59 +1589,6 @@ MCP_TOOLS = {
         }
     },
 
-    "predict_clinical_outcomes": {
-        "name": "predict_clinical_outcomes",
-        "title": "Predict Clinical Outcomes",
-        "description": (
-            "Predict Phase I clinical trial clearance probability for a small molecule. "
-            "Automatically gathers all 63 required features by orchestrating chem-props "
-            "(physicochemical), faves-compliance (structural alerts, BOILED-Egg), and "
-            "addie-models (ADMET) in parallel, then calls the NovoExpert v3 model. "
-            "Returns a calibrated probability, SHAP feature explanations, and a "
-            "domain-specific competence assessment. The model is validated for "
-            "CARDIOVASCULAR and mainstream compounds (AUROC 0.72-0.76) but NOT for "
-            "oncology, CNS, or infectious disease domains (near-random performance). "
-            "Check the competence_check in the response before acting on predictions."
-        ),
-        "tier": ToolTier.CORE,
-        "annotations": {
-            "readOnlyHint": True,
-            "destructiveHint": False
-        },
-        "inputSchema": {
-            "type": "object",
-            "properties": {
-                "smiles": {
-                    "type": "string",
-                    "description": "SMILES string of the molecule to evaluate"
-                },
-                "therapeutic_area": {
-                    "type": "string",
-                    "description": "Therapeutic area for competence assessment. Options: ONCOLOGY, CARDIOVASCULAR, CNS_NEURO, INFECTIOUS, METABOLIC, IMMUNO_INFLAM, RENAL_GU, RESPIRATORY, GI, PAIN_ANALGESIA, ENDOCRINE, OPHTH_DERM, OTHER, UNKNOWN",
-                    "default": "UNKNOWN"
-                },
-                "target_type": {
-                    "type": "string",
-                    "description": "Target type. Options: SINGLE PROTEIN, PROTEIN FAMILY, PROTEIN COMPLEX, NUCLEIC-ACID, ORGANISM, CELL-LINE, SMALL MOLECULE, UNKNOWN",
-                    "default": "UNKNOWN"
-                },
-                "action_type": {
-                    "type": "string",
-                    "description": "Mechanism of action. Options: INHIBITOR, ANTAGONIST, AGONIST, BLOCKER, ACTIVATOR, MODULATOR, PARTIAL AGONIST, SUBSTRATE, RELEASING AGENT, UNKNOWN",
-                    "default": "UNKNOWN"
-                },
-                "top_k_shap": {
-                    "type": "integer",
-                    "description": "Number of top SHAP features to return (1-63)",
-                    "default": 10,
-                    "minimum": 1,
-                    "maximum": 63
-                }
-            },
-            "required": ["smiles"]
-        }
-    },
-
     "search_literature": {
         "name": "search_literature",
         "title": "Search Literature",
@@ -1797,7 +1773,7 @@ MCP_TOOLS = {
     "check_compliance": {
         "name": "check_compliance",
         "title": "Check Compliance",
-        "description": "Check regulatory and compliance status against DEA (controlled substances), FDA (drug approval), EPA (environmental/pesticide), EU REACH (chemical registration), CWC (chemical weapons convention), BTWC (biological weapons convention), OPCW (international chemical weapons treaty), and Australia Schedule. Context-dependent assessment keyed on intended_use + jurisdiction + therapeutic_area — returns PROCEED / STOP / CAUTION with risk factors, regulatory pathway, and jurisdiction-specific recommendations. **Whitelist override:** FDA-approved compounds (the V3 whitelist — cortisol, dopamine, aspirin, ibuprofen, etc.) return overall_status=PROCEED even when V4 structural alerts fire; alerts surface as informational context in `structural_alert_summary` but do not change the verdict. **Response shape:** top-level `overall_status`, `base_compliance` (regulatory + whitelist flags), and `recommendations`; FAVES V4 fields (per-catalog alert counts in `structural_alert_summary`, BOILED-Egg PK in `pk_classification`, prior-art disclosure in `prior_art`, full V3 detection in `faves_v3`) live under `context_compliance.base_classification.*`.",
+        "description": "Context-dependent regulatory/compliance screening for a molecule. Proxies to whatever compliance service is configured via NOVOMCP_COMPLIANCE_URL and returns that service's structured verdict, keyed on the supplied intended_use + jurisdiction + therapeutic_area context. If no compliance service is configured, returns the standard 'service not configured' response so the tool degrades gracefully. The engine bundles no ruleset of its own — bring your own compliance backend.",
         "tier": ToolTier.FREE,
         "annotations": {
             "readOnlyHint": True,
@@ -1848,7 +1824,7 @@ MCP_TOOLS = {
     "screen_library": {
         "name": "screen_library",
         "title": "Screen Library",
-        "description": "Screen up to 1,000 molecules for drug-likeness and structural alerts (PAINS, Brenk) in one call. Returns RDKit physicochemical properties and structural alerts always; ADMET predictions and regulatory compliance are attached when the corresponding optional services are configured. When compliance is configured, optionally pass intended_use + jurisdiction + therapeutic_area for context-dependent regulatory assessment (DEA, FDA, EU REACH). Use for HTS triage, library QC, or pre-docking filtering.",
+        "description": "Screen up to 1,000 molecules for drug-likeness and structural alerts (PAINS, Brenk) in one call. Returns RDKit physicochemical properties and structural alerts always; ADMET predictions are attached when the optional ADMET service is configured. Use for HTS triage, library QC, or pre-docking filtering.",
         "tier": ToolTier.FREE,
         "annotations": {
             "readOnlyHint": True,
@@ -1862,15 +1838,6 @@ MCP_TOOLS = {
                     "items": {"type": "string"},
                     "description": "List of SMILES strings to screen (max 1000)",
                     "maxItems": 1000
-                },
-                "context": {
-                    "type": "object",
-                    "description": "Optional context for compliance (if provided, runs context-dependent check)",
-                    "properties": {
-                        "intended_use": {"type": "string"},
-                        "jurisdiction": {"type": "string"},
-                        "therapeutic_area": {"type": "string"}
-                    }
                 },
                 "output_format": {
                     "type": "string",
@@ -2578,7 +2545,7 @@ MCP_TOOLS = {
     "lead_optimization": {
         "name": "lead_optimization",
         "title": "Lead Optimization",
-        "description": "Generate structurally diverse molecular variants via scaffold hopping (RDKit substructure replacement, 30+ ring pairs) or property-directed optimization. Returns enriched variants with SA scores, ADMET predictions, compliance checks, Tanimoto-to-seed similarity, and patent risk classification per variant. Auto-filters controlled/flagged compounds. For high-similarity property optimization close to the seed, use optimize_molecule (MolMIM) instead — this tool produces broader chemical diversity. Use after ADMET screening and compliance check to generate candidates for docking. Note: fused polycyclic scaffolds (acridine, carbazole, naphthalene, xanthene) may return 0 variants due to RDKit sanitization limitations — the response includes a diagnostic. Credits are refunded when 0 variants are returned.",
+        "description": "Generate structurally diverse molecular variants via scaffold hopping (RDKit substructure replacement, 30+ ring pairs) or property-directed optimization. Returns enriched variants with SA scores, RDKit physicochemical properties, Tanimoto-to-seed similarity, and patent risk classification per variant. For high-similarity property optimization close to the seed, use optimize_molecule (MolMIM) instead — this tool produces broader chemical diversity. Use after ADMET screening to generate candidates for docking. Note: fused polycyclic scaffolds (acridine, carbazole, naphthalene, xanthene) may return 0 variants due to RDKit sanitization limitations — the response includes a diagnostic. Credits are refunded when 0 variants are returned.",
         "tier": ToolTier.TEAM,
         "annotations": {
             "readOnlyHint": False,
@@ -3124,9 +3091,6 @@ TOOL_LOCAL_REQUIREMENTS: Dict[str, list] = {
     "batch_geometry_relaxation":       ["env:NOVOMCP_NNP_URL"],
     "parameterize_metal":              ["env:NOVOMCP_QM_URL"],
 
-    # NovoExpert-3 weights — roadmap v1.7.x publishes MIT weights.
-    "predict_clinical_outcomes": ["env:NOVOEXPERT_URL"],
-
     # Lead optimization + MolMIM — services required.
     "lead_optimization": ["env:LEAD_OPTIMIZATION_URL"],
     "optimize_molecule": ["env:MOLMIM_OPTIMIZER_URL"],
@@ -3135,9 +3099,8 @@ TOOL_LOCAL_REQUIREMENTS: Dict[str, list] = {
     "search_literature": ["env:PINECONE_API_KEY"],
     "search_patents":    ["env:PINECONE_API_KEY"],
 
-    # Compliance path — needs any compliance service (FAVES is one valid
-    # backend; users can wire their own or use a Kaggle-hosted alternative
-    # once the reference index server ships in v1.1.5).
+    # Compliance path — generic hook. Needs a compliance service wired via
+    # NOVOMCP_COMPLIANCE_URL; the engine bundles no ruleset of its own.
     "check_compliance": ["env:NOVOMCP_COMPLIANCE_URL"],
 
     # Tree-guided retrieval — needs a molecule index. Same
@@ -3166,10 +3129,9 @@ TOOL_LOCAL_REQUIREMENTS: Dict[str, list] = {
     # Materials Project — free but needs the user's own MP_API_KEY.
     "search_materials_project": ["env:MP_API_KEY"],
 
-    # Molecule-index tools — call out to a molecule index service (FAVES is
-    # one valid backend; Kaggle-hosted / self-hosted / user-owned all work
-    # once the v1.1.5 reference index server ships). Hidden in v1 by default
-    # since neither env var is set; visible the moment a user wires one.
+    # Molecule-index tools — call out to a molecule index service
+    # (self-hosted / user-owned). Hidden by default since the env var is not
+    # set; visible the moment a user wires one.
     "search_similar":   ["env:NOVOMCP_MOLECULE_INDEX_URL"],
     "filter_molecules": ["env:NOVOMCP_MOLECULE_INDEX_URL"],
 
@@ -3247,14 +3209,14 @@ PROMPT_TOOL_REQUIREMENTS: Dict[str, list] = {
         "target_discovery", "validate_target", "search_literature",
         "search_chembl", "predict_admet", "check_compliance",
         "lead_optimization", "optimize_molecule", "dock_molecules",
-        "predict_clinical_outcomes", "run_molecular_dynamics",
+        "run_molecular_dynamics",
         "stratify_patients", "save_funnel_memory",
     ],
     "discovery_funnel_interactive": [
         "target_discovery", "validate_target", "search_literature",
         "search_chembl", "predict_admet", "check_compliance",
         "lead_optimization", "optimize_molecule", "dock_molecules",
-        "predict_clinical_outcomes", "run_molecular_dynamics",
+        "run_molecular_dynamics",
         "stratify_patients", "save_funnel_stage", "save_funnel_memory",
     ],
     "deep_characterization": [
@@ -3332,8 +3294,6 @@ FUNNEL_ELIGIBLE_TOOLS = {
     "lead_optimization", "optimize_molecule",
     # Stage 8 — Docking
     "dock_molecules", "dock_with_strain",
-    # Stage 9 — Clinical Outcomes Gate
-    "predict_clinical_outcomes",
     # Stage 10 — MD Simulation
     "run_molecular_dynamics", "generate_dynamics",
     # Stage 11 — Patient Stratification
@@ -3414,15 +3374,6 @@ except ImportError:
 # =============================================================================
 
 MCP_RESOURCES = {
-    "compliance_schedules": {
-        "uri": "novomcp://resources/compliance_schedules",
-        "name": "Controlled Substance Schedules",
-        "description": "DEA Schedule I-V substances, CWC chemical weapons lists, FDA banned substances, EPA PBT chemicals, and EU REACH restricted compounds. Updated monthly.",
-        "mimeType": "application/json",
-        "annotations": {
-            "audience": ["user"]
-        }
-    },
     "admet_properties": {
         "uri": "novomcp://resources/admet_properties",
         "name": "Available ADMET Predictions",
@@ -3463,23 +3414,6 @@ MCP_RESOURCES = {
 
 # Resource data - actual content returned when resources are read
 MCP_RESOURCE_DATA = {
-    "compliance_schedules": {
-        "dea_schedules": {
-            "schedule_i": "High abuse potential, no accepted medical use (e.g., heroin, LSD, MDMA)",
-            "schedule_ii": "High abuse potential, severe dependence (e.g., fentanyl, oxycodone, methamphetamine)",
-            "schedule_iii": "Moderate abuse potential (e.g., ketamine, anabolic steroids)",
-            "schedule_iv": "Low abuse potential (e.g., benzodiazepines, zolpidem)",
-            "schedule_v": "Lowest abuse potential (e.g., low-dose codeine preparations)"
-        },
-        "other_lists": {
-            "cwc": "Chemical Weapons Convention scheduled chemicals",
-            "fda_banned": "FDA 21 CFR banned substances",
-            "epa_pbt": "EPA persistent, bioaccumulative, toxic chemicals",
-            "eu_reach": "EU REACH restricted substances"
-        },
-        "scaffold_patterns": "24 controlled substance scaffold patterns detected",
-        "whitelisted": "FDA-approved drugs automatically whitelisted"
-    },
     "admet_properties": {
         "absorption": ["caco2_permeability", "pgp_substrate", "pgp_inhibitor", "bioavailability"],
         "distribution": ["bbb_permeability", "plasma_protein_binding", "vdss"],
@@ -3506,8 +3440,7 @@ MCP_RESOURCE_DATA = {
     "database_stats": {
         "molecules": {
             "total": 122000000,
-            "with_admet": 122000000,
-            "with_compliance": 122000000
+            "with_admet": 122000000
         },
         "literature": {
             "papers": 14398,
@@ -3598,7 +3531,7 @@ MCP_RESOURCE_DATA = {
                 "version": "2.2.0",
                 "date": "2026-01-17",
                 "changes": [
-                    "Added MCP Resources (4): compliance_schedules, admet_properties, tier_features, database_stats",
+                    "Added MCP Resources (3): admet_properties, tier_features, database_stats",
                     "Added MCP Prompts (4): quick_check, full_analysis, find_alternatives, literature_review"
                 ]
             },
@@ -3806,7 +3739,7 @@ MCP_PROMPT_TEMPLATES = {
                 "role": "user",
                 "content": {
                     "type": "text",
-                    "text": "Run a complete drug discovery funnel for: {disease}\nMD simulation duration: {md_duration_ns} ns (default 1 if not specified)\n\n**Canonical 11-stage scheme:** Each stage has its own integer index (1-11). Halves are not used. `save_funnel_stage` takes a separate `funnel_stage` field (integer 1-11) — that is the canonical stage marker. (`stage_index` is a monotonic event counter the server auto-increments; you do NOT pass it.) There is also one pre-step (search_prior_runs) and one terminal hook (save_funnel_memory) — neither is a numbered stage.\n\n**Wall-time estimate:** This pipeline typically runs 30-45 min end-to-end. Stages 1-7 are fast (~10 min total). Stage 8 (docking) adds ~3-5 min. Stage 10 (MD simulation) takes ~7-15 min. Keep the user informed of progress.\n\nExecute the following stages autonomously. After each stage, briefly summarize findings and explain decisions before proceeding.\n\n**STAGE ZERO — GENERATE FUNNEL ID (DO THIS FIRST, BEFORE ANY TOOL CALL):**\nGenerate funnel_id = funnel_{disease_short}_{YYYYMMDD}_{HHMMSS} using the current UTC time down to seconds. Example: funnel_gbm_20260412_143022. NEVER reuse a funnel_id from a previous run. You MUST pass this funnel_id as an argument to every single tool call in this funnel, starting with target_discovery in Stage 1 — not just save_funnel_stage. Passing funnel_id to target_discovery ensures the auto-log uses the human-readable ID from the very first event; omitting it creates an orphan row under a machine-minted ID that audit queries cannot see.\n\n**IMPORTANT — ERROR HANDLING:**\nIf any stage fails (especially MD simulation or docking), do NOT say the backend is broken or needs to be resolved. Instead:\n1. Report what happened: \"MD simulation failed for this specific structure\"\n2. Try an alternative: ligand-only simulation (omit pdb_id), or try generate_dynamics for conformational exploration\n3. If alternatives also fail, skip that stage and proceed with the data you have\n4. Never tell the user to wait for a backend fix — the service is operational, specific inputs may fail\n\n**DATA TRANSPARENCY RULE:**\nIf a tool returns low-relevance or weak results, say so explicitly. Do NOT present poor data in the best possible light. Flag limitations honestly — e.g., \"The literature search returned mostly tangential results\" or \"This ligand-only MD tells us about solution-phase behavior, not binding stability.\" Credibility requires candor.\n\n**CREDIT TRACKING:**\nMaintain a running credit total. After each tool call, update the cumulative spend. Include credits_consumed in every save_funnel_stage call. At each checkpoint, report: \"Credits used so far: X\". Expected total: ~595 credits. Major costs: lead_optimization (~150), run_molecular_dynamics (~250), predict_admet (~20), dock_molecules (~30 for 4 compounds). Stages 1-6 are light (~85 credits total). Stages 7, 10 are heavy (~425 credits combined).\n\n**AUDIT LOGGING:**\nEvery tool call is auto-logged server-side as an exploration event under your funnel_id — you do NOT need to call save_funnel_stage during this autonomous run, and you must not ask the user whether to log. Just pass the funnel_id you generated in Stage Zero to every tool call and the audit trail builds itself. (The terminal save_funnel_memory at the end is still required.)\n\n---\n\n**Pre-step — Check Prior Runs (LEARN FROM HISTORY)**\nBefore diving in, call search_prior_runs with target_gene=(if known from disease) or therapeutic_area=(disease). Returns precedents from past funnels by your org. If prior runs exist, briefly note their outcomes and lessons — avoid known failure modes, reuse successful scaffolds, calibrate your threshold expectations. If no prior runs exist, skip ahead. (Pre-step, NOT a numbered stage — do not write a save_funnel_stage row for it.)\n\n**Stage 1 — Target Discovery** (funnel_stage: 1)\nUse target_discovery with the disease and min_evidence: 0.4. Pass funnel_id. Pick the top-ranked dockable target. Note the suggested_pdb_id and gene_symbol.\n\n**Stage 2 — Target Validation (ADVERSARIAL CHECKPOINT)** (funnel_stage: 2)\nCall validate_target on the gene picked in Stage 1 with the disease. Returns a 0-1 confidence score + recommendation (proceed / proceed_with_caution / reconsider) from 5 evidence streams (omics, clinical trials, literature, ChEMBL, competitive landscape) plus target_maturity classification (mature_validated / emerging / novel). If recommendation is \"reconsider\" and confidence < 0.4, go back to Stage 1 and pick a different top target — don't commit compute credits to a weakly-validated target. If \"proceed_with_caution\", note the risk factors in your summary and proceed. If \"proceed\", continue to Stage 3. Pass funnel_id.\n\n**Stage 3 — Literature** (funnel_stage: 3)\nRun 2-3 targeted literature searches with different angles:\n1. search_literature for \"[gene_symbol] [disease] inhibitors\" (broad)\n2. search_literature for \"[specific_compound] [disease]\" (compound-specific, if known)\n3. search_biorxiv for recent preprints on the target\nIf results are low-relevance, say so — do not pad weak literature.\n\n**Stage 4 — Known Actives** (funnel_stage: 4)\nSearch ChEMBL using search_type: \"activity\" for the target gene to find compounds with measured IC50/Ki. Also try search_type: \"target\" to find the ChEMBL target ID. If results don't include well-known clinical compounds for this target, note the gap and supplement with your knowledge of established inhibitors. Pick the most potent by IC50 as the seed molecule.\n\n**Stage 5 — ADMET + Properties** (funnel_stage: 5)\nRun predict_admet on the seed SMILES. If predict_pka and predict_solubility are available (Novo Compute), also run those. If not, note that detailed ionization and solubility analysis requires Novo Compute.\n\n**Stage 6 — Compliance** (funnel_stage: 6)\nRun check_compliance on the seed SMILES. If it fails, pick a different seed from Stage 4.\n\n**Stage 7 — Lead Optimization** (funnel_stage: 7)\nRun BOTH optimization approaches and compare:\n1. lead_optimization with optimization_type: \"scaffold_hop\" and num_variants: 5 for structurally diverse variants\n2. optimize_molecule (MolMIM) with num_variants: 5 for property-optimized variants close to the seed\nPresent both sets side by side. Show chemical space shift for each: delta MW, delta LogP, delta TPSA, similarity score vs seed.\n\n**Stage 8 — Docking** (funnel_stage: 8)\nIf dock_molecules is available (Novo Compute), dock the top 3 variants + seed against the suggested_pdb_id. Before calling, tell the user: \"Starting docking now. If this is the first GPU call in a while, expect ~2-3 min warm-up — target_discovery fired a background ping at Stage 1, so the GPU should already be ready.\" Pass funnel_id. dock_molecules is two-phase: report the phase=estimate cost in one line, then re-invoke with the confirmation_token in the same turn. For batch docking, poll get_job_status. For the top binder, run dock_with_strain to validate the pose. When presenting results, ALWAYS show binding affinity RELATIVE to the seed compound (delta kcal/mol). Never show absolute affinity in isolation. Flag any strain > 5 kcal/mol as potentially unrealistic. If docking is not available (e.g., connection refused), note it requires Novo Compute and proceed to Stage 11.\n\n**Stage 9 — Clinical Outcomes Gate (ECONOMIC FILTER)** (funnel_stage: 9)\nCall predict_clinical_outcomes on the top binder from Stage 8. NovoExpert v3 predicts Phase I clearance probability integrating physicochemical properties, compliance signals, and the 31-endpoint ADMET model set. Cost: 25 credits. If clearance probability is low (< 0.4), strongly consider skipping the 250-credit MD simulation in Stage 10 and picking the second-ranked binder for MD instead — this saves significant credits and focuses MD on the most developable candidate. If clearance is reasonable (> 0.5), proceed to MD with confidence. Report the decision explicitly in your summary.\n\n**Stage 10 — MD Simulation** (funnel_stage: 10)\nIf run_molecular_dynamics is available (Novo Compute), run it with the best binder (or second-ranked if Stage 9 flagged the top binder). Pass funnel_id. Also pass intent='pose_stability' (drives the v3 scientific_adequacy gate to the binding-pose rule with a sampling recommendation in the result) and adaptive_equilibration=true (replaces the fixed 100ps NPT with an adaptive loop that extends until water density plateau is detected — recommended for protein-ligand complexes where 100ps often leaves density still drifting). The GPU should already be warm from target_discovery's ping. Poll get_job_status every 60s until completed. MD takes 7-15 minutes of actual simulation time (plus cold-start delay if the GPU happens to be cold). If MD fails, try ligand-only (omit pdb_id) or generate_dynamics. If you fall back to ligand-only MD, clearly state that it shows solution-phase conformational behavior, NOT binding stability. Do NOT present RMSD convergence as evidence of binding stability. Note that the binding question remains open. If these tools are not available, note that simulation requires Novo Compute and proceed to Stage 11.\n\n**Stage 11 — Patient Stratification** (funnel_stage: 11)\nRun stratify_patients with the best binder, target_gene, disease, and ADMET results from Stage 5.\n\n**Terminal hook — Save Terminal Summary (CROSS-RUN LEARNING)**\nAfter Stage 11, call save_funnel_memory with:\n- funnel_id (the one you generated)\n- target_gene, target_pdb_id, therapeutic_area from the run\n- outcome: SUCCEEDED if you reached Stage 11, otherwise FAILED_* matching the reason\n- final_lead_count: how many lead candidates made it through\n- best_affinity_kcal: the top binding affinity from Stage 8 (negative number)\n- failure_pattern: JSON object describing what didn't work, if anything (e.g., {\"compliance_block\": true, \"reason\": \"top variants hit compliance alerts\"})\n- decisions: JSON object capturing key decisions (scaffold choices, why you picked this seed, why you deprioritized any compound)\n- summary: 2-4 sentences in natural language describing the run, its outcome, and the lesson. This powers semantic search for future funnels on similar targets.\nThis single call seeds cross-run learning for your org. Future runs on the same gene or therapeutic area will retrieve this memory via search_prior_runs. (Terminal hook, NOT a numbered stage — do not write a save_funnel_stage row for it.)\n\n**Final Summary**\nPresent the complete funnel with go/no-go signals and cumulative credit spend. Tell the user: \"The audit log is saved as {funnel_id}. Retrieve it with get_funnel_audit. Cross-run memory is saved; future funnels on {target_gene} or {therapeutic_area} will learn from this run.\""
+                    "text": "Run a complete drug discovery funnel for: {disease}\nMD simulation duration: {md_duration_ns} ns (default 1 if not specified)\n\n**Canonical 11-stage scheme:** Each stage has its own integer index (1-11). Halves are not used. `save_funnel_stage` takes a separate `funnel_stage` field (integer 1-11) — that is the canonical stage marker. (`stage_index` is a monotonic event counter the server auto-increments; you do NOT pass it.) There is also one pre-step (search_prior_runs) and one terminal hook (save_funnel_memory) — neither is a numbered stage.\n\n**Wall-time estimate:** This pipeline typically runs 30-45 min end-to-end. Stages 1-7 are fast (~10 min total). Stage 8 (docking) adds ~3-5 min. Stage 10 (MD simulation) takes ~7-15 min. Keep the user informed of progress.\n\nExecute the following stages autonomously. After each stage, briefly summarize findings and explain decisions before proceeding.\n\n**STAGE ZERO — GENERATE FUNNEL ID (DO THIS FIRST, BEFORE ANY TOOL CALL):**\nGenerate funnel_id = funnel_{disease_short}_{YYYYMMDD}_{HHMMSS} using the current UTC time down to seconds. Example: funnel_gbm_20260412_143022. NEVER reuse a funnel_id from a previous run. You MUST pass this funnel_id as an argument to every single tool call in this funnel, starting with target_discovery in Stage 1 — not just save_funnel_stage. Passing funnel_id to target_discovery ensures the auto-log uses the human-readable ID from the very first event; omitting it creates an orphan row under a machine-minted ID that audit queries cannot see.\n\n**IMPORTANT — ERROR HANDLING:**\nIf any stage fails (especially MD simulation or docking), do NOT say the backend is broken or needs to be resolved. Instead:\n1. Report what happened: \"MD simulation failed for this specific structure\"\n2. Try an alternative: ligand-only simulation (omit pdb_id), or try generate_dynamics for conformational exploration\n3. If alternatives also fail, skip that stage and proceed with the data you have\n4. Never tell the user to wait for a backend fix — the service is operational, specific inputs may fail\n\n**DATA TRANSPARENCY RULE:**\nIf a tool returns low-relevance or weak results, say so explicitly. Do NOT present poor data in the best possible light. Flag limitations honestly — e.g., \"The literature search returned mostly tangential results\" or \"This ligand-only MD tells us about solution-phase behavior, not binding stability.\" Credibility requires candor.\n\n**CREDIT TRACKING:**\nMaintain a running credit total. After each tool call, update the cumulative spend. Include credits_consumed in every save_funnel_stage call. At each checkpoint, report: \"Credits used so far: X\". Expected total: ~595 credits. Major costs: lead_optimization (~150), run_molecular_dynamics (~250), predict_admet (~20), dock_molecules (~30 for 4 compounds). Stages 1-6 are light (~85 credits total). Stages 7, 10 are heavy (~425 credits combined).\n\n**AUDIT LOGGING:**\nEvery tool call is auto-logged server-side as an exploration event under your funnel_id — you do NOT need to call save_funnel_stage during this autonomous run, and you must not ask the user whether to log. Just pass the funnel_id you generated in Stage Zero to every tool call and the audit trail builds itself. (The terminal save_funnel_memory at the end is still required.)\n\n---\n\n**Pre-step — Check Prior Runs (LEARN FROM HISTORY)**\nBefore diving in, call search_prior_runs with target_gene=(if known from disease) or therapeutic_area=(disease). Returns precedents from past funnels by your org. If prior runs exist, briefly note their outcomes and lessons — avoid known failure modes, reuse successful scaffolds, calibrate your threshold expectations. If no prior runs exist, skip ahead. (Pre-step, NOT a numbered stage — do not write a save_funnel_stage row for it.)\n\n**Stage 1 — Target Discovery** (funnel_stage: 1)\nUse target_discovery with the disease and min_evidence: 0.4. Pass funnel_id. Pick the top-ranked dockable target. Note the suggested_pdb_id and gene_symbol.\n\n**Stage 2 — Target Validation (ADVERSARIAL CHECKPOINT)** (funnel_stage: 2)\nCall validate_target on the gene picked in Stage 1 with the disease. Returns a 0-1 confidence score + recommendation (proceed / proceed_with_caution / reconsider) from 5 evidence streams (omics, clinical trials, literature, ChEMBL, competitive landscape) plus target_maturity classification (mature_validated / emerging / novel). If recommendation is \"reconsider\" and confidence < 0.4, go back to Stage 1 and pick a different top target — don't commit compute credits to a weakly-validated target. If \"proceed_with_caution\", note the risk factors in your summary and proceed. If \"proceed\", continue to Stage 3. Pass funnel_id.\n\n**Stage 3 — Literature** (funnel_stage: 3)\nRun 2-3 targeted literature searches with different angles:\n1. search_literature for \"[gene_symbol] [disease] inhibitors\" (broad)\n2. search_literature for \"[specific_compound] [disease]\" (compound-specific, if known)\n3. search_biorxiv for recent preprints on the target\nIf results are low-relevance, say so — do not pad weak literature.\n\n**Stage 4 — Known Actives** (funnel_stage: 4)\nSearch ChEMBL using search_type: \"activity\" for the target gene to find compounds with measured IC50/Ki. Also try search_type: \"target\" to find the ChEMBL target ID. If results don't include well-known clinical compounds for this target, note the gap and supplement with your knowledge of established inhibitors. Pick the most potent by IC50 as the seed molecule.\n\n**Stage 5 — ADMET + Properties** (funnel_stage: 5)\nRun predict_admet on the seed SMILES. If predict_pka and predict_solubility are available (Novo Compute), also run those. If not, note that detailed ionization and solubility analysis requires Novo Compute.\n\n**Stage 6 — Compliance** (funnel_stage: 6)\nRun check_compliance on the seed SMILES. If it fails, pick a different seed from Stage 4.\n\n**Stage 7 — Lead Optimization** (funnel_stage: 7)\nRun BOTH optimization approaches and compare:\n1. lead_optimization with optimization_type: \"scaffold_hop\" and num_variants: 5 for structurally diverse variants\n2. optimize_molecule (MolMIM) with num_variants: 5 for property-optimized variants close to the seed\nPresent both sets side by side. Show chemical space shift for each: delta MW, delta LogP, delta TPSA, similarity score vs seed.\n\n**Stage 8 — Docking** (funnel_stage: 8)\nIf dock_molecules is available (Novo Compute), dock the top 3 variants + seed against the suggested_pdb_id. Before calling, tell the user: \"Starting docking now. If this is the first GPU call in a while, expect ~2-3 min warm-up — target_discovery fired a background ping at Stage 1, so the GPU should already be ready.\" Pass funnel_id. dock_molecules is two-phase: report the phase=estimate cost in one line, then re-invoke with the confirmation_token in the same turn. For batch docking, poll get_job_status. For the top binder, run dock_with_strain to validate the pose. When presenting results, ALWAYS show binding affinity RELATIVE to the seed compound (delta kcal/mol). Never show absolute affinity in isolation. Flag any strain > 5 kcal/mol as potentially unrealistic. If docking is not available (e.g., connection refused), note it requires Novo Compute and proceed to Stage 11.\n\n**Stage 9 — Developability Review** (funnel_stage: 9)\nBefore committing the 250-credit MD simulation, review the ADMET (Stage 5) and docking (Stage 8) results for the top binder together. If the compound shows serious liabilities (poor predicted absorption, high toxicity flags, weak/implausible binding), consider picking the second-ranked binder for MD instead — this focuses MD on the most developable candidate. Report the decision explicitly in your summary.\n\n**Stage 10 — MD Simulation** (funnel_stage: 10)\nIf run_molecular_dynamics is available (Novo Compute), run it with the best binder (or second-ranked if Stage 9 flagged the top binder). Pass funnel_id. Also pass intent='pose_stability' (drives the v3 scientific_adequacy gate to the binding-pose rule with a sampling recommendation in the result) and adaptive_equilibration=true (replaces the fixed 100ps NPT with an adaptive loop that extends until water density plateau is detected — recommended for protein-ligand complexes where 100ps often leaves density still drifting). The GPU should already be warm from target_discovery's ping. Poll get_job_status every 60s until completed. MD takes 7-15 minutes of actual simulation time (plus cold-start delay if the GPU happens to be cold). If MD fails, try ligand-only (omit pdb_id) or generate_dynamics. If you fall back to ligand-only MD, clearly state that it shows solution-phase conformational behavior, NOT binding stability. Do NOT present RMSD convergence as evidence of binding stability. Note that the binding question remains open. If these tools are not available, note that simulation requires Novo Compute and proceed to Stage 11.\n\n**Stage 11 — Patient Stratification** (funnel_stage: 11)\nRun stratify_patients with the best binder, target_gene, disease, and ADMET results from Stage 5.\n\n**Terminal hook — Save Terminal Summary (CROSS-RUN LEARNING)**\nAfter Stage 11, call save_funnel_memory with:\n- funnel_id (the one you generated)\n- target_gene, target_pdb_id, therapeutic_area from the run\n- outcome: SUCCEEDED if you reached Stage 11, otherwise FAILED_* matching the reason\n- final_lead_count: how many lead candidates made it through\n- best_affinity_kcal: the top binding affinity from Stage 8 (negative number)\n- failure_pattern: JSON object describing what didn't work, if anything (e.g., {\"compliance_block\": true, \"reason\": \"top variants hit compliance alerts\"})\n- decisions: JSON object capturing key decisions (scaffold choices, why you picked this seed, why you deprioritized any compound)\n- summary: 2-4 sentences in natural language describing the run, its outcome, and the lesson. This powers semantic search for future funnels on similar targets.\nThis single call seeds cross-run learning for your org. Future runs on the same gene or therapeutic area will retrieve this memory via search_prior_runs. (Terminal hook, NOT a numbered stage — do not write a save_funnel_stage row for it.)\n\n**Final Summary**\nPresent the complete funnel with go/no-go signals and cumulative credit spend. Tell the user: \"The audit log is saved as {funnel_id}. Retrieve it with get_funnel_audit. Cross-run memory is saved; future funnels on {target_gene} or {therapeutic_area} will learn from this run.\""
                 }
             }
         ]
@@ -3817,7 +3750,7 @@ MCP_PROMPT_TEMPLATES = {
                 "role": "user",
                 "content": {
                     "type": "text",
-                    "text": "Perform a deep characterization of this molecule: {smiles}\n\nRun the following analyses and present a comprehensive report:\n\n**1. Basic Properties**\nUse get_molecule_profile to get the full profile including ADMET predictions and compliance.\n\n**2. pKa Prediction**\nIf predict_pka is available, use it to identify ionizable groups and their pKa values. Explain the implications for absorption at physiological pH (stomach pH 1-3, intestinal pH 6-7, blood pH 7.4). If not available, call novo_compute_info to let the user know this requires Novo Compute.\n\n**3. Solubility**\nIf predict_solubility is available, get LogS at 25°C. Classify as: highly soluble (>-2), soluble (-2 to -4), sparingly soluble (-4 to -6), or insoluble (<-6). If not available, note it requires Novo Compute.\n\n**4. Conformer Analysis**\nIf run_conformer_search is available, use it with max_conformers 10. This is an ASYNC JOB — it returns a job_id. Tell the user to wait ~10 minutes and check back. Do NOT auto-poll in a loop. If not available, call novo_compute_info to let the user know conformer search requires Novo Compute.\n\n**5. Quantum Properties**\nIf run_qm_calculation is available, use it with calculation_type 'energy' to get HOMO/LUMO energies, dipole moment, and electronic properties. If not available, note it requires Novo Compute.\n\n**6. Bond Dissociation Energies**\nIf predict_bde is available, use it to identify metabolic soft spots — bonds with BDE < 85 kcal/mol. If not available, note it requires Novo Compute.\n\n**Summary**\nPresent a one-page summary with:\n- Drug-likeness verdict (pass/fail with reasons)\n- Key physicochemical properties\n- Ionization profile at physiological pH (if pKa available)\n- Solubility classification (if solubility available)\n- Conformational flexibility assessment (if conformer search available)\n- Electronic properties (if QM available)\n- Metabolic soft spots (if BDE available)\n- Which Novo Compute tools would enhance this analysis (if any were unavailable)\n- Overall recommendation: advance, optimize, or reject"
+                    "text": "Perform a deep characterization of this molecule: {smiles}\n\nRun the following analyses and present a comprehensive report:\n\n**1. Basic Properties**\nUse get_molecule_profile to get the full profile including ADMET predictions and structural alerts.\n\n**2. pKa Prediction**\nIf predict_pka is available, use it to identify ionizable groups and their pKa values. Explain the implications for absorption at physiological pH (stomach pH 1-3, intestinal pH 6-7, blood pH 7.4). If not available, call novo_compute_info to let the user know this requires Novo Compute.\n\n**3. Solubility**\nIf predict_solubility is available, get LogS at 25°C. Classify as: highly soluble (>-2), soluble (-2 to -4), sparingly soluble (-4 to -6), or insoluble (<-6). If not available, note it requires Novo Compute.\n\n**4. Conformer Analysis**\nIf run_conformer_search is available, use it with max_conformers 10. This is an ASYNC JOB — it returns a job_id. Tell the user to wait ~10 minutes and check back. Do NOT auto-poll in a loop. If not available, call novo_compute_info to let the user know conformer search requires Novo Compute.\n\n**5. Quantum Properties**\nIf run_qm_calculation is available, use it with calculation_type 'energy' to get HOMO/LUMO energies, dipole moment, and electronic properties. If not available, note it requires Novo Compute.\n\n**6. Bond Dissociation Energies**\nIf predict_bde is available, use it to identify metabolic soft spots — bonds with BDE < 85 kcal/mol. If not available, note it requires Novo Compute.\n\n**Summary**\nPresent a one-page summary with:\n- Drug-likeness verdict (pass/fail with reasons)\n- Key physicochemical properties\n- Ionization profile at physiological pH (if pKa available)\n- Solubility classification (if solubility available)\n- Conformational flexibility assessment (if conformer search available)\n- Electronic properties (if QM available)\n- Metabolic soft spots (if BDE available)\n- Which Novo Compute tools would enhance this analysis (if any were unavailable)\n- Overall recommendation: advance, optimize, or reject"
                 }
             }
         ]
@@ -3828,7 +3761,7 @@ MCP_PROMPT_TEMPLATES = {
                 "role": "user",
                 "content": {
                     "type": "text",
-                    "text": "Run an interactive drug discovery funnel for: {disease}\nMD simulation duration: {md_duration_ns} ns (default 1 if not specified)\n\nThis is a human-in-the-loop pipeline with a persistent audit log for reproducibility.\n\n**Canonical 11-stage scheme:** Each stage has its own integer index (1-11). Halves are not used. `save_funnel_stage` takes a separate `funnel_stage` field (integer 1-11) — that is the canonical stage marker. (`stage_index` is a monotonic event counter the server auto-increments; you do NOT pass it.) There is also one pre-step (search_prior_runs) and one terminal hook (save_funnel_memory) — neither is a numbered stage.\n\n**CRITICAL — MANDATORY STOP BEHAVIOR:**\nYou MUST stop after presenting each stage's results. Do NOT proceed to the next stage until the user explicitly responds. Each stage is a separate assistant turn — end your message after presenting results and asking for the user's decision. If you find yourself writing the next stage header, STOP IMMEDIATELY. Violating this rule makes the audit log invalid because human_decision will be missing.\n\nI may adjust parameters, remove molecules, or change direction at any stage.\n\n**DATA TRANSPARENCY RULE:**\nIf a tool returns low-relevance or weak results, say so explicitly. Do NOT present poor data in the best possible light. Flag limitations honestly. Credibility requires candor.\n\n**CREDIT TRACKING:**\nMaintain a running credit total. After each tool call, update the cumulative spend. Include credits_consumed in every save_funnel_stage call. At each checkpoint, report: \"Credits used so far: X\". Expected total: ~595 credits. Major costs: lead_optimization (~150), run_molecular_dynamics (~250), predict_admet (~20), dock_molecules (~30 for 4 compounds).\n\n**STAGE ZERO — GENERATE FUNNEL ID (DO THIS FIRST, BEFORE ANY TOOL CALL):**\nGenerate funnel_id = funnel_{disease_short}_{YYYYMMDD}_{HHMMSS} using the current UTC time down to seconds. Example: funnel_gbm_20260412_143022. NEVER reuse a funnel_id from a previous run. You MUST pass this funnel_id as an argument to every single tool call in this funnel, starting with target_discovery in Stage 1 — not just save_funnel_stage. This keeps the audit trail under one queryable ID.\n\n**Pre-step — Check Prior Runs (LEARN FROM HISTORY):**\nBefore diving into Stage 1, call search_prior_runs with therapeutic_area=(disease) or target_gene if known. If prior runs exist, briefly surface their outcomes to the user before asking about target selection. If no prior runs exist, proceed to Stage 1. (Pre-step, NOT a numbered stage — do not write a save_funnel_stage row for it.)\n\n**IMPORTANT — AUDIT LOGGING:**\nRaw tool calls are auto-logged server-side as exploration events under your funnel_id — never ask the user whether to log, and never call save_funnel_stage merely to record that a tool ran. The reason to call save_funnel_stage in THIS interactive funnel is to capture the USER'S DECISION at each checkpoint (human_decision + human_prompt) — the one thing the auto-log can't see. So: after EACH stage completes AND the user responds, call save_funnel_stage with:\n- funnel_id, funnel_stage (integer 1-11, canonical stage marker), stage_name, stage_label (do NOT pass stage_index — server auto-assigns it as a monotonic event counter)\n- tool_name: the MCP tool you called\n- tool_arguments: what you passed to the tool\n- results_summary: key findings (not full payload — just the important numbers/decisions)\n- ai_recommendation: what you suggested to the user\n- human_decision: what the user chose (after they respond)\n- human_prompt: the user's actual message (after they respond)\n- molecules_in / molecules_out: molecule counts entering/leaving this stage\n- molecules_filtered: breakdown by reason (e.g., {\"invalid_smiles\": 2, \"compliance_block\": 3})\n- curation_method: filters applied, order, thresholds (for library curation stage)\n- credits_consumed: credits used at this stage\n- context_forward: state to carry to next stage (target_gene, pdb_id, seed_smiles, etc.)\n- human_reviewed: true (ALWAYS true for interactive funnel — you only log AFTER the human responds)\n\nThis audit log is the reproducibility record. A reviewer must be able to reconstruct every decision.\n\n---\n\n**STAGE 1 — Target Discovery** (funnel_stage: 1)\n\nUse target_discovery with the disease and min_evidence: 0.4, max_targets: 10. Pass funnel_id. If the pre-step returned prior runs, mention them in your response before asking the user to choose a target.\n\nPresent results as a ranked table:\n| Rank | Gene | Composite Score | Known Drugs | Suggested PDB | Tractability |\n\nThen ask: \"Which target would you like to pursue?\"\n\n**STOP HERE. End your message now. When the user responds, call save_funnel_stage with human_reviewed: true and their selection.**\n\n---\n\n**STAGE 2 — Target Validation (ADVERSARIAL CHECKPOINT)** (funnel_stage: 2)\n\nCall validate_target on the gene selected in STAGE 1 with the disease. Returns a 0-1 confidence score + recommendation (proceed / proceed_with_caution / reconsider) from 5 evidence streams (omics, clinical trials, literature, ChEMBL, competitive landscape) plus target_maturity classification (mature_validated / emerging / novel). The dedicated viewer renders the confidence gauge, verdict card, 4-stream evidence grid, and risk/strength panels. Pass funnel_id.\n\nPresent the verdict inline (confidence, recommendation, 1-line rationale drawn from the strengths/risks) and ask: \"Proceed with this target, go back and pick a different one, or continue with caution (note the specific risks)?\"\n\n**STOP HERE. End your message now. When the user responds, log with save_funnel_stage (human_reviewed: true) and continue to STAGE 3.**\n\n---\n\n**STAGE 3 — Literature** (funnel_stage: 3)\n\nRun 2-3 targeted search_literature queries: \"[gene_symbol] [disease] inhibitors\", \"[specific_compound] [disease]\" (compound-specific, if known), plus search_biorxiv for recent preprints. If results are low-relevance, say so — do not pad weak literature.\n\nPresent the top 5 hits across sources with title, authors, year, and a 1-line takeaway each.\n\nAsk: \"Anything notable to factor into seed selection, or proceed to known actives?\"\n\n**STOP HERE. End your message now. When the user responds, log with save_funnel_stage (human_reviewed: true).**\n\n---\n\n**STAGE 4 — Known Actives** (funnel_stage: 4)\n\nSearch ChEMBL using search_type: \"activity\" for the target gene to find compounds with measured IC50/Ki. Also try search_type: \"target\" to find the ChEMBL target ID. If results miss well-known clinical compounds, note the gap.\n\nPresent top 5 ChEMBL hits:\n| Rank | SMILES (truncated) | IC50/Ki | Assay Type | Source |\n\nAsk: \"Which compound should be the seed molecule?\"\n\n**STOP HERE. End your message now. When the user responds, log with save_funnel_stage (human_reviewed: true).**\n\n---\n\n**STAGE 5 — ADMET + Properties** (funnel_stage: 5)\n\nRun predict_admet on the seed. If predict_pka and predict_solubility are available (Novo Compute), also run those.\n\nPresent: Properties, ADMET flags, CYP substrates. If pKa/solubility tools are available, include ionization profile and solubility classification. If not, note these require Novo Compute.\n\nAsk: \"Proceed to compliance check, or pick a different seed?\"\n\n**STOP HERE. End your message now. When the user responds, log with save_funnel_stage (human_reviewed: true).**\n\n---\n\n**STAGE 6 — Compliance** (funnel_stage: 6)\n\nRun check_compliance on the seed. Present the compliance outcome (pass / fail / flagged), the specific alerts, and recommended action.\n\nAsk: \"Proceed to lead optimization with this seed, swap to a different ChEMBL hit, or stop here?\"\n\n**STOP HERE. End your message now. When the user responds, log with save_funnel_stage (human_reviewed: true).**\n\n---\n\n**STAGE 7 — Lead Optimization & Library Curation** (funnel_stage: 7)\n\nThis is the CRITICAL checkpoint.\n\nRun BOTH optimization approaches and compare:\n1. lead_optimization with optimization_type: \"scaffold_hop\", num_variants: 5-10 for structurally diverse variants\n2. optimize_molecule (MolMIM) with num_variants: 5 for property-optimized variants close to the seed\nShow chemical space shift for each: delta MW, delta LogP, delta TPSA, similarity score vs seed.\n\nPresent the LIBRARY AUDIT:\n\n**Inverted Funnel:**\n- Input: N variants generated\n- Valid SMILES: N\n- Lipinski pass: N\n- ADMET screened: N (list critical flags)\n- Compliance clear: N (list blocked + why)\n- Ready for docking: N\n\n**Library Composition:** MW range, LogP range, Mean QED, Unique scaffolds\n\n**Full Molecule Table:**\n| # | SMILES | MW | LogP | QED | hERG | Compliance | Status | Reason |\nShow ALL molecules including excluded ones.\n\nAsk: \"Proceed with all N, remove specific molecules, adjust filters, or add the seed?\"\n\n**STOP. Log with save_funnel_stage including:**\n- molecules_in: total generated\n- molecules_out: user-approved count\n- molecules_filtered: {\"compliance_block\": N, \"user_removed\": N, ...}\n- curation_method: {\"filters_applied\": [...], \"thresholds\": {...}, \"library_composition\": {...}}\n\n---\n\n**STAGE 8 — Molecular Docking** (funnel_stage: 8)\n\nIf dock_molecules is available (Novo Compute), dock approved molecules + seed against the target PDB. Before calling, tell the user: \"Starting docking now. First GPU call may take ~2-3 min for warm-up — target_discovery fired a background ping earlier, so the GPU should already be ready.\" Pass funnel_id. dock_molecules is two-phase: report the phase=estimate cost in one line, then re-invoke with the confirmation_token in the same turn. Poll get_job_status for batch results.\n\nFor the top binder, also run dock_with_strain to check if the binding pose is realistic (high strain = pose may be an artifact).\n\nWhen presenting results, ALWAYS show binding affinity RELATIVE to the seed compound (delta kcal/mol). Never show absolute affinity in isolation — senior chemists consider this meaningless. Note key interactions (H-bonds, hydrophobic contacts).\n\nIf docking is not available, note it requires Novo Compute and skip to Stage 11.\n\nPresent ranked by binding affinity (include delta vs seed):\n| Rank | SMILES | Binding Affinity (kcal/mol) | Strain (kcal/mol) | Assessment |\n\nFlag any with strain > 5 kcal/mol as potentially unrealistic poses.\n\nAsk: \"Which compound(s) to advance?\"\n\n**STOP HERE. End your message now. When the user responds, log with save_funnel_stage (human_reviewed: true).**\n\n---\n\n**STAGE 9 — Clinical Outcomes Gate (ECONOMIC FILTER)** (funnel_stage: 9)\n\nCall predict_clinical_outcomes on the top binder from STAGE 8 (or the user-selected binder). NovoExpert v3 predicts Phase I clearance probability integrating physicochemical properties, compliance signals, and the 31-endpoint ADMET model set. Cost: 25 credits. The viewer renders the probability gauge with 0.4/0.6 color bands + SHAP waterfall (top 15 drivers).\n\nDecision rule:\n- Clearance probability < 0.4 → strongly consider skipping the 250-credit MD simulation in STAGE 10 and picking the second-ranked binder for MD instead. This saves credits and focuses MD on the most developable candidate.\n- Probability 0.4-0.6 → proceed to MD but note the risk.\n- Probability > 0.6 → proceed to MD with confidence.\n\n**Domain-gate note:** predict_clinical_outcomes refuses oncology prompts (the model is not validated in that domain). If the competence check refuses, proceed to STAGE 10 without the gate and note the reason.\n\nAsk: \"Proceed to MD with the top binder, switch to the second-ranked binder, or skip MD entirely?\"\n\n**STOP HERE. End your message now. When the user responds, log with save_funnel_stage (human_reviewed: true).**\n\n---\n\n**STAGE 10 — Molecular Dynamics** (funnel_stage: 10)\n\nIf run_molecular_dynamics is available (Novo Compute), run it. Pass funnel_id. Also pass intent='pose_stability' (drives v3 scientific_adequacy grading and surfaces a sampling-needed estimate in the result) and adaptive_equilibration=true (replaces the fixed 100ps NPT with a loop that extends until water density plateau is detected — recommended for protein-ligand complexes). GPU should be warm from the earlier ping. Poll get_job_status every 60 seconds until completed. MD takes 7-15 minutes of actual simulation time.\n\nWhen presenting the result, read quality_report.scientific_adequacy.pose_stability — it grades HIGH/MEDIUM/LOW/INSUFFICIENT and, when below HIGH, includes estimated_additional_sampling_ns with explicit bounds and a heuristic-not-a-guarantee note. Present that estimate alongside the trajectory analysis so the user can decide whether to extend or commit.\n\nIf run_molecular_dynamics is not available, note that MD simulation requires Novo Compute and skip to Stage 11.\n\nIf MD fails for this structure:\n1. Do NOT say the backend is broken or needs to be resolved\n2. Try alternative: ligand-only simulation (omit pdb_id)\n3. Try generate_dynamics for AI-accelerated conformational exploration\n4. If all fail, report: \"MD could not complete for this specific structure. The docking results from Stage 8 remain valid.\"\n\nIMPORTANT: If you fall back to ligand-only MD, clearly state that it shows solution-phase conformational behavior, NOT binding stability. Do NOT present RMSD convergence as evidence of binding stability. The binding question remains open.\n\nIf successful, present: RMSD convergence, equilibration stability, verdict.\n\nInclude in save_funnel_stage system_metadata:\n- force_field, water_model, temperature, pressure, duration\n- (these are from the MD results if available)\n\nAsk: \"Accept and proceed, extend simulation, or try different compound?\"\n\n**STOP HERE. End your message now. When the user responds, log with save_funnel_stage (human_reviewed: true).**\n\n---\n\n**STAGE 11 — Patient Stratification & Final Report** (funnel_stage: 11)\n\nRun stratify_patients. Present final report with go/no-go signals.\n\nCall save_funnel_stage one final time with the complete summary.\n\n**Terminal hook — Save Terminal Summary (CROSS-RUN LEARNING):**\nAfter Stage 11, call save_funnel_memory with:\n- funnel_id\n- target_gene, target_pdb_id, therapeutic_area\n- outcome: SUCCEEDED if you reached patient stratification, otherwise FAILED_* matching reason, or ABANDONED if user stopped mid-funnel\n- final_lead_count, best_affinity_kcal\n- failure_pattern (if any): JSON describing what didn't work\n- decisions: JSON capturing key user decisions made during the run\n- summary: 2-4 natural-language sentences describing the run, outcome, and lesson\nThis seeds cross-run memory. Future funnels on similar targets will retrieve this via search_prior_runs. (Terminal hook, NOT a numbered stage — do not write a save_funnel_stage row for it.)\n\nPresent:\n**Discovery Funnel Summary**\n| Stage | Input | Output | Key Decision | Decided By |\n(Fill from the audit log you've been building)\n\n**Go/No-Go Signals** and **Recommended next steps.**\n\nTell the user: \"The full audit log for this funnel is saved as {funnel_id}. Retrieve it anytime with get_funnel_audit. Cross-run memory is saved; future funnels on {target_gene} or {therapeutic_area} will learn from this run.\""
+                    "text": "Run an interactive drug discovery funnel for: {disease}\nMD simulation duration: {md_duration_ns} ns (default 1 if not specified)\n\nThis is a human-in-the-loop pipeline with a persistent audit log for reproducibility.\n\n**Canonical 11-stage scheme:** Each stage has its own integer index (1-11). Halves are not used. `save_funnel_stage` takes a separate `funnel_stage` field (integer 1-11) — that is the canonical stage marker. (`stage_index` is a monotonic event counter the server auto-increments; you do NOT pass it.) There is also one pre-step (search_prior_runs) and one terminal hook (save_funnel_memory) — neither is a numbered stage.\n\n**CRITICAL — MANDATORY STOP BEHAVIOR:**\nYou MUST stop after presenting each stage's results. Do NOT proceed to the next stage until the user explicitly responds. Each stage is a separate assistant turn — end your message after presenting results and asking for the user's decision. If you find yourself writing the next stage header, STOP IMMEDIATELY. Violating this rule makes the audit log invalid because human_decision will be missing.\n\nI may adjust parameters, remove molecules, or change direction at any stage.\n\n**DATA TRANSPARENCY RULE:**\nIf a tool returns low-relevance or weak results, say so explicitly. Do NOT present poor data in the best possible light. Flag limitations honestly. Credibility requires candor.\n\n**CREDIT TRACKING:**\nMaintain a running credit total. After each tool call, update the cumulative spend. Include credits_consumed in every save_funnel_stage call. At each checkpoint, report: \"Credits used so far: X\". Expected total: ~595 credits. Major costs: lead_optimization (~150), run_molecular_dynamics (~250), predict_admet (~20), dock_molecules (~30 for 4 compounds).\n\n**STAGE ZERO — GENERATE FUNNEL ID (DO THIS FIRST, BEFORE ANY TOOL CALL):**\nGenerate funnel_id = funnel_{disease_short}_{YYYYMMDD}_{HHMMSS} using the current UTC time down to seconds. Example: funnel_gbm_20260412_143022. NEVER reuse a funnel_id from a previous run. You MUST pass this funnel_id as an argument to every single tool call in this funnel, starting with target_discovery in Stage 1 — not just save_funnel_stage. This keeps the audit trail under one queryable ID.\n\n**Pre-step — Check Prior Runs (LEARN FROM HISTORY):**\nBefore diving into Stage 1, call search_prior_runs with therapeutic_area=(disease) or target_gene if known. If prior runs exist, briefly surface their outcomes to the user before asking about target selection. If no prior runs exist, proceed to Stage 1. (Pre-step, NOT a numbered stage — do not write a save_funnel_stage row for it.)\n\n**IMPORTANT — AUDIT LOGGING:**\nRaw tool calls are auto-logged server-side as exploration events under your funnel_id — never ask the user whether to log, and never call save_funnel_stage merely to record that a tool ran. The reason to call save_funnel_stage in THIS interactive funnel is to capture the USER'S DECISION at each checkpoint (human_decision + human_prompt) — the one thing the auto-log can't see. So: after EACH stage completes AND the user responds, call save_funnel_stage with:\n- funnel_id, funnel_stage (integer 1-11, canonical stage marker), stage_name, stage_label (do NOT pass stage_index — server auto-assigns it as a monotonic event counter)\n- tool_name: the MCP tool you called\n- tool_arguments: what you passed to the tool\n- results_summary: key findings (not full payload — just the important numbers/decisions)\n- ai_recommendation: what you suggested to the user\n- human_decision: what the user chose (after they respond)\n- human_prompt: the user's actual message (after they respond)\n- molecules_in / molecules_out: molecule counts entering/leaving this stage\n- molecules_filtered: breakdown by reason (e.g., {\"invalid_smiles\": 2, \"compliance_block\": 3})\n- curation_method: filters applied, order, thresholds (for library curation stage)\n- credits_consumed: credits used at this stage\n- context_forward: state to carry to next stage (target_gene, pdb_id, seed_smiles, etc.)\n- human_reviewed: true (ALWAYS true for interactive funnel — you only log AFTER the human responds)\n\nThis audit log is the reproducibility record. A reviewer must be able to reconstruct every decision.\n\n---\n\n**STAGE 1 — Target Discovery** (funnel_stage: 1)\n\nUse target_discovery with the disease and min_evidence: 0.4, max_targets: 10. Pass funnel_id. If the pre-step returned prior runs, mention them in your response before asking the user to choose a target.\n\nPresent results as a ranked table:\n| Rank | Gene | Composite Score | Known Drugs | Suggested PDB | Tractability |\n\nThen ask: \"Which target would you like to pursue?\"\n\n**STOP HERE. End your message now. When the user responds, call save_funnel_stage with human_reviewed: true and their selection.**\n\n---\n\n**STAGE 2 — Target Validation (ADVERSARIAL CHECKPOINT)** (funnel_stage: 2)\n\nCall validate_target on the gene selected in STAGE 1 with the disease. Returns a 0-1 confidence score + recommendation (proceed / proceed_with_caution / reconsider) from 5 evidence streams (omics, clinical trials, literature, ChEMBL, competitive landscape) plus target_maturity classification (mature_validated / emerging / novel). The dedicated viewer renders the confidence gauge, verdict card, 4-stream evidence grid, and risk/strength panels. Pass funnel_id.\n\nPresent the verdict inline (confidence, recommendation, 1-line rationale drawn from the strengths/risks) and ask: \"Proceed with this target, go back and pick a different one, or continue with caution (note the specific risks)?\"\n\n**STOP HERE. End your message now. When the user responds, log with save_funnel_stage (human_reviewed: true) and continue to STAGE 3.**\n\n---\n\n**STAGE 3 — Literature** (funnel_stage: 3)\n\nRun 2-3 targeted search_literature queries: \"[gene_symbol] [disease] inhibitors\", \"[specific_compound] [disease]\" (compound-specific, if known), plus search_biorxiv for recent preprints. If results are low-relevance, say so — do not pad weak literature.\n\nPresent the top 5 hits across sources with title, authors, year, and a 1-line takeaway each.\n\nAsk: \"Anything notable to factor into seed selection, or proceed to known actives?\"\n\n**STOP HERE. End your message now. When the user responds, log with save_funnel_stage (human_reviewed: true).**\n\n---\n\n**STAGE 4 — Known Actives** (funnel_stage: 4)\n\nSearch ChEMBL using search_type: \"activity\" for the target gene to find compounds with measured IC50/Ki. Also try search_type: \"target\" to find the ChEMBL target ID. If results miss well-known clinical compounds, note the gap.\n\nPresent top 5 ChEMBL hits:\n| Rank | SMILES (truncated) | IC50/Ki | Assay Type | Source |\n\nAsk: \"Which compound should be the seed molecule?\"\n\n**STOP HERE. End your message now. When the user responds, log with save_funnel_stage (human_reviewed: true).**\n\n---\n\n**STAGE 5 — ADMET + Properties** (funnel_stage: 5)\n\nRun predict_admet on the seed. If predict_pka and predict_solubility are available (Novo Compute), also run those.\n\nPresent: Properties, ADMET flags, CYP substrates. If pKa/solubility tools are available, include ionization profile and solubility classification. If not, note these require Novo Compute.\n\nAsk: \"Proceed to compliance check, or pick a different seed?\"\n\n**STOP HERE. End your message now. When the user responds, log with save_funnel_stage (human_reviewed: true).**\n\n---\n\n**STAGE 6 — Compliance** (funnel_stage: 6)\n\nRun check_compliance on the seed. Present the compliance outcome (pass / fail / flagged), the specific alerts, and recommended action.\n\nAsk: \"Proceed to lead optimization with this seed, swap to a different ChEMBL hit, or stop here?\"\n\n**STOP HERE. End your message now. When the user responds, log with save_funnel_stage (human_reviewed: true).**\n\n---\n\n**STAGE 7 — Lead Optimization & Library Curation** (funnel_stage: 7)\n\nThis is the CRITICAL checkpoint.\n\nRun BOTH optimization approaches and compare:\n1. lead_optimization with optimization_type: \"scaffold_hop\", num_variants: 5-10 for structurally diverse variants\n2. optimize_molecule (MolMIM) with num_variants: 5 for property-optimized variants close to the seed\nShow chemical space shift for each: delta MW, delta LogP, delta TPSA, similarity score vs seed.\n\nPresent the LIBRARY AUDIT:\n\n**Inverted Funnel:**\n- Input: N variants generated\n- Valid SMILES: N\n- Lipinski pass: N\n- ADMET screened: N (list critical flags)\n- Compliance clear: N (list blocked + why)\n- Ready for docking: N\n\n**Library Composition:** MW range, LogP range, Mean QED, Unique scaffolds\n\n**Full Molecule Table:**\n| # | SMILES | MW | LogP | QED | hERG | Compliance | Status | Reason |\nShow ALL molecules including excluded ones.\n\nAsk: \"Proceed with all N, remove specific molecules, adjust filters, or add the seed?\"\n\n**STOP. Log with save_funnel_stage including:**\n- molecules_in: total generated\n- molecules_out: user-approved count\n- molecules_filtered: {\"compliance_block\": N, \"user_removed\": N, ...}\n- curation_method: {\"filters_applied\": [...], \"thresholds\": {...}, \"library_composition\": {...}}\n\n---\n\n**STAGE 8 — Molecular Docking** (funnel_stage: 8)\n\nIf dock_molecules is available (Novo Compute), dock approved molecules + seed against the target PDB. Before calling, tell the user: \"Starting docking now. First GPU call may take ~2-3 min for warm-up — target_discovery fired a background ping earlier, so the GPU should already be ready.\" Pass funnel_id. dock_molecules is two-phase: report the phase=estimate cost in one line, then re-invoke with the confirmation_token in the same turn. Poll get_job_status for batch results.\n\nFor the top binder, also run dock_with_strain to check if the binding pose is realistic (high strain = pose may be an artifact).\n\nWhen presenting results, ALWAYS show binding affinity RELATIVE to the seed compound (delta kcal/mol). Never show absolute affinity in isolation — senior chemists consider this meaningless. Note key interactions (H-bonds, hydrophobic contacts).\n\nIf docking is not available, note it requires Novo Compute and skip to Stage 11.\n\nPresent ranked by binding affinity (include delta vs seed):\n| Rank | SMILES | Binding Affinity (kcal/mol) | Strain (kcal/mol) | Assessment |\n\nFlag any with strain > 5 kcal/mol as potentially unrealistic poses.\n\nAsk: \"Which compound(s) to advance?\"\n\n**STOP HERE. End your message now. When the user responds, log with save_funnel_stage (human_reviewed: true).**\n\n---\n\n**STAGE 9 — Developability Review** (funnel_stage: 9)\n\nBefore committing the 250-credit MD simulation, review the ADMET (Stage 5) and docking (Stage 8) results for the top binder (or the user-selected binder) together.\n\nDecision guidance:\n- Serious ADMET liabilities or weak/implausible binding → strongly consider picking the second-ranked binder for MD instead. This focuses MD on the most developable candidate.\n- Otherwise → proceed to MD, noting any residual risks.\n\nAsk: \"Proceed to MD with the top binder, switch to the second-ranked binder, or skip MD entirely?\"\n\n**STOP HERE. End your message now. When the user responds, log with save_funnel_stage (human_reviewed: true).**\n\n---\n\n**STAGE 10 — Molecular Dynamics** (funnel_stage: 10)\n\nIf run_molecular_dynamics is available (Novo Compute), run it. Pass funnel_id. Also pass intent='pose_stability' (drives v3 scientific_adequacy grading and surfaces a sampling-needed estimate in the result) and adaptive_equilibration=true (replaces the fixed 100ps NPT with a loop that extends until water density plateau is detected — recommended for protein-ligand complexes). GPU should be warm from the earlier ping. Poll get_job_status every 60 seconds until completed. MD takes 7-15 minutes of actual simulation time.\n\nWhen presenting the result, read quality_report.scientific_adequacy.pose_stability — it grades HIGH/MEDIUM/LOW/INSUFFICIENT and, when below HIGH, includes estimated_additional_sampling_ns with explicit bounds and a heuristic-not-a-guarantee note. Present that estimate alongside the trajectory analysis so the user can decide whether to extend or commit.\n\nIf run_molecular_dynamics is not available, note that MD simulation requires Novo Compute and skip to Stage 11.\n\nIf MD fails for this structure:\n1. Do NOT say the backend is broken or needs to be resolved\n2. Try alternative: ligand-only simulation (omit pdb_id)\n3. Try generate_dynamics for AI-accelerated conformational exploration\n4. If all fail, report: \"MD could not complete for this specific structure. The docking results from Stage 8 remain valid.\"\n\nIMPORTANT: If you fall back to ligand-only MD, clearly state that it shows solution-phase conformational behavior, NOT binding stability. Do NOT present RMSD convergence as evidence of binding stability. The binding question remains open.\n\nIf successful, present: RMSD convergence, equilibration stability, verdict.\n\nInclude in save_funnel_stage system_metadata:\n- force_field, water_model, temperature, pressure, duration\n- (these are from the MD results if available)\n\nAsk: \"Accept and proceed, extend simulation, or try different compound?\"\n\n**STOP HERE. End your message now. When the user responds, log with save_funnel_stage (human_reviewed: true).**\n\n---\n\n**STAGE 11 — Patient Stratification & Final Report** (funnel_stage: 11)\n\nRun stratify_patients. Present final report with go/no-go signals.\n\nCall save_funnel_stage one final time with the complete summary.\n\n**Terminal hook — Save Terminal Summary (CROSS-RUN LEARNING):**\nAfter Stage 11, call save_funnel_memory with:\n- funnel_id\n- target_gene, target_pdb_id, therapeutic_area\n- outcome: SUCCEEDED if you reached patient stratification, otherwise FAILED_* matching reason, or ABANDONED if user stopped mid-funnel\n- final_lead_count, best_affinity_kcal\n- failure_pattern (if any): JSON describing what didn't work\n- decisions: JSON capturing key user decisions made during the run\n- summary: 2-4 natural-language sentences describing the run, outcome, and lesson\nThis seeds cross-run memory. Future funnels on similar targets will retrieve this via search_prior_runs. (Terminal hook, NOT a numbered stage — do not write a save_funnel_stage row for it.)\n\nPresent:\n**Discovery Funnel Summary**\n| Stage | Input | Output | Key Decision | Decided By |\n(Fill from the audit log you've been building)\n\n**Go/No-Go Signals** and **Recommended next steps.**\n\nTell the user: \"The full audit log for this funnel is saved as {funnel_id}. Retrieve it anytime with get_funnel_audit. Cross-run memory is saved; future funnels on {target_gene} or {therapeutic_area} will learn from this run.\""
                 }
             }
         ]
@@ -3903,9 +3836,9 @@ class GpuWarmingException(BaseException):
 class MCPToolExecutor:
     """
     Executes MCP tools with proper data flow:
-    1. Known molecules → enriched parquet (pre-computed ADMET + FAVES)
-    2. Novel molecules → FAVES context-free check
-    3. Context queries → FAVES context-dependent (runtime)
+    1. Known molecules → enriched molecule index (pre-computed ADMET)
+    2. Novel molecules → in-process RDKit basic properties
+    3. Context queries → optional configured compliance hook (runtime)
 
     Credit tracking (v2.5):
     - Each tool has a credit cost defined in TOOL_CREDITS
@@ -3933,7 +3866,8 @@ class MCPToolExecutor:
         self.spine = None  # type: ignore[assignment]
         # Per-service API keys (fall back to internal key if not set)
         self.service_api_keys = {
-            "faves-compliance": os.getenv("NOVOMCP_COMPLIANCE_API_KEY") or internal_api_key,
+            "molecule-index": os.getenv("NOVOMCP_MOLECULE_INDEX_API_KEY") or internal_api_key,
+            "compliance": os.getenv("NOVOMCP_COMPLIANCE_API_KEY") or internal_api_key,
             "molmim-optimizer": os.getenv("MOLMIM_OPTIMIZER_API_KEY") or internal_api_key,
             "openfold3": os.getenv("OPENFOLD3_API_KEY") or internal_api_key,
             "novomd": os.getenv("NOVOMD_API_KEY") or internal_api_key,
@@ -3948,7 +3882,6 @@ class MCPToolExecutor:
             "novomcp-nnp": os.getenv("NOVOMCP_NNP_API_KEY") or internal_api_key,
             "novomcp-neb": os.getenv("NOVOMCP_NEB_API_KEY") or internal_api_key,
             "alphaflow": os.getenv("ALPHAFLOW_API_KEY") or internal_api_key,
-            "novoexpert": os.getenv("NOVOEXPERT_API_KEY") or internal_api_key,
         }
 
         # Funnel-persistence + credit-ledger backend URL.
@@ -4905,7 +4838,7 @@ class MCPToolExecutor:
         """Lookup molecule in enriched database. Returns None if not found."""
         try:
             response = await self._call_service(
-                "faves-compliance", "/api/lookup", {"smiles": smiles}
+                "molecule-index", "/api/lookup", {"smiles": smiles}
             )
             if response.status_code == 200:
                 data = response.json()
@@ -4925,7 +4858,6 @@ class MCPToolExecutor:
         - Identity: id, cid, smiles
         - Properties: molecular_weight, xlogp, tpsa, qed, drug_likeness, etc.
         - Toxicity: overall_toxicity_score
-        - Compliance: is_dea_controlled, is_fda_banned, is_cwc_scheduled, faves_flag_count
         - Structural: has_pains, pains_count, has_reactive_groups, has_structural_alerts
         """
         def to_bool(val) -> bool:
@@ -5075,35 +5007,6 @@ class MCPToolExecutor:
         # overlay them live for known molecules (see _overlay_bridge_live).
         _strip_bridge_from_corpus(admet)
 
-        # FAVES compliance flags (convert strings to bools)
-        is_controlled = to_bool(raw.get("is_dea_controlled"))
-        is_banned = to_bool(raw.get("is_fda_banned"))
-        is_cwc = to_bool(raw.get("is_cwc_scheduled"))
-        is_scaffold_match = to_bool(raw.get("is_scaffold_match"))
-        is_whitelisted = to_bool(raw.get("is_whitelisted"))
-        faves_flag_count = to_int(raw.get("faves_flag_count")) or 0
-
-        if is_whitelisted:
-            status = "whitelisted"
-        elif is_controlled or is_banned or is_cwc:
-            status = "controlled"
-        elif is_scaffold_match or faves_flag_count > 0:
-            status = "flagged"
-        else:
-            status = "clean"
-
-        compliance = {
-            "status": status,
-            "is_dea_controlled": is_controlled,
-            "is_fda_banned": is_banned,
-            "is_cwc_scheduled": is_cwc,
-            "is_epa_pbt": to_bool(raw.get("is_epa_pbt")),
-            "is_eu_reach_banned": to_bool(raw.get("is_eu_reach_banned")),
-            "is_scaffold_match": is_scaffold_match,
-            "is_whitelisted": is_whitelisted,
-            "faves_flag_count": faves_flag_count,
-        }
-
         # Structural alerts
         structural_alerts = {
             "has_pains": to_bool(raw.get("has_pains")),
@@ -5121,91 +5024,8 @@ class MCPToolExecutor:
         return {
             "properties": properties,
             "admet": admet if admet else None,
-            "compliance": compliance,
             "structural_alerts": structural_alerts,
         }
-
-    async def _faves_context_free(self, smiles: str) -> Dict[str, Any]:
-        """Run FAVES context-free check for novel molecules.
-
-        Normalizes the remote /api/classify response (which has flat fields)
-        into the same {compliance: {...}} shape used by _local_faves_check,
-        so callers can consume either source interchangeably.
-        """
-        try:
-            response = await self._call_service(
-                "faves-compliance", "/api/classify", {"smiles": smiles}
-            )
-            if response.status_code == 200:
-                raw = response.json()
-                # Normalize flat /api/classify response to {compliance: {...}}
-                is_controlled = bool(raw.get("is_controlled"))
-                is_whitelisted = bool(raw.get("is_whitelisted"))
-                faves_flag_count = len(raw.get("faves_flags") or []) if isinstance(raw.get("faves_flags"), list) else 0
-                schedule = raw.get("faves_schedule") or ""
-                status = (
-                    "whitelisted" if is_whitelisted
-                    else "controlled" if is_controlled
-                    else "flagged" if faves_flag_count > 0
-                    else "clean"
-                )
-                return {
-                    "smiles": smiles,
-                    "source": "faves_context_free",
-                    "compliance": {
-                        "status": status,
-                        "is_controlled": is_controlled,
-                        "is_whitelisted": is_whitelisted,
-                        "dea_schedule": schedule,
-                        "scaffold_category": raw.get("faves_category") or "",
-                        "flags": raw.get("faves_flags") or [],
-                        "flag_count": faves_flag_count,
-                        "match_type": raw.get("faves_match_type"),
-                        "whitelist_name": (raw.get("faves_v3") or {}).get("whitelist_name", ""),
-                    },
-                    # Preserve the raw response for callers that need the full ClassifyResponse
-                    "raw": raw,
-                }
-        except Exception as e:
-            logger.warning(f"FAVES context-free check failed: {e}")
-
-        # Local fallback
-        return await self._local_faves_check(smiles)
-
-    async def _local_faves_check(self, smiles: str) -> Dict[str, Any]:
-        """Local FAVES context-free check using faves_checker_v3."""
-        try:
-            import os
-            from faves_checker_v3 import FAVESCheckerV3
-            # Load reference file for direct matching of known controlled substances
-            ref_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), "faves_reference_lists.json")
-            if os.path.exists(ref_file):
-                checker = FAVESCheckerV3(ref_file)
-            else:
-                checker = FAVESCheckerV3()
-            result = checker.check_molecule(smiles)
-
-            return {
-                "smiles": smiles,
-                "source": "faves_context_free",
-                "compliance": {
-                    "is_controlled": result.is_dea_controlled,
-                    "dea_schedule": result.dea_schedule,
-                    "is_whitelisted": result.is_whitelisted,
-                    "whitelist_name": result.whitelist_name,
-                    "is_scaffold_match": result.is_scaffold_match,
-                    "scaffold_category": result.scaffold_category,
-                    "flags": result.faves_flags or [],
-                    "flag_count": result.faves_flag_count,
-                    "status": "whitelisted" if result.is_whitelisted else (
-                        "controlled" if result.is_dea_controlled else (
-                            "flagged" if result.faves_flag_count > 0 or result.is_scaffold_match else "clean"
-                        )
-                    )
-                }
-            }
-        except Exception as e:
-            return {"smiles": smiles, "error": str(e), "source": "faves_context_free"}
 
     async def _compute_basic_properties(self, smiles: str) -> Dict[str, Any]:
         """Basic molecular properties in-process via RDKit.
@@ -5223,8 +5043,8 @@ class MCPToolExecutor:
     async def _execute_get_molecule_profile(self, args: Dict[str, Any]) -> ToolResult:
         """
         Get complete molecular profile:
-        - Known molecule: Return pre-computed ADMET + FAVES from enriched DB
-        - Novel molecule: Compute basic props + run FAVES context-free
+        - Known molecule: Return pre-computed ADMET from enriched DB
+        - Novel molecule: Compute basic props (+ optional ADMET)
         """
         smiles = args.get("smiles")
         if not smiles:
@@ -5241,22 +5061,6 @@ class MCPToolExecutor:
             enriched_data = await self._lookup_enriched(smiles)
 
             if enriched_data:
-                compliance = enriched_data.get("compliance", {}) or {}
-
-                # Backfill missing dea_schedule for controlled molecules:
-                # older enrichment runs may not have populated this field, so
-                # run the live FAVES v3 checker to get the schedule when missing.
-                if compliance.get("status") == "controlled" and not compliance.get("dea_schedule"):
-                    try:
-                        live_faves = await self._faves_context_free(smiles)
-                        live_compliance = live_faves.get("compliance", {})
-                        if live_compliance.get("dea_schedule"):
-                            compliance["dea_schedule"] = live_compliance["dea_schedule"]
-                        if not compliance.get("scaffold_category") and live_compliance.get("scaffold_category"):
-                            compliance["scaffold_category"] = live_compliance["scaffold_category"]
-                    except Exception:
-                        pass
-
                 admet_block = enriched_data.get("admet", {})
                 # Phase-1 bridge: overlay the retrained heads LIVE for known molecules
                 # (corpus is stale; _strip_bridge_from_corpus removed them). Direct calls
@@ -5277,27 +5081,25 @@ class MCPToolExecutor:
                         "in_database": True,
                         "properties": enriched_data.get("properties", {}),
                         "admet": admet_block,
-                        "compliance": compliance,
                         "structural_alerts": enriched_data.get("structural_alerts", {})
                     },
                     # Precomputed Cosmos point-read: no on-the-fly compute, so the
                     # ambient-presence Chrome extension hover-card surface stays free.
-                    # Novel-SMILES branch below still charges 1 credit (real RDKit+FAVES+ADMET).
+                    # Novel-SMILES branch below still charges 1 credit (real RDKit+ADMET).
                     usage={"queries": 1, "tool": "get_molecule_profile", "source": "enriched", "_dynamic_credits": 0}
                 )
 
-            # Novel molecule - compute basic props + FAVES (+ ADMET) in parallel
+            # Novel molecule - compute basic props (+ ADMET) in parallel
             import asyncio
             props_task = self._compute_basic_properties(smiles)
-            faves_task = self._faves_context_free(smiles)
 
             if include_admet:
                 admet_result = None
-                props, faves, admet_result = await asyncio.gather(
-                    props_task, faves_task, self._execute_predict_admet({"smiles": smiles})
+                props, admet_result = await asyncio.gather(
+                    props_task, self._execute_predict_admet({"smiles": smiles})
                 )
             else:
-                props, faves = await asyncio.gather(props_task, faves_task)
+                props = await props_task
                 admet_result = None
 
             # Extract ADMET data from predict_admet result (exclude raw/duplicate fields to keep response compact)
@@ -5317,7 +5119,6 @@ class MCPToolExecutor:
                     "source": "computed+admet" if include_admet else "computed",
                     "in_database": False,
                     "properties": props,
-                    "compliance": faves.get("compliance", {}),
                     "admet": admet_data,
                     "admet_available": admet_available,
                 },
@@ -5355,7 +5156,7 @@ class MCPToolExecutor:
                 **props,
                 "tool_suggestion": self._tool_suggestion(
                     "get_molecule_profile",
-                    "Get comprehensive profile including ADMET predictions (40+ properties) and compliance status for known molecules"
+                    "Get comprehensive profile including ADMET predictions (40+ properties) and structural alerts for known molecules"
                 )
             },
             usage={"queries": 1, "tool": "get_molecule_info"}
@@ -5758,19 +5559,6 @@ class MCPToolExecutor:
             "total_predictions": 31
         }
 
-        compliance_lists = {
-            "dea_schedules": {
-                "schedule_i": "High abuse potential, no medical use (heroin, LSD, MDMA)",
-                "schedule_ii": "High abuse, severe dependence (fentanyl, oxycodone)",
-                "schedule_iii": "Moderate abuse potential (ketamine, steroids)",
-                "schedule_iv": "Low abuse potential (benzodiazepines)",
-                "schedule_v": "Lowest abuse potential (low-dose codeine)"
-            },
-            "other_lists": ["CWC chemical weapons", "FDA banned", "EPA PBT", "EU REACH restricted"],
-            "scaffold_patterns": "24 controlled substance scaffold patterns detected",
-            "fda_approved_whitelist": "FDA-approved drugs automatically pass"
-        }
-
         # Fetch usage data if org_id available and usage requested
         usage_data = None
         if org_id and info_type in ["usage", "all"]:
@@ -5783,8 +5571,6 @@ class MCPToolExecutor:
             data = {"database_statistics": database_stats}
         elif info_type == "admet":
             data = {"admet_capabilities": admet_capabilities}
-        elif info_type == "compliance":
-            data = {"compliance_lists": compliance_lists}
         elif info_type == "usage":
             if usage_data:
                 data = {"credit_usage": usage_data}
@@ -5807,12 +5593,11 @@ class MCPToolExecutor:
                 "platform": "NovoMCP",
                 "version": ENGINE_VERSION,
                 "tool_count": len(MCP_TOOLS),
-                "description": "Open computational chemistry engine for drug discovery and materials science. Ships with 13 always-available tools (RDKit properties, structural filters, ChEMBL/ClinicalTrials/bioRxiv search, autonomous discovery mode). Additional tools unlock as you configure ADMET, docking, MD, QM, structure-prediction, and compliance services.",
+                "description": "Open computational chemistry engine for drug discovery and materials science. Ships with 13 always-available tools (RDKit properties, structural filters, ChEMBL/ClinicalTrials/bioRxiv search, autonomous discovery mode). Additional tools unlock as you configure ADMET, docking, MD, QM, and structure-prediction services.",
                 "update_status": update_status,
                 "subscription_tiers": tier_features,
                 "database_statistics": database_stats,
                 "admet_capabilities": admet_capabilities,
-                "compliance_lists": compliance_lists,
                 "note": "If tools listed here are not visible, reconnect your MCP connection to refresh the tool list."
             }
             if usage_data:
@@ -5964,7 +5749,7 @@ class MCPToolExecutor:
         try:
             # Backend expects "threshold" and "limit", not "min_similarity" and "top_k"
             response = await self._call_service(
-                "faves-compliance",
+                "molecule-index",
                 "/api/search/similar",
                 {
                     "smiles": smiles,
@@ -5973,10 +5758,7 @@ class MCPToolExecutor:
                     "exclude_controlled": args.get("exclude_controlled", False),
                     "exclude_flagged": args.get("exclude_flagged", False),
                 },
-                # TEMPORARY: 120s timeout while Cosmos DB brute-force scan is in use.
-                # Revert to 60s after DiskANN vector search is wired up (~April 2026).
-                # See: faves-compliance/PENDING-CONVERGENCE.md
-                timeout=30.0  # DiskANN backend — sub-second (was 120s brute-force)
+                timeout=30.0  # vector-index backend — sub-second
             )
 
             if response.status_code == 200:
@@ -6023,7 +5805,7 @@ class MCPToolExecutor:
             request_body = {**filters, "limit": limit, "offset": offset}
 
             response = await self._call_service(
-                "faves-compliance",
+                "molecule-index",
                 "/api/search/filter",
                 request_body,
                 timeout=60.0
@@ -6047,13 +5829,13 @@ class MCPToolExecutor:
         bounded concurrency (asyncio.gather within the chunk, serial between
         chunks). Previous implementation was a strict serial loop — on a
         batch of 50+ molecules where most were novel (and therefore needed
-        both a FAVES call AND an RDKit pass each), total latency exceeded
+        an RDKit pass each), total latency exceeded
         the 30s upstream timeout and Claude saw a TIMEOUT error.
 
         Concurrency knobs:
           CHUNK_SIZE — max molecules per wave. 25 is the sweet spot — keeps
             any single chunk's gather() under ~3s for typical payloads while
-            bounding the peak in-flight concurrency on Cosmos + faves-compliance.
+            bounding the peak in-flight concurrency on the molecule index.
           (No explicit semaphore — CHUNK_SIZE IS the concurrency cap, and
           serial chunks apply natural backpressure.)
         """
@@ -6169,7 +5951,7 @@ class MCPToolExecutor:
     # =========================================================================
 
     async def _execute_optimize_molecule(self, args: Dict[str, Any]) -> ToolResult:
-        """Optimize molecule with auto-FAVES check on outputs."""
+        """Optimize a molecule via MolMIM; enrich variants with RDKit properties."""
         smiles = args.get("smiles")
         if not smiles:
             return ToolResult(success=False, error="Missing required parameter: smiles")
@@ -6246,28 +6028,21 @@ class MCPToolExecutor:
                     usage={"queries": 0, "tool": "optimize_molecule", "_dynamic_credits": 0}
                 )
 
-            # Batch pairwise Tanimoto: seed vs all variants (single call)
+            # Batch pairwise Tanimoto: seed vs all variants, computed in-process
+            # via RDKit Morgan fingerprints. patent_risk is banded off Tanimoto.
             variant_smiles_list = [
                 v.get("smiles", "") for v in variants if v.get("smiles")
             ]
             patent_risk_map = {}
             if variant_smiles_list:
-                try:
-                    tc_resp = await self._call_service(
-                        "faves-compliance", "/api/similarity/pairwise",
-                        {"smiles_a": smiles, "smiles_b": variant_smiles_list},
-                        timeout=30.0
-                    )
-                    if tc_resp.status_code == 200:
-                        for comp in tc_resp.json().get("comparisons", []):
-                            patent_risk_map[comp["smiles"]] = {
-                                "tanimoto_to_seed": comp.get("tanimoto"),
-                                "patent_risk": comp.get("patent_risk"),
-                            }
-                except Exception:
-                    pass
+                tanimoto_map = _pairwise_tanimoto(smiles, variant_smiles_list)
+                for v_sm, tc in tanimoto_map.items():
+                    patent_risk_map[v_sm] = {
+                        "tanimoto_to_seed": tc,
+                        "patent_risk": ("high" if tc >= pr_high else "low" if tc >= pr_low else "novel"),
+                    }
 
-            # FAVES check + property extraction on all variants
+            # RDKit property extraction on all variants
             checked_variants = []
             flagged_count = 0
 
@@ -6276,21 +6051,11 @@ class MCPToolExecutor:
                 if not variant_smiles:
                     continue
 
-                faves = await self._faves_context_free(variant_smiles)
-                compliance = faves.get("compliance", {})
-                is_flagged = compliance.get("status") in ["controlled", "flagged"]
+                # Descriptors via in-process RDKit (novomcp-lite).
+                raw = await self._compute_basic_properties(variant_smiles)
 
-                if exclude_controlled and is_flagged:
-                    flagged_count += 1
-                    continue
-
-                # Extract properties from the FAVES /api/classify response
-                # (faves-compliance calculates these internally via chem-props)
-                raw = faves.get("raw", {})
-                tox = raw.get("toxicity_summary", {})
-
-                rot_bonds = tox.get("rotatable_bonds") or 0
-                tpsa_val = tox.get("tpsa") or 0
+                rot_bonds = raw.get("rotatable_bonds") or 0
+                tpsa_val = raw.get("tpsa") or 0
                 veber = (1 if rot_bonds > 10 else 0) + (1 if tpsa_val > 140 else 0)
 
                 # Compute modification description via MCS diff
@@ -6356,21 +6121,17 @@ class MCPToolExecutor:
 
                 enriched_variant = {
                     **variant,
-                    "mw": tox.get("molecular_weight") or variant.get("mw"),
-                    "logp": tox.get("logp") or variant.get("logp"),
+                    "mw": raw.get("molecular_weight") or variant.get("mw"),
+                    "logp": raw.get("logp") or variant.get("logp"),
                     "tpsa": tpsa_val or variant.get("tpsa"),
                     "qed": raw.get("qed") or variant.get("qed"),
-                    # SA via local RDKit sascorer — chem-props returns an unreliable
-                    # value (flat 1.0), so compute the real Ertl-Schuffenhauer score
-                    # here (resolves the 2026-06-05 sa_score-uniformity bug).
+                    # SA via local RDKit sascorer — the real Ertl-Schuffenhauer score.
                     "sa_score": _compute_sa_score(variant_smiles) or raw.get("synthetic_accessibility") or variant.get("sa_score"),
-                    "hbd": tox.get("hbd"),
-                    "hba": tox.get("hba"),
+                    "hbd": raw.get("h_bond_donors"),
+                    "hba": raw.get("h_bond_acceptors"),
                     "rotatable_bonds": rot_bonds,
-                    "lipinski_violations": tox.get("lipinski_violations"),
+                    "lipinski_violations": raw.get("lipinski_violations"),
                     "veber_violations": veber,
-                    "compliance_status": compliance.get("status", "unchecked"),
-                    "is_compliant": not is_flagged,
                     "modification": mod_desc,
                     "prior_art": prior_art_obj,
                 }
@@ -6408,33 +6169,29 @@ class MCPToolExecutor:
                 kept_variants.append(v)
             checked_variants = kept_variants
 
-            # Build seed properties using the same FAVES lookup as variants
-            seed_faves = await self._faves_context_free(smiles)
-            seed_raw = seed_faves.get("raw", {})
-            seed_tox = seed_raw.get("toxicity_summary", {})
-            seed_compliance = seed_faves.get("compliance", {})
-            seed_rot = seed_tox.get("rotatable_bonds") or 0
-            seed_tpsa = seed_tox.get("tpsa") or 0
+            # Build seed properties via in-process RDKit (same source as variants)
+            seed_raw = await self._compute_basic_properties(smiles)
+            seed_rot = seed_raw.get("rotatable_bonds") or 0
+            seed_tpsa = seed_raw.get("tpsa") or 0
             seed_obj = {
                 "smiles": smiles,
-                "mw": seed_tox.get("molecular_weight"),
-                "logp": seed_tox.get("logp"),
+                "mw": seed_raw.get("molecular_weight"),
+                "logp": seed_raw.get("logp"),
                 "tpsa": seed_tpsa,
                 "qed": seed_raw.get("qed"),
                 "sa_score": _compute_sa_score(smiles) or seed_raw.get("synthetic_accessibility"),
-                "hbd": seed_tox.get("hbd"),
-                "hba": seed_tox.get("hba"),
+                "hbd": seed_raw.get("h_bond_donors"),
+                "hba": seed_raw.get("h_bond_acceptors"),
                 "rotatable_bonds": seed_rot,
-                "lipinski_violations": seed_tox.get("lipinski_violations"),
+                "lipinski_violations": seed_raw.get("lipinski_violations"),
                 "veber_violations": (1 if seed_rot > 10 else 0) + (1 if seed_tpsa > 140 else 0),
-                "compliance_status": seed_compliance.get("status", "unchecked"),
             }
 
             result_payload = {
                 "input_smiles": smiles,
                 "seed": seed_obj,
                 "variants_generated": len(variants),
-                "variants_compliant": len(checked_variants),
+                "variants_returned": len(checked_variants),
                 "variants_filtered": flagged_count,
                 "variants": checked_variants,
                 # Configurable Tanimoto filtering
@@ -9205,291 +8962,6 @@ class MCPToolExecutor:
                    "compute_service": "addie-models"},
         )
 
-    # =========================================================================
-    # Clinical Outcomes Prediction (NovoExpert v3)
-    # =========================================================================
-
-    # The 63 features expected by novoexpert v3, grouped by source service.
-    _NOVOEXPERT_CHEM_PROPS_FEATURES = [
-        "molecular_weight", "logp", "tpsa", "hba", "hbd",
-        "rotatable_bonds", "aromatic_rings", "qed", "lipinski_violations",
-    ]
-
-    _NOVOEXPERT_ADMET_FEATURES = [
-        # CYP Inhibition
-        "cyp1a2_inhibitor_probability", "cyp2c9_inhibitor_probability",
-        "cyp2c19_inhibitor_probability", "cyp2d6_inhibitor_probability",
-        "cyp3a4_inhibitor_probability", "cyp_inhibition_risk_score",
-        # CYP Substrate
-        "cyp2c9_substrate_probability", "cyp2d6_substrate_probability",
-        "cyp_substrate_max_probability",
-        # Toxicity
-        "hepatotoxicity_probability", "cardiotoxicity_max_probability",
-        "ames_mutagenicity_probability", "carcinogenicity_probability",
-        "clinical_toxicity_probability", "developmental_toxicity_probability",
-        "reproductive_toxicity_probability", "respiratory_toxicity_probability",
-        "eye_corrosion_probability", "eye_irritation_probability",
-        "herg_blocker_probability",
-        # Tox21 Nuclear Receptors
-        "nr_ahr_agonist_probability", "nr_ar_lbd_agonist_probability",
-        "nr_ar_agonist_probability", "nr_aromatase_inhibitor_probability",
-        "nr_er_lbd_agonist_probability", "nr_er_agonist_probability",
-        "nr_ppar_gamma_agonist_probability",
-        # Tox21 Stress Response
-        "sr_are_activation_probability", "sr_atad5_activation_probability",
-        "sr_hse_activation_probability", "sr_mmp_activation_probability",
-        "sr_p53_activation_probability",
-        # PK / ADME
-        "half_life_hr", "clearance_microsome", "bioavailability_probability",
-        "ppbr_percent", "vdss_L_kg", "aqueous_solubility_log_mol_L",
-        "caco2_permeability", "hia_probability", "pgp_inhibitor_probability",
-        "bbb_penetration_probability", "binding_affinity_score",
-    ]
-
-    _NOVOEXPERT_FAVES_FEATURES = [
-        "has_structural_alerts", "has_pains", "boiled_egg_class",
-        "boiled_egg_in_hia", "boiled_egg_in_bbb", "wlogp",
-        "is_aggregator_risk", "synthetic_accessibility",
-    ]
-
-    _NOVOEXPERT_CATEGORICAL_FEATURES = [
-        "therapeutic_area", "target_type", "action_type",
-    ]
-
-    async def _execute_predict_clinical_outcomes(self, args: Dict[str, Any]) -> ToolResult:
-        """
-        Predict Phase I clinical trial clearance probability.
-
-        Orchestrates three services in parallel to assemble the 63-feature dict,
-        then calls novoexpert /predict for calibrated probability + SHAP + competence.
-        """
-        smiles = args.get("smiles")
-        if not smiles:
-            return ToolResult(success=False, error="Missing required parameter: smiles")
-
-        therapeutic_area = args.get("therapeutic_area", "UNKNOWN")
-        target_type = args.get("target_type", "UNKNOWN")
-        action_type = args.get("action_type", "UNKNOWN")
-        top_k_shap = min(max(args.get("top_k_shap", 10), 1), 63)
-
-        import asyncio
-        import uuid
-
-        try:
-            # Step 1: Gather features from three services in parallel
-            chem_task = self._novoexpert_get_chem_props(smiles)
-            faves_task = self._novoexpert_get_faves(smiles)
-            admet_task = self._novoexpert_get_admet(smiles)
-
-            chem_result, faves_result, admet_result = await asyncio.gather(
-                chem_task, faves_task, admet_task,
-                return_exceptions=True,
-            )
-
-            # Step 2: Assemble the 63-feature dict
-            features: Dict[str, Any] = {}
-            sources_ok = []
-            sources_failed = []
-
-            # Chem-props (9 features)
-            if isinstance(chem_result, dict) and "error" not in chem_result:
-                features.update(chem_result)
-                sources_ok.append("chem-props")
-            else:
-                err = str(chem_result) if isinstance(chem_result, Exception) else chem_result.get("error", "unknown")
-                logger.warning(f"predict_clinical_outcomes: chem-props failed: {err}")
-                sources_failed.append("chem-props")
-
-            # FAVES (8 features)
-            if isinstance(faves_result, dict) and "error" not in faves_result:
-                features.update(faves_result)
-                sources_ok.append("faves-compliance")
-            else:
-                err = str(faves_result) if isinstance(faves_result, Exception) else faves_result.get("error", "unknown")
-                logger.warning(f"predict_clinical_outcomes: faves-compliance failed: {err}")
-                sources_failed.append("faves-compliance")
-
-            # ADMET (43 features)
-            if isinstance(admet_result, dict) and "error" not in admet_result:
-                features.update(admet_result)
-                sources_ok.append("addie-models")
-            else:
-                err = str(admet_result) if isinstance(admet_result, Exception) else admet_result.get("error", "unknown")
-                logger.warning(f"predict_clinical_outcomes: addie-models failed: {err}")
-                sources_failed.append("addie-models")
-
-            # Categorical features (from args)
-            features["therapeutic_area"] = therapeutic_area
-            features["target_type"] = target_type
-            features["action_type"] = action_type
-
-            # Step 3: Call novoexpert /predict
-            novoexpert_payload = {
-                "smiles": smiles,
-                "features": features,
-                "therapeutic_area": therapeutic_area,
-                "target_type": target_type,
-                "action_type": action_type,
-                "top_k_shap": top_k_shap,
-            }
-
-            response = await self._call_service(
-                "novoexpert",
-                "/predict",
-                novoexpert_payload,
-                timeout=30.0,
-                api_key=self.service_api_keys.get("novoexpert"),
-            )
-
-            if response.status_code != 200:
-                error_detail = str(response.status_code)
-                try:
-                    error_data = response.json()
-                    error_detail = error_data.get("detail", error_detail)
-                except Exception:
-                    pass
-                return ToolResult(
-                    success=False,
-                    error=f"NovoExpert prediction failed: {error_detail}",
-                )
-
-            data = response.json()
-
-            # Build response
-            result_data = {
-                "smiles": smiles,
-                "phase1_clearance_probability": data.get("phase1_clearance_probability"),
-                "phase1_clearance_probability_raw": data.get("phase1_clearance_probability_raw"),
-                "calibration": data.get("calibration", "isotonic"),
-                "model_version": data.get("model_version"),
-                "model_name": data.get("model_name"),
-                "competence_check": data.get("competence_check"),
-                "top_shap_features": data.get("top_shap_features", []),
-                "feature_count": data.get("feature_count", 0),
-                "missing_features": data.get("missing_features", []),
-                "feature_sources": {
-                    "succeeded": sources_ok,
-                    "failed": sources_failed,
-                },
-            }
-
-            return ToolResult(
-                success=True,
-                data=result_data,
-                usage={
-                    "queries": 1 + len(sources_ok),
-                    "tool": "predict_clinical_outcomes",
-                    "compute_services": ["novoexpert"] + sources_ok,
-                },
-            )
-
-        except httpx.TimeoutException:
-            return ToolResult(
-                success=False,
-                error="Clinical outcomes prediction timed out",
-            )
-        except Exception as e:
-            logger.exception(f"Error in predict_clinical_outcomes: {e}")
-            return ToolResult(
-                success=False,
-                error=f"Clinical outcomes prediction failed: {str(e)}",
-            )
-
-    async def _novoexpert_get_chem_props(self, smiles: str) -> Dict[str, Any]:
-        """Fetch physicochemical properties from chem-props for novoexpert."""
-        try:
-            chem_props_url = self.service_urls.get("chem-props", "")
-            response = await self.client.post(
-                f"{chem_props_url}/chem-props/calculate_single",
-                params={"smiles": smiles},
-                headers={"X-API-Key": self.service_api_keys.get("chem-props", self.internal_api_key)},
-                timeout=30.0,
-            )
-            if response.status_code != 200:
-                # Fallback to faves-compliance /api/classify for basic props
-                props = await self._compute_basic_properties(smiles)
-                if "error" not in props:
-                    return {
-                        "molecular_weight": props.get("molecular_weight"),
-                        "logp": props.get("logp"),
-                        "tpsa": props.get("tpsa"),
-                        "hba": props.get("hba"),
-                        "hbd": props.get("hbd"),
-                        "rotatable_bonds": props.get("rotatable_bonds"),
-                        "aromatic_rings": props.get("aromatic_rings"),
-                        "qed": props.get("qed"),
-                        "lipinski_violations": props.get("lipinski_violations"),
-                    }
-                return {"error": f"chem-props returned {response.status_code}"}
-
-            data = response.json()
-            props = data.get("properties", {})
-            return {
-                "molecular_weight": props.get("molecular_weight"),
-                "logp": props.get("logp"),
-                "tpsa": props.get("tpsa"),
-                "hba": props.get("h_bond_acceptors"),
-                "hbd": props.get("h_bond_donors"),
-                "rotatable_bonds": props.get("rotatable_bonds"),
-                "aromatic_rings": props.get("num_aromatic_rings"),
-                "qed": props.get("qed"),
-                "lipinski_violations": props.get("lipinski_violations"),
-            }
-        except Exception as e:
-            return {"error": str(e)}
-
-    async def _novoexpert_get_faves(self, smiles: str) -> Dict[str, Any]:
-        """Fetch structural alerts + BOILED-Egg from faves-compliance for novoexpert."""
-        try:
-            response = await self._call_service(
-                "faves-compliance", "/api/classify", {"smiles": smiles}
-            )
-            if response.status_code != 200:
-                return {"error": f"faves-compliance returned {response.status_code}"}
-
-            data = response.json()
-            return {
-                "has_structural_alerts": data.get("has_structural_alerts", 0),
-                "has_pains": data.get("has_pains", 0),
-                "boiled_egg_class": data.get("boiled_egg_class", "grey"),
-                "boiled_egg_in_hia": data.get("boiled_egg_in_hia", 0),
-                "boiled_egg_in_bbb": data.get("boiled_egg_in_bbb", 0),
-                "wlogp": data.get("wlogp"),
-                "is_aggregator_risk": data.get("is_aggregator_risk", 0),
-                "synthetic_accessibility": data.get("synthetic_accessibility"),
-            }
-        except Exception as e:
-            return {"error": str(e)}
-
-    async def _novoexpert_get_admet(self, smiles: str) -> Dict[str, Any]:
-        """Fetch ADMET predictions from addie-models for novoexpert."""
-        try:
-            import uuid
-            mol_id = str(uuid.uuid4())[:8]
-            response = await self._call_service(
-                "addie-models",
-                "/addie/process",
-                {
-                    "molecules": [{"id": mol_id, "smiles": smiles}],
-                    "include_descriptors": True,
-                    "include_confidence": True,
-                },
-                timeout=60.0,
-                api_key=self.service_api_keys.get("addie-models"),
-            )
-            if response.status_code != 200:
-                return {"error": f"addie-models returned {response.status_code}"}
-
-            data = response.json()
-            results = data.get("results", [])
-            mol_result = next((r for r in results if r.get("id") == mol_id), {})
-            preds = mol_result.get("predictions", {})
-
-            # Extract only the features novoexpert needs (43 ADMET features)
-            return {k: preds.get(k) for k in self._NOVOEXPERT_ADMET_FEATURES}
-        except Exception as e:
-            return {"error": str(e)}
-
     async def _execute_search_literature(self, args: Dict[str, Any]) -> ToolResult:
         """
         Search curated drug discovery literature from Pinecone.
@@ -9791,18 +9263,18 @@ class MCPToolExecutor:
     # =========================================================================
 
     async def _execute_check_compliance(self, args: Dict[str, Any]) -> ToolResult:
-        """Context-dependent compliance assessment.
+        """Generic context-dependent compliance hook.
+
+        Proxies the molecule + context to whatever compliance service is wired
+        via NOVOMCP_COMPLIANCE_URL and returns that service's response verbatim.
+        The engine bundles no ruleset of its own. If no compliance service is
+        configured, `_call_service` returns the standard 503 so the tool
+        degrades gracefully with a "service not configured" branch.
 
         The MCP input schema accepts `context` as a structured object with
-        `intended_use`, `jurisdiction`, and optional `therapeutic_area`. The
-        upstream faves-compliance `/api/context-compliance` endpoint, however,
-        expects a flat request where `context` is a plain research-context
-        string ("oncology", "neurology", etc.) and `intended_use`,
-        `target_population`, and `regulatory_region` are flat sibling fields.
-
-        We flatten the client's dict into the endpoint's expected shape here.
-        Previously the dict was passed through unchanged, causing Pydantic to
-        reject the request with HTTP 422 on every call.
+        `intended_use`, `jurisdiction`, and optional `therapeutic_area`; the
+        whole `smiles` + `context` payload is forwarded to the configured
+        service, which owns the request/response contract.
         """
         smiles = args.get("smiles")
         context = args.get("context", {}) or {}
@@ -9821,95 +9293,26 @@ class MCPToolExecutor:
             )
 
         try:
-            # First get base profile (pre-computed or FAVES context-free).
-            # The result is returned to the caller as `base_compliance`, but
-            # we do NOT forward it to the faves-compliance endpoint — that
-            # endpoint recomputes its own base classification internally.
-            profile_result = await self._execute_get_molecule_profile({"smiles": smiles})
-            base_compliance = profile_result.data.get("compliance", {}) if profile_result.success else {}
-
-            # Flatten the structured context into the endpoint's flat schema.
-            # The research-context string is derived from therapeutic_area if
-            # provided; otherwise fall back to the intended_use (e.g.,
-            # "pharmaceutical") which reads reasonably in the endpoint's
-            # downstream prose.
-            research_context = (
-                context.get("therapeutic_area")
-                or context.get("research_context")
-                or context.get("intended_use")
-                or "pharmaceutical development"
-            )
-
             response = await self._call_service(
-                "faves-compliance",
-                "/api/context-compliance",
+                "compliance",
+                "/api/check",
                 {
                     "smiles": smiles,
-                    "context": research_context,
-                    "intended_use": context.get("intended_use"),
-                    "target_population": context.get("target_population"),
-                    "regulatory_region": context.get("jurisdiction", "US"),
+                    "context": context,
                 },
-                # 90s to absorb faves-compliance cold-start. Warm calls return
-                # in <1s; without this budget, cold calls raise httpx.ReadTimeout
-                # which surfaces as an empty "Compliance check failed: " error.
+                # Generous budget to absorb a configured service's cold-start.
                 timeout=90.0
             )
 
             if response.status_code == 200:
-                context_result = response.json()
-
-                # Normalize FAVES internal status vocabulary to user-facing labels
-                # FAVES returns: PASS, BLOCKED, CONDITIONAL, REVIEW_REQUIRED, DEGRADED
-                # MCP tool returns: PROCEED, STOP, CAUTION (matches FUNNEL_SUPPLEMENT)
-                raw_status = (context_result.get("overall_status") or "").upper()
-                status_map = {
-                    "PASS": "PROCEED",
-                    "BLOCKED": "STOP",
-                    "CONDITIONAL": "CAUTION",
-                    "REVIEW_REQUIRED": "CAUTION",
-                    "DEGRADED": "CAUTION",
-                }
-                normalized_status = status_map.get(raw_status, raw_status or "unknown")
-
-                # FDA-whitelisted compounds override to PROCEED regardless of
-                # structural alerts. The alerts are scientifically correct but
-                # the headline verdict should reflect that a currently marketed
-                # FDA-approved drug has already been evaluated for safety.
-                # Alerts still surface in context_compliance details.
-                #
-                # The 122M Aurora cache does not populate `is_whitelisted` for
-                # the V3 set (see TODO below), so the cached base_compliance
-                # alone misses aspirin/ibuprofen/cortisol/etc. Fall back to the
-                # freshly-computed V3 verdict returned by faves-compliance on
-                # this very call — it's authoritative and per-request.
-                # TODO: populate compliance.is_whitelisted in
-                # the molecules table for the ~40 V3-named compounds so all
-                # consumers of get_molecule_profile see the flag, not just
-                # check_compliance. Tracked in MEMORY.md.
-                v3_classification = (context_result.get("base_classification") or {}).get("faves_v3") or {}
-                is_whitelisted = (
-                    base_compliance.get("is_whitelisted")
-                    or base_compliance.get("status") == "whitelisted"
-                    or v3_classification.get("is_whitelisted") is True
-                )
-                if is_whitelisted and normalized_status in ("CAUTION", "unknown"):
-                    normalized_status = "PROCEED"
-
                 return ToolResult(
                     success=True,
                     data={
                         "smiles": smiles,
                         "context": context,
-                        "base_compliance": base_compliance,
-                        "context_compliance": context_result,
-                        "overall_status": normalized_status,
-                        "raw_overall_status": raw_status if raw_status else None,
-                        "recommendations": context_result.get("recommendations", []),
-                        "regulatory_pathway": context_result.get("regulatory_pathway"),
-                        "risk_assessment": context_result.get("risk_assessment")
+                        "compliance": response.json(),
                     },
-                    usage={"queries": 2, "tool": "check_compliance"}
+                    usage={"queries": 1, "tool": "check_compliance"}
                 )
             # Non-200: surface upstream diagnostic so schema drift is
             # immediately debuggable instead of hiding behind a bare HTTP code.
@@ -9935,7 +9338,7 @@ class MCPToolExecutor:
                 success=False,
                 error=(
                     "Compliance service did not respond in time "
-                    "(faves-compliance may be cold-starting; retry in 30s)."
+                    "(the configured compliance service may be cold-starting; retry in 30s)."
                 ),
             )
         except Exception as e:
@@ -9949,21 +9352,20 @@ class MCPToolExecutor:
             )
 
     async def _execute_screen_library(self, args: Dict[str, Any]) -> ToolResult:
-        """Screen compound library with optional context-dependent assessment."""
+        """Screen a compound library for properties, structural alerts, and ADMET."""
         smiles_list = args.get("smiles_list", [])
         if not smiles_list:
             return ToolResult(success=False, error="Missing required parameter: smiles_list")
         if len(smiles_list) > 1000:
             return ToolResult(success=False, error="Library size exceeds maximum (1000)")
 
-        context = args.get("context")
         output_format = args.get("output_format", "summary")
 
         results = []
         stats = {
             "total": len(smiles_list),
             "known": 0, "novel": 0,
-            "clean": 0, "flagged": 0, "controlled": 0
+            "alert_free": 0, "with_alerts": 0,
         }
 
         CHUNK = 50
@@ -10009,35 +9411,26 @@ class MCPToolExecutor:
                     r["source"] = "computed+admet"
                     r.pop("note", None)
 
-        # Phase 3: stats + optional context-dependent compliance (concurrent).
+        # Phase 3: stats (known/novel + structural-alert presence).
+        def _has_alerts(entry: Dict[str, Any]) -> bool:
+            sa = entry.get("structural_alerts", {}) or {}
+            return bool(sa.get("has_structural_alerts") or sa.get("has_pains"))
+
         for entry in results:
             if entry.get("error"):
                 continue
-            status = entry.get("compliance", {}).get("status", "unknown")
             if entry.get("in_database"):
                 stats["known"] += 1
             else:
                 stats["novel"] += 1
-            if status == "clean":
-                stats["clean"] += 1
-            elif status == "controlled":
-                stats["controlled"] += 1
-            elif status == "flagged":
-                stats["flagged"] += 1
-
-        if context and context.get("intended_use") and context.get("jurisdiction"):
-            async def ctx_one(entry: Dict[str, Any]) -> None:
-                if entry.get("error") or not entry.get("smiles"):
-                    return
-                cr = await self._execute_check_compliance({"smiles": entry["smiles"], "context": context})
-                if cr.success:
-                    entry["context_compliance"] = cr.data.get("context_compliance")
-            for i in range(0, len(results), CHUNK):
-                await asyncio.gather(*(ctx_one(e) for e in results[i : i + CHUNK]))
+            if _has_alerts(entry):
+                stats["with_alerts"] += 1
+            else:
+                stats["alert_free"] += 1
 
         # Format output
         if output_format == "flagged_only":
-            results = [r for r in results if r.get("compliance", {}).get("status") in ["flagged", "controlled"]]
+            results = [r for r in results if not r.get("error") and _has_alerts(r)]
         elif output_format == "summary":
             # Include full results but add summary at top
             pass
@@ -10046,7 +9439,6 @@ class MCPToolExecutor:
             success=True,
             data={
                 "summary": stats,
-                "context_applied": context is not None,
                 "results": results
             },
             usage={"queries": len(smiles_list), "tool": "screen_library"}
@@ -12769,29 +12161,21 @@ class MCPToolExecutor:
                     usage={"queries": 0, "tool": "lead_optimization", "_dynamic_credits": 0}
                 )
 
-            # Collect variant SMILES for batch Tanimoto via faves-compliance
+            # Collect variant SMILES for in-process RDKit pairwise Tanimoto
             variant_smiles_list = [
                 v.get("smiles", "") for v in variants[:max_variants] if v.get("smiles")
             ]
 
-            # Batch pairwise Tanimoto: seed vs all variants (single call)
-            patent_risk_map = {}  # smiles -> {tanimoto, patent_risk, note}
+            # Batch pairwise Tanimoto: seed vs all variants, computed in-process
+            # via RDKit Morgan fingerprints. patent_risk is banded off Tanimoto.
+            patent_risk_map = {}  # smiles -> {tanimoto, patent_risk}
             if variant_smiles_list:
-                try:
-                    tc_resp = await self._call_service(
-                        "faves-compliance", "/api/similarity/pairwise",
-                        {"smiles_a": smiles, "smiles_b": variant_smiles_list},
-                        timeout=30.0
-                    )
-                    if tc_resp.status_code == 200:
-                        for comp in tc_resp.json().get("comparisons", []):
-                            patent_risk_map[comp["smiles"]] = {
-                                "tanimoto_to_seed": comp.get("tanimoto"),
-                                "patent_risk": comp.get("patent_risk"),
-                                "patent_note": comp.get("note"),
-                            }
-                except Exception:
-                    pass
+                tanimoto_map = _pairwise_tanimoto(smiles, variant_smiles_list)
+                for v_sm, tc in tanimoto_map.items():
+                    patent_risk_map[v_sm] = {
+                        "tanimoto_to_seed": tc,
+                        "patent_risk": ("high" if tc >= pr_high else "low" if tc >= pr_low else "novel"),
+                    }
 
             # Enrich variants and filter invalid SMILES
             enriched_variants = []
@@ -12829,36 +12213,23 @@ class MCPToolExecutor:
                 if pr:
                     enriched.update(pr)
 
-                # Single FAVES call handles both compliance AND properties
-                # (faves-compliance calculates properties internally via chem-props)
+                # Descriptor extraction via in-process RDKit (novomcp-lite).
                 try:
-                    faves = await self._faves_context_free(v_smiles)
-                    compliance = faves.get("compliance", {})
-                    is_flagged = compliance.get("status") in ["controlled", "flagged"]
-
-                    if is_flagged:
-                        enriched["compliance_status"] = "flagged"
-                        continue  # Skip controlled/flagged variants
-                    enriched["compliance_status"] = "clean"
-
-                    # Extract properties from the same /api/classify response
-                    raw = faves.get("raw", {})
-                    tox = raw.get("toxicity_summary", {})
-                    # SA via local RDKit sascorer (chem-props returns flat 1.0).
+                    raw = await self._compute_basic_properties(v_smiles)
+                    # SA via local RDKit sascorer (real Ertl-Schuffenhauer score).
                     enriched["sa_score"] = _compute_sa_score(v_smiles) or raw.get("synthetic_accessibility") or enriched.get("sa_score")
-                    enriched["hbd"] = tox.get("hbd")
-                    enriched["hba"] = tox.get("hba")
-                    rot_bonds = tox.get("rotatable_bonds") or 0
-                    tpsa_val = tox.get("tpsa") or 0
+                    enriched["hbd"] = raw.get("h_bond_donors")
+                    enriched["hba"] = raw.get("h_bond_acceptors")
+                    rot_bonds = raw.get("rotatable_bonds") or 0
+                    tpsa_val = raw.get("tpsa") or 0
                     enriched["rotatable_bonds"] = rot_bonds
-                    enriched["lipinski_violations"] = tox.get("lipinski_violations")
-                    # Compute veber_violations inline (faves doesn't return it)
+                    enriched["lipinski_violations"] = raw.get("lipinski_violations")
                     enriched["veber_violations"] = (1 if rot_bonds > 10 else 0) + (1 if tpsa_val > 140 else 0)
-                    # Backfill MW/LogP/TPSA/QED from FAVES if the service didn't return them
+                    # Backfill MW/LogP/TPSA/QED if the generator didn't return them
                     if not enriched.get("mw"):
-                        enriched["mw"] = tox.get("molecular_weight")
+                        enriched["mw"] = raw.get("molecular_weight")
                     if not enriched.get("logp"):
-                        enriched["logp"] = tox.get("logp")
+                        enriched["logp"] = raw.get("logp")
                     if not enriched.get("tpsa"):
                         enriched["tpsa"] = tpsa_val
                     if not enriched.get("qed"):
@@ -12892,7 +12263,7 @@ class MCPToolExecutor:
                             "inchikey": None,
                         }
                 except Exception:
-                    enriched["compliance_status"] = "unchecked"
+                    pass
 
                 enriched_variants.append(enriched)
 

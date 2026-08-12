@@ -32,7 +32,7 @@ npx tsc --noEmit
 mkdir -p dist/apps
 
 # Build each app
-APPS=("molecule-viewer" "admet-dashboard" "research-explorer" "structure-viewer" "credit-usage" "faves-dashboard" "docking-viewer" "lead-comparison")
+APPS=("molecule-viewer" "admet-dashboard" "research-explorer" "structure-viewer" "credit-usage" "docking-viewer" "lead-comparison")
 
 for APP in "${APPS[@]}"; do
     echo ""

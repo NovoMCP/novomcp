@@ -25,13 +25,6 @@ def _resolve_service_url(service_name: str, env_var: str, default_url: str) -> s
             or os.getenv("MOLECULAR_INTEL_URL")
             or os.getenv("MOL_INTEL_URL")
         )
-    # Compliance / molecule-index URL env vars. FAVES is one valid backend
-    # among several (Kaggle-hosted, self-hosted, user's own service).
-    if not env_override and service_name == "faves-compliance":
-        env_override = (
-            os.getenv("NOVOMCP_COMPLIANCE_URL")
-            or os.getenv("NOVOMCP_MOLECULE_INDEX_URL")
-        )
     if env_override:
         return env_override
 
@@ -104,9 +97,18 @@ class ServiceConfig:
                     "api_key": os.getenv("DRUGSYNTHMC_API_KEY"),
                     "type": "https",
                 },
-                "faves-compliance": {
+                "molecule-index": {
                     "url": _resolve_service_url(
-                        "faves-compliance",
+                        "molecule-index",
+                        "NOVOMCP_MOLECULE_INDEX_URL",
+                        "",
+                    ),
+                    "api_key": os.getenv("NOVOMCP_MOLECULE_INDEX_API_KEY") or "not-required",
+                    "type": "https",
+                },
+                "compliance": {
+                    "url": _resolve_service_url(
+                        "compliance",
                         "NOVOMCP_COMPLIANCE_URL",
                         "",
                     ),
@@ -331,7 +333,7 @@ class ServiceConfig:
         """Get configuration for all services"""
         # All services now on internal ALBs
         services = [
-            "chem-props", "drugsynthmc", "faves-compliance",
+            "chem-props", "drugsynthmc", "molecule-index", "compliance",
             "openmd", "attachment-processor", "auth", "db-manager",
             "molecular-worker", "dbschema-manager",
             "knowledge-graph", "molecular-intelligence", "negative-data",

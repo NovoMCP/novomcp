@@ -1,6 +1,6 @@
 # Tool availability
 
-NovoMCP ships a 68-tool catalog. Which ones are actually usable depends on what you've wired up. The engine only exposes tools whose dependencies are met — no tool clutter, no "unavailable" errors on tools you can't run.
+NovoMCP ships a 67-tool catalog. Which ones are actually usable depends on what you've wired up. The engine only exposes tools whose dependencies are met — no tool clutter, no "unavailable" errors on tools you can't run.
 
 ## The three states
 
@@ -26,12 +26,12 @@ No API keys, no databases, no compute services. Every one works on a laptop with
 
 ### What's NOT in v1 (but ships in the codebase, hidden)
 
-- `search_similar`, `filter_molecules` — need a molecule index. Hidden until `NOVOMCP_MOLECULE_INDEX_URL` is set. **Roadmap: v1.1.5 similarity data connector** ships a reference index server that reads a local parquet slice of the same corpus that unblocks omics — no paid service required.
-- Compliance path (`check_compliance` + tree tools) — needs a compliance service. Hidden until `NOVOMCP_COMPLIANCE_URL` is set.
+- `search_similar`, `filter_molecules`, and the tree-guided retrieval tools (`explore_chemical_space`, `drill_into_cluster`, `vector_search`, `compare_candidates`) — need a molecule index. Hidden until `NOVOMCP_MOLECULE_INDEX_URL` is set. **Roadmap: v1.1.5 similarity data connector** ships a reference index server that reads a local parquet slice of the same corpus that unblocks omics — no paid service required.
+- `check_compliance` — a generic, unbranded compliance hook. Hidden until `NOVOMCP_COMPLIANCE_URL` is set; the engine bundles no ruleset of its own.
 
 ### A note on env-var naming
 
-The engine treats molecule indexing and compliance as capabilities, not vendors. FAVES is one valid backend among several (open Kaggle-hosted index, self-hosted parquet, or your own service all work) — but the engine only ever sees the generic `NOVOMCP_*` env var. Point it at whichever backend you have.
+The engine treats molecule indexing and compliance as capabilities, not vendors. Any self-hosted parquet index or your own service works — the engine only ever sees the generic `NOVOMCP_*` env var. Point it at whichever backend you have.
 
 ## Coming with future releases
 
@@ -67,7 +67,6 @@ Each service is a Docker image (`ghcr.io/novomcp/<service>:latest`). Point the e
 | `NOVOMCP_PROPERTIES_URL` | `predict_pka`, `predict_solubility`, `predict_bde` | v1.6.x |
 | `NOVOMCP_NEB_URL` | `find_transition_state` | v1.6.x |
 | `ADDIE_MODELS_URL` | `predict_admet` (31 ADMET predictions) | v1.3.x (bundled with docking walkthrough) |
-| `NOVOEXPERT_URL` | `predict_clinical_outcomes` | v1.7.x — NovoExpert-3 weights (MIT) |
 | `LEAD_OPTIMIZATION_URL` | `lead_optimization` | v1.6.x |
 | `MOLMIM_OPTIMIZER_URL` | `optimize_molecule` | v2.x — replacing MolMIM with an OSS generator |
 
@@ -79,13 +78,13 @@ Unlocks: `save_funnel_stage`, `save_funnel_context`, `save_funnel_memory`, `sear
 
 Roadmap: reference implementation of the backend + docs on plugging in your own via the pluggable spine (`NOVO_AUDIT=custom`).
 
-### Compliance service — v2.0.0
+### Compliance hook — v2.0.0
 
 Requires: `NOVOMCP_COMPLIANCE_URL` pointing at any compliance service.
 
-Unlocks: `check_compliance`, enriched paths of `get_molecule_profile` / `screen_library` / `filter_molecules`, `explore_chemical_space`, `drill_into_cluster`, `vector_search`, `compare_candidates`.
+Unlocks: `check_compliance` — a generic, unbranded hook that forwards the molecule + context to your configured service.
 
-Roadmap: FAVES-as-API subscription at `app.novomcp.com/faves` (one valid backend; users can also wire their own).
+Roadmap: reference implementations + docs on wiring your own compliance backend.
 
 ### Enterprise data connectors — post-v2.0
 
@@ -99,7 +98,7 @@ Unlocks: `search_materials_project`.
 
 ## Debug mode
 
-To see the full 68-tool catalog regardless of what's wired:
+To see the full 67-tool catalog regardless of what's wired:
 
 ```bash
 export NOVOMCP_SHOW_HIDDEN_TOOLS=1
@@ -110,7 +109,7 @@ Tools that would normally be hidden show up in `tools/list`. Calls to unwired to
 
 ## Why hidden and not visible-with-errors
 
-The alternative would be to always show the full 68 tools and return "service unavailable" when unwired ones are called. That's what NovoMCP used to do. It felt like a broken product.
+The alternative would be to always show the full 67 tools and return "service unavailable" when unwired ones are called. That's what NovoMCP used to do. It felt like a broken product.
 
 Hidden-until-wired means:
 - **Users see a working demo, not a lot of gray options.** First impressions matter.

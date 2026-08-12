@@ -49,7 +49,7 @@ NovoMCP is a drug discovery + materials science engine. Every conversation must 
 FUNNEL_ID PROTOCOL — apply before any tool call:
 1. At conversation start, mint funnel_id = `funnel_{topic_short}_{YYYYMMDD}_{HHMMSS}` using the current UTC time. topic_short is a 2-4 char abbreviation of the focus (e.g. "aml" for acute myeloid leukemia, "gbm" for glioblastoma, "alz" for Alzheimer's, "mat" for materials work).
 2. NEVER reuse a funnel_id across conversations or topics. New conversation = new id. Topic pivot mid-conversation = new id.
-3. Pass funnel_id as an argument on every funnel-eligible tool call (target_discovery, validate_target, search_chembl, predict_admet, dock_molecules, run_molecular_dynamics, lead_optimization, predict_clinical_outcomes, stratify_patients, generate_dynamics, …). The server keys its audit log on it.
+3. Pass funnel_id as an argument on every funnel-eligible tool call (target_discovery, validate_target, search_chembl, predict_admet, dock_molecules, run_molecular_dynamics, lead_optimization, stratify_patients, generate_dynamics, …). The server keys its audit log on it.
 4. You do NOT need to call save_funnel_stage for ordinary tool calls — every call is auto-logged server-side under the funnel_id you carry. Only call save_funnel_stage to record an explicit human-reviewed checkpoint.
 5. For autonomous full-funnel runs, when the user says "Novo AG" or "agm" (some MCP clients like Claude Desktop treat `/agm` as an unknown slash command — use `agm` without the slash), invoke run_novo_ag. It returns the canonical 11-stage protocol that supersedes these notes.
 
@@ -1120,10 +1120,9 @@ def _get_app_description(app_name: str) -> str:
         "research-explorer": "Interactive research results explorer with timeline and filtering.",
         "structure-viewer": "Protein structure visualization with confidence coloring.",
         "credit-usage": "Credit usage dashboard showing account tier, balance, and research value realized.",
-        "faves-dashboard": "FAVES compliance dashboard with regulatory analysis and risk assessment.",
         "jobs": "Pipeline jobs tracker showing MD simulations, docking, and structure predictions with status and results.",
         "md-results": "MD simulation results with RMSD convergence, equilibration analysis (temperature, pressure, density, energy), and stability metrics.",
-        "pipeline-audit": "Per-molecule audit trail for pipeline executions showing disposition, tool results, compliance flags, and exclusion reasons.",
+        "pipeline-audit": "Per-molecule audit trail for pipeline executions showing disposition, tool results, structural-alert flags, and exclusion reasons.",
         "docking-viewer": "Docking results with protein method card (resolution, method, organism), binding affinity rankings, interaction contacts, and strain validation.",
         "lead-comparison": "Side-by-side property comparison table for lead optimization variants with color-coded drug-likeness ranges and delta-vs-seed analysis.",
     }

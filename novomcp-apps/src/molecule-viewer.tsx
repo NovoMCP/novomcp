@@ -48,19 +48,6 @@ interface MoleculeToolInput {
     hba?: number;
     rotatable_bonds?: number;
   };
-  compliance?: {
-    status?: string;
-    is_dea_controlled?: boolean;
-    is_fda_banned?: boolean;
-    is_cwc_scheduled?: boolean;
-    is_epa_pbt?: boolean;
-    is_eu_reach_banned?: boolean;
-    faves_flag_count?: number;
-    // Legacy
-    lipinski?: boolean;
-    veber?: boolean;
-    leadlike?: boolean;
-  };
   structural_alerts?: {
     has_pains?: boolean;
     pains_count?: number;
@@ -234,12 +221,11 @@ function AdmetRadar({ admet }: { admet: MoleculeToolInput["admet"] }) {
 // Properties Panel
 // =============================================================================
 
-function PropertiesPanel({ properties, compliance, structuralAlerts }: {
+function PropertiesPanel({ properties, structuralAlerts }: {
   properties?: MoleculeToolInput["properties"];
-  compliance?: MoleculeToolInput["compliance"];
   structuralAlerts?: MoleculeToolInput["structural_alerts"];
 }) {
-  if (!properties && !compliance) return null;
+  if (!properties && !structuralAlerts) return null;
 
   const propItems = [
     { label: "MW", value: properties?.molecular_weight?.toFixed(2), unit: "g/mol" },
@@ -267,43 +253,6 @@ function PropertiesPanel({ properties, compliance, structuralAlerts }: {
               </div>
             </div>
           ))}
-        </div>
-      )}
-
-      {/* Compliance Status */}
-      {compliance && (
-        <div style={{ marginBottom: 12 }}>
-          <div style={{ fontSize: 10, color: "var(--text-muted)", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-            Compliance
-          </div>
-          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-            {compliance.status && (
-              <span className={`badge ${compliance.status === "clean" ? "success" : "warning"}`}>
-                {compliance.status === "clean" ? "✓ Clean" : compliance.status}
-              </span>
-            )}
-            {compliance.is_dea_controlled && (
-              <span className="badge danger">DEA Controlled</span>
-            )}
-            {compliance.is_fda_banned && (
-              <span className="badge danger">FDA Banned</span>
-            )}
-            {compliance.is_cwc_scheduled && (
-              <span className="badge danger">CWC Scheduled</span>
-            )}
-            {compliance.is_epa_pbt && (
-              <span className="badge warning">EPA PBT</span>
-            )}
-            {compliance.is_eu_reach_banned && (
-              <span className="badge danger">EU REACH Banned</span>
-            )}
-            {/* Legacy fields */}
-            {compliance.lipinski !== undefined && (
-              <span className={`badge ${compliance.lipinski ? "success" : "danger"}`}>
-                Lipinski {compliance.lipinski ? "✓" : "✗"}
-              </span>
-            )}
-          </div>
         </div>
       )}
 
@@ -605,7 +554,7 @@ export default function MoleculeViewer({
 
   // Get data from toolResult.structuredContent (actual results) or fall back to toolInputs
   const resultData = (toolResult as any)?.structuredContent || toolInputs || {};
-  const { smiles, pdb_data, admet, properties, compliance, structural_alerts, source, in_database } = resultData as MoleculeToolInput;
+  const { smiles, pdb_data, admet, properties, structural_alerts, source, in_database } = resultData as MoleculeToolInput;
   const hasAdmet = admet && (admet.overall_toxicity_score !== undefined || Object.values(admet).some((v) => v !== undefined));
 
   // Use loaded 3D data if available, otherwise use pdb_data from original result
@@ -831,7 +780,7 @@ export default function MoleculeViewer({
                           </button>
                           <div style={{ color: "var(--text-muted)", fontSize: 10 }}>
                             Requires Novo Compute connected. The{" "}
-                            {hasAdmet ? "2D properties, ADMET, and compliance" : "2D properties"}{" "}
+                            {hasAdmet ? "2D properties and ADMET" : "2D properties"}{" "}
                             rendered here are complete on their own.
                           </div>
                         </>
@@ -841,7 +790,7 @@ export default function MoleculeViewer({
                           <em>"get the 3D properties for &lt;SMILES&gt;"</em>) — that runs{" "}
                           <code style={{ fontFamily: "var(--font-mono)" }}>get_3d_properties</code>{" "}
                           on Compute and renders the structure. The{" "}
-                          {hasAdmet ? "2D properties, ADMET, and compliance" : "2D properties"}{" "}
+                          {hasAdmet ? "2D properties and ADMET" : "2D properties"}{" "}
                           rendered here are complete on their own.
                         </div>
                       )}
@@ -911,14 +860,14 @@ export default function MoleculeViewer({
                 </div>
               )}
             </div>
-            <PropertiesPanel properties={properties} compliance={compliance} structuralAlerts={structural_alerts} />
+            <PropertiesPanel properties={properties} structuralAlerts={structural_alerts} />
           </div>
         )}
       </div>
 
       {/* Properties panel (if no ADMET sidebar) */}
-      {!hasAdmet && (properties || compliance || structural_alerts) && (
-        <PropertiesPanel properties={properties} compliance={compliance} structuralAlerts={structural_alerts} />
+      {!hasAdmet && (properties || structural_alerts) && (
+        <PropertiesPanel properties={properties} structuralAlerts={structural_alerts} />
       )}
 
       {/* Source indicator */}

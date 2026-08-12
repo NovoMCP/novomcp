@@ -118,8 +118,8 @@ class AzureOpenAIClient:
             "addie-models (ADMET), autodock-gpu (docking), gromacs-md (molecular "
             "dynamics), openfold3 (protein structure), novomcp-qm (quantum "
             "mechanics), novomcp-nnp (neural network potentials), "
-            "(free-energy perturbation), faves-compliance (regulatory screening), "
-            "novoexpert (clinical outcomes). Route tool calls only to services "
+            "molecule-index (enriched molecule lookup / similarity / filter), "
+            "compliance (optional generic compliance hook). Route tool calls only to services "
             "reachable in the current environment; the executor returns a "
             "structured 'service unavailable' error when one is not configured."
         )

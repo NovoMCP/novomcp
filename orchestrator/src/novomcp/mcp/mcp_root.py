@@ -570,7 +570,7 @@ async def _handle_resources_read(params: Dict, request: Request) -> Dict:
     if not user:
         raise HTTPException(status_code=401, detail="Authentication required")
 
-    # Extract resource name from URI (e.g., "novomcp://resources/compliance_schedules" -> "compliance_schedules")
+    # Extract resource name from URI (e.g., "novomcp://resources/admet_properties" -> "admet_properties")
     resource_name = None
     if uri.startswith("novomcp://resources/"):
         resource_name = uri.replace("novomcp://resources/", "")

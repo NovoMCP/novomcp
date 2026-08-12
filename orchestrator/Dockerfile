@@ -24,8 +24,7 @@ COPY main_https.py ./
 COPY src ./src/
 COPY ui-apps ./ui-apps/
 # Deploy-time runtime data, placed next to the modules that load it
-# (mcp/tools.py and main_https.py resolve these relative to their own file).
-COPY faves_reference_lists.json ./src/novomcp/faves_reference_lists.json
+# (main_https.py resolves this relative to its own file).
 COPY openapi.json ./src/novomcp/openapi.json
 
 # Runtime environment

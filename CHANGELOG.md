@@ -22,7 +22,7 @@ All notable changes to NovoMCP are recorded here. The format is [Keep a Changelo
 ## [1.4.0] - 2026-07-30
 
 ### Changed
-- The in-process cheminformatics and public-API search primitives (`calculate_properties`, `get_molecule_info`, `get_molecule_profile`, `batch_profile`, `screen_library`, `search_chembl`, `search_clinical_trials`, `search_biorxiv`) are now sourced from the open-source [novomcp-lite](https://github.com/NovoMCP/novomcp-lite) package (`novomcp_tools`) rather than an inlined copy. The engine and the package now share one implementation — same fields, same numbers — with the engine layering its enrichment DB / ADMET / FAVES / credits on top. No behavior change for callers.
+- The in-process cheminformatics and public-API search primitives (`calculate_properties`, `get_molecule_info`, `get_molecule_profile`, `batch_profile`, `screen_library`, `search_chembl`, `search_clinical_trials`, `search_biorxiv`) are now sourced from the open-source [novomcp-lite](https://github.com/NovoMCP/novomcp-lite) package (`novomcp_tools`) rather than an inlined copy. The engine and the package now share one implementation — same fields, same numbers — with the engine layering its enrichment DB / ADMET / credits on top. No behavior change for callers.
 
 ## [1.3.0] - 2026-07-30
 
@@ -91,7 +91,7 @@ All notable changes to NovoMCP are recorded here. The format is [Keep a Changelo
 - Optional: intent recognition, orchestration planning, project enrichment, semantic tool search, autonomous campaign decisions. None required to run tool calls.
 
 **Deployment**
-- `docker compose up` brings up the engine and any subset of compute services you uncomment (chem-props, addie-models, autodock-gpu, gromacs-md, openfold3, novomcp-qm, novomcp-nnp, novomcp-neb, novomcp-properties, faves-compliance)
+- `docker compose up` brings up the engine and any subset of compute services you uncomment (chem-props, addie-models, autodock-gpu, gromacs-md, openfold3, novomcp-qm, novomcp-nnp, novomcp-neb, novomcp-properties)
 - Per-service deployment guides at `docs/deploying-services/` covering pre-reqs, deploy commands, env wiring, verification, and cost estimates for CPU vs GPU vs multi-GPU tiers
 - Cloud reference deploys at `docs/deploying-to-cloud/` for AWS, GCP, and Azure with three tiers each: single VM (docker compose), managed Kubernetes (EKS/GKE/AKS), and serverless spine + on-demand GPU (Fargate/Cloud Run/Container Apps)
 
@@ -109,10 +109,8 @@ All notable changes to NovoMCP are recorded here. The format is [Keep a Changelo
 ### What is not in this repo
 
 By design, the following live separately:
-- The FAVES operational compliance service (curated ruleset + certified deployment; the reference implementation ships here)
 - Curated enrichment datasets at 122M-molecule scale
 - Novo AG autonomous discovery-funnel heuristics
-- Trained clinical outcomes model weights
 
 None of these are required for the engine to run.
 

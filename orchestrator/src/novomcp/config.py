@@ -165,7 +165,8 @@ class Settings(BaseSettings):
     # degrade gracefully with the "not configured" branch instead of DNS
     # errors on a docker-compose-only hostname.
     _SERVICE_ENV_OVERRIDES = {
-        "faves-compliance": "NOVOMCP_COMPLIANCE_URL",
+        "molecule-index": "NOVOMCP_MOLECULE_INDEX_URL",
+        "compliance": "NOVOMCP_COMPLIANCE_URL",
         "chem-props": "CHEM_PROPS_URL",
         "addie-models": "ADDIE_MODELS_URL",
         "molmim-optimizer": "MOLMIM_OPTIMIZER_URL",
@@ -191,7 +192,7 @@ class Settings(BaseSettings):
 
         For services in _SERVICE_ENV_OVERRIDES, the docker-compose default is
         suppressed when the env var is unset — otherwise the engine would try
-        to resolve a bare hostname (e.g. faves-compliance) that only exists
+        to resolve a bare hostname (e.g. molecule-index) that only exists
         inside a compose network, causing DNS errors in bare-metal local mode.
         """
         # 1) Per-service env override always wins.
@@ -248,7 +249,8 @@ class Settings(BaseSettings):
             "chem-props": {"url": self._get_service_url("chem-props", 8003), "port": 8003},
             "openmd": {"url": self._get_service_url("openmd", 8002), "port": 8002},
             "tdc-integration": {"url": self._get_service_url("tdc-integration", 8011), "port": 8011},
-            "faves-compliance": {"url": self._get_service_url("faves-compliance", 8005), "port": 8005},
+            "molecule-index": {"url": self._get_service_url("molecule-index", 8005), "port": 8005},
+            "compliance": {"url": self._get_service_url("compliance", 8005), "port": 8005},
             "red-team": {"url": self._get_service_url("red-team", 8009), "port": 8009},
             "negative-data": {"url": self._get_service_url("negative-data", 8012), "port": 8012},
             "db-manager": {"url": self._get_service_url("db-manager", 8005), "port": 8005},

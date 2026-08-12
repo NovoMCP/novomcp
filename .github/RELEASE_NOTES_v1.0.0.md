@@ -13,7 +13,7 @@
 - **Autonomous discovery mode** — `agm <disease>` in your MCP client returns an 11-stage discovery-funnel protocol the LLM executes. When the compute stack isn't wired, it returns a setup-guide with a manual-workflow recipe using the always-available tools.
 - **Pluggable spine** (auth / credit metering / audit). Local defaults ship; swap in your own via three protocols in `orchestrator/mcp/spine.py`.
 - **Pluggable LLM** (OpenAI / Anthropic / Ollama / Azure OpenAI). Auto-detects from present credentials. Optional; every tool call works without it.
-- **Provider-agnostic env vars.** `NOVOMCP_COMPLIANCE_URL`, `NOVOMCP_MOLECULE_INDEX_URL`, etc. — the engine treats compliance and molecule indexing as capabilities, not vendors. FAVES is one valid backend among several.
+- **Provider-agnostic env vars.** `NOVOMCP_COMPLIANCE_URL`, `NOVOMCP_MOLECULE_INDEX_URL`, etc. — the engine treats compliance and molecule indexing as capabilities, not vendors. Point them at whatever backend you run.
 - **Cloud reference deploys** for AWS, GCP, and Azure.
 - **Docker Compose** for a single-command local stack (`docker compose up`).
 
@@ -83,7 +83,7 @@ Full third-party attribution in [`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.m
 
 ## Ships separately
 
-By design, the FAVES certified hosted API (paid — SLA + audit-retention + drift monitoring + IQ/OQ/PQ), curated enriched datasets, Novo AG autonomous heuristics, and trained clinical-outcomes model weights live separately. The **open reference implementation** of the FAVES framework ships as the `faves-compliance` Docker image — self-host for triage; route the certified record-of-audit calls to the paid API when you need them.
+By design, curated enriched datasets and Novo AG autonomous heuristics live separately. None are required for the engine to run.
 
 ## Companion repos
 
@@ -105,6 +105,6 @@ By design, the FAVES certified hosted API (paid — SLA + audit-retention + drif
 - **v1.0.1** (week 1-2 post-launch): `pip install novomcp` + prebuilt GHCR Docker image
 - **v1.0.5**: Chrome + Word sideload UX polish
 - **v1.1.x**: Omics data pack (SQLite bundle) — unlocks target discovery
-- **v1.1.5**: Similarity data connector — unlocks molecule-index tools without paid FAVES
+- **v1.1.5**: Similarity data connector — unlocks molecule-index tools with a self-hosted reference index server
 
 Weekly release cadence; every release comes with a feature landing and a marketing beat. Star + watch the repo to follow along.
