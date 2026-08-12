@@ -17,7 +17,6 @@ from .service_requests import (
     MolecularIntelligenceRequest,
     ADMETScreeningRequest,
     AutoDockRequest,
-    FAVESComplianceRequest,
     GromacsSimulationRequest,
     OptimizationRequest
 )
@@ -47,7 +46,7 @@ from .molecules import (
 # so dropping the eager import is a no-op for existing callers.
 #
 # This unblocks any new module under `models/` from being importable through
-# the package: previously, importing e.g. `models.developability_report`
+# the package: previously, importing e.g. `models.service_requests`
 # would trigger this package __init__, which would crash on `events.py` and
 # fail every router that goes through `from models.X import ...`.
 
@@ -63,7 +62,6 @@ __all__ = [
     "MolecularIntelligenceRequest",
     "ADMETScreeningRequest",
     "AutoDockRequest",
-    "FAVESComplianceRequest",
     "GromacsSimulationRequest",
     "OptimizationRequest",
 

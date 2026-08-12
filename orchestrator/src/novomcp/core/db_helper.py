@@ -139,26 +139,10 @@ def _get_aurora_password() -> Optional[str]:
         if DB_PASSWORD:
             _aurora_password_cache = DB_PASSWORD
             return _aurora_password_cache
-        # OSS local mode: neither AURORA_SECRET_ID nor DB_PASSWORD set.
-        # Skip the Secrets Manager call entirely (would fail loudly with
-        # 'Invalid length for parameter SecretId'). Callers get None back
-        # and surface a clean 'Aurora not configured' error.
-        if not AURORA_SECRET_ID:
-            return None
-        try:
-            import boto3
-            sm = boto3.client("secretsmanager", region_name=AWS_REGION)
-            raw = sm.get_secret_value(SecretId=AURORA_SECRET_ID)["SecretString"]
-            try:
-                d = json.loads(raw)
-                pw = d.get("password") or d.get("Password") or next(iter(d.values()))
-            except json.JSONDecodeError:
-                pw = raw.strip()
-            _aurora_password_cache = pw
-            return pw
-        except Exception as e:
-            logger.warning(f"Failed to fetch Aurora password from Secrets Manager: {e}")
-            return None
+        # OSS engine: the Aurora password loads from the DB_PASSWORD
+        # environment variable only. When unset, callers get None back and
+        # surface a clean 'Aurora not configured' error.
+        return None
 
 
 class DatabaseHelper:

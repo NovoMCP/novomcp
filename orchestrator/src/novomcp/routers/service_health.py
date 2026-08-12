@@ -73,11 +73,11 @@ ORCHESTRATION_SERVICES = {
         "test_payload": None,
         "expected_keys": ["status"]
     },
-    "faves-compliance": {
-        "name": "FAVES Compliance",
-        "description": "Safety and compliance validation",
-        "critical": True,
-        "test_endpoint": "/faves/health",
+    "molecule-index": {
+        "name": "Molecule Index",
+        "description": "Enriched molecule index (lookup / similarity / filter)",
+        "critical": False,
+        "test_endpoint": "/health",
         "test_payload": None,
         "expected_keys": ["status"]
     },
@@ -373,27 +373,27 @@ async def test_molecule_pipeline(request: Request = None):
                 "error": str(e)
             })
 
-        # Step 4: FAVES compliance
+        # Step 4: molecule-index lookup
         try:
-            faves_result = await proxy_request(
-                "faves-compliance",
-                "/faves/validate",
+            index_result = await proxy_request(
+                "molecule-index",
+                "/api/lookup",
                 request,
                 "POST",
                 {"smiles": test_smiles}
             )
             pipeline_results["steps"].append({
                 "step": 4,
-                "service": "faves-compliance",
-                "action": "compliance_check",
-                "status": "success" if faves_result else "failed",
-                "result": faves_result
+                "service": "molecule-index",
+                "action": "index_lookup",
+                "status": "success" if index_result else "failed",
+                "result": index_result
             })
         except Exception as e:
             pipeline_results["steps"].append({
                 "step": 4,
-                "service": "faves-compliance",
-                "action": "compliance_check",
+                "service": "molecule-index",
+                "action": "index_lookup",
                 "status": "error",
                 "error": str(e)
             })

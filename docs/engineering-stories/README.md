@@ -7,7 +7,6 @@ The posts stand alone but compose into a rough thematic arc: **make silent failu
 ## Published
 
 - [Server-side tool search for a 62-tool MCP platform](server-side-tool-search.md), April 23, 2026
-- [Tree-guided retrieval across 122 million molecules](tree-guided-retrieval-122m-molecules.md)
 
 ## Drafts (research-engineering discipline series)
 

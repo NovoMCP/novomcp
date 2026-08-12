@@ -11,11 +11,11 @@ The engine works without any of them. Property calculation, similarity search, l
 | `get_molecule_profile` | `chem-props` (+ `addie-models` for full ADMET) | CPU-only. Works partially without either, returns basic properties. |
 | `calculate_properties` | `chem-props` | CPU-only. RDKit descriptors, BOILED-Egg. |
 | `predict_admet` | `addie-models` | CPU or GPU. 31 pretrained ADMET models. |
-| `search_similar` | `chem-props` | CPU-only. Morgan fingerprint similarity. |
+| `search_similar` | `molecule-index` | Morgan fingerprint similarity against the enriched index. |
 | `search_chembl` | (none, external ChEMBL API) | Requires internet only. |
 | `search_literature` | (none, external Pinecone) | Requires `PINECONE_API_KEY`. Falls back to zero results without. |
 | `search_patents` | (none, external Pinecone) | Same as above. |
-| `check_compliance` | `faves-compliance` | CPU-only. Regulatory screening. |
+| `check_compliance` | `compliance` (generic hook) | Optional. Forwards to `NOVOMCP_COMPLIANCE_URL`; no bundled ruleset. |
 | `dock_molecules` | `autodock-gpu` | **NVIDIA GPU required.** AutoDock-GPU. |
 | `dock_with_strain` | `autodock-gpu` + `novomcp-qm` | Docking + GFN2-xTB strain check. |
 | `run_molecular_dynamics` | `gromacs-md` | **NVIDIA GPU required.** GROMACS with HMR. |
@@ -78,7 +78,6 @@ AWS Marketplace and GCP Cloud Marketplace listings under development.
 - [`chem-props.md`](./chem-props.md), molecular property calculator (RDKit)
 - [`novomcp-qm.md`](./novomcp-qm.md), quantum-mechanical calculations (xTB, CREST, MCPB.py)
 - [`novomcp-properties.md`](./novomcp-properties.md), pKa, solubility, BDE
-- [`faves-compliance.md`](./faves-compliance.md), regulatory screening
 - [`addie-models.md`](./addie-models.md), ADMET prediction (CPU works; GPU is faster)
 
 **GPU services**:

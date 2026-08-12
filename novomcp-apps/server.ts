@@ -99,7 +99,6 @@ const UI_RESOURCES = {
   researchExplorer: "ui://novomcp/research-explorer",
   structureViewer: "ui://novomcp/structure-viewer",
   creditUsage: "ui://novomcp/credit-usage",
-  favesDashboard: "ui://novomcp/faves-dashboard",
   jobs: "ui://novomcp/jobs",
   funnels: "ui://novomcp/funnels",
   mdResults: "ui://novomcp/md-results",
@@ -115,7 +114,6 @@ const UI_RESOURCES = {
   materialsProject: "ui://novomcp/materials-project",
   qmCalculation: "ui://novomcp/qm-calculation",
   targetDiscovery: "ui://novomcp/target-discovery",
-  clinicalOutcomes: "ui://novomcp/clinical-outcomes",
   stratifyPatients: "ui://novomcp/stratify-patients",
   conformerSearch: "ui://novomcp/conformer-search",
   generateDynamics: "ui://novomcp/generate-dynamics",
@@ -134,7 +132,7 @@ const UI_RESOURCES = {
 
 // Tools that may take longer (ML inference, structure prediction)
 const LONG_RUNNING_TOOLS = new Set([
-  "predict_admet", "predict_clinical_outcomes", "predict_structure", "get_structure_result",
+  "predict_admet", "predict_structure", "get_structure_result",
   "optimize_molecule", "get_molecule_profile", "screen_library",
   "check_compliance",
   "push_to_destination",
@@ -395,7 +393,7 @@ export function createServer(apiKey: string = "", clientTag: string = ""): McpSe
 FUNNEL_ID PROTOCOL — apply before any tool call:
 1. At conversation start, mint funnel_id = \`funnel_{topic_short}_{YYYYMMDD}_{HHMMSS}\` using the current UTC time. topic_short is a 2-4 char abbreviation of the focus (e.g. "aml" for acute myeloid leukemia, "gbm" for glioblastoma, "alz" for Alzheimer's, "mat" for materials work).
 2. NEVER reuse a funnel_id across conversations or topics. New conversation = new id. Topic pivot mid-conversation = new id.
-3. Pass funnel_id as an argument on every funnel-eligible tool call (target_discovery, validate_target, search_chembl, predict_admet, dock_molecules, run_molecular_dynamics, lead_optimization, predict_clinical_outcomes, stratify_patients, generate_dynamics, …). The server keys its audit log on it.
+3. Pass funnel_id as an argument on every funnel-eligible tool call (target_discovery, validate_target, search_chembl, predict_admet, dock_molecules, run_molecular_dynamics, lead_optimization, stratify_patients, generate_dynamics, …). The server keys its audit log on it.
 4. You do NOT need to call save_funnel_stage for ordinary tool calls — every call is auto-logged server-side under the funnel_id you carry. Only call save_funnel_stage to record an explicit human-reviewed checkpoint.
 5. For autonomous full-funnel runs ("Novo AG", "/agm"), invoke run_novo_ag — it returns the canonical 12-stage protocol that supersedes these notes.
 
@@ -427,7 +425,6 @@ Why this matters: a user may run parallel conversations (e.g. cancer in one chat
     "check_compliance",
     "lead_optimization", "optimize_molecule",
     "dock_molecules", "dock_with_strain",
-    "predict_clinical_outcomes",
     "run_molecular_dynamics", "generate_dynamics",
     "stratify_patients",
     "save_funnel_context", "get_funnel_context", "get_funnel_audit",
@@ -589,75 +586,7 @@ Why this matters: a user may run parallel conversations (e.g. cancer in one chat
     },
   );
 
-  // =========================================================================
-  // Tool: predict_clinical_outcomes (NovoExpert v3 Phase I clearance)
-  // =========================================================================
-  server.registerTool(
-    "predict_clinical_outcomes",
-    {
-      title: "Predict Clinical Outcomes",
-      description:
-        "Predict Phase I clinical trial clearance probability for a small molecule. " +
-        "Automatically gathers all 63 required features by orchestrating chem-props, " +
-        "faves-compliance, and addie-models in parallel, then calls NovoExpert v3. " +
-        "Returns calibrated probability, SHAP explanations, and domain competence " +
-        "assessment. Validated for CARDIOVASCULAR and mainstream compounds (AUROC " +
-        "0.72-0.76). NOT valid for oncology, CNS, or infectious disease — check " +
-        "competence_check before acting on predictions.",
-      inputSchema: z.object({
-        smiles: z.string().describe("SMILES string of the molecule to evaluate"),
-        therapeutic_area: z
-          .enum([
-            "ONCOLOGY", "CARDIOVASCULAR", "CNS_NEURO", "INFECTIOUS",
-            "METABOLIC", "IMMUNO_INFLAM", "RENAL_GU", "RESPIRATORY",
-            "GI", "PAIN_ANALGESIA", "ENDOCRINE", "OPHTH_DERM", "OTHER", "UNKNOWN",
-          ])
-          .default("UNKNOWN")
-          .describe("Therapeutic area for competence assessment"),
-        target_type: z
-          .enum([
-            "SINGLE PROTEIN", "PROTEIN FAMILY", "PROTEIN COMPLEX",
-            "PROTEIN COMPLEX GROUP", "NUCLEIC-ACID",
-            "PROTEIN NUCLEIC-ACID COMPLEX", "ORGANISM", "CELL-LINE",
-            "SMALL MOLECULE", "UNKNOWN",
-          ])
-          .default("UNKNOWN")
-          .describe("Target type from ChEMBL"),
-        action_type: z
-          .enum([
-            "INHIBITOR", "ANTAGONIST", "AGONIST", "BLOCKER", "ACTIVATOR",
-            "MODULATOR", "PARTIAL AGONIST", "SUBSTRATE", "RELEASING AGENT",
-            "UNKNOWN",
-          ])
-          .default("UNKNOWN")
-          .describe("Mechanism of action"),
-        top_k_shap: z
-          .number()
-          .int()
-          .min(1)
-          .max(63)
-          .default(10)
-          .describe("Number of top SHAP features to return"),
-      }),
-      _meta: { ui: { resourceUri: UI_RESOURCES.clinicalOutcomes } },
-    },
-    async (args) => {
-      try {
-        const result = await callEngine("predict_clinical_outcomes", args) as Record<string, unknown>;
-        if (result && !result.smiles && args.smiles) {
-          result.smiles = args.smiles;
-        }
-        return {
-          content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
-          structuredContent: result,
-        };
-      } catch (e) {
-        return formatToolError(e);
-      }
-    },
-  );
-
-  } // end isCore — get_molecule_profile + predict_admet + predict_clinical_outcomes
+  } // end isCore — get_molecule_profile + predict_admet
 
   // =========================================================================
   // Tool: get_protein_structure (with UI) - Smart resolver [COMPUTE]
@@ -1041,7 +970,7 @@ Why this matters: a user may run parallel conversations (e.g. cancer in one chat
   if (isCore) {
 
   // =========================================================================
-  // Tool: check_compliance (with UI) - FAVES Compliance Dashboard
+  // Tool: check_compliance - generic compliance hook (NOVOMCP_COMPLIANCE_URL)
   // =========================================================================
   registerAppTool(
     server,
@@ -1049,26 +978,20 @@ Why this matters: a user may run parallel conversations (e.g. cancer in one chat
     {
       title: "Check Compliance",
       description:
-        "Check regulatory and compliance status against DEA (controlled substances), FDA (drug approval), EPA (environmental/pesticide), EU REACH (chemical registration), CWC (chemical weapons convention), BTWC (biological weapons convention), OPCW (international chemical weapons treaty), and Australia Schedule. Context-dependent assessment keyed on intended_use + jurisdiction + therapeutic_area — returns PROCEED / STOP / CAUTION with risk factors, regulatory pathway, and jurisdiction-specific recommendations. Renders interactive FAVES dashboard.",
+        "Context-dependent regulatory/compliance screening for a molecule. Proxies to whatever compliance service is configured via NOVOMCP_COMPLIANCE_URL and returns that service's structured verdict, keyed on the supplied intended_use + jurisdiction + therapeutic_area context. If no compliance service is configured, returns the standard 'service not configured' response so the tool degrades gracefully. The engine bundles no ruleset of its own — bring your own compliance backend.",
       inputSchema: {
         smiles: z.string().describe("SMILES string of the molecule"),
         context: z.object({
-          intended_use: z.enum(["pharmaceutical", "research", "industrial", "agricultural", "cosmetic"]).describe("Primary intended use — routes to different regulatory frameworks: pharmaceutical (FDA IND/NDA, EMA), research (laboratory/academic, DEA Schedule I exceptions), industrial (REACH, OSHA), agricultural (EPA pesticide, FIFRA), cosmetic (FDA cosmetic, EU CPR)."),
-          jurisdiction: z.enum(["US", "EU", "UK", "CA", "AU", "JP", "CN", "GLOBAL"]).describe("Regulatory jurisdiction. US=DEA+FDA+EPA, EU=EMA+EU REACH+EMCDDA, UK=MHRA, CA=Health Canada, AU=TGA+Australia Schedule, JP=PMDA, CN=NMPA, GLOBAL=CWC+BTWC+OPCW international treaties (chemical and biological weapons conventions)."),
+          intended_use: z.enum(["pharmaceutical", "research", "industrial", "agricultural", "cosmetic"]).describe("Primary intended use."),
+          jurisdiction: z.enum(["US", "EU", "UK", "CA", "AU", "JP", "CN", "GLOBAL"]).describe("Regulatory jurisdiction."),
           therapeutic_area: z.string().optional().describe("Therapeutic area if pharmaceutical (e.g., oncology, cardiology, neurology, immunology, infectious_disease, metabolic, rare_disease)."),
-        }).describe("Context for compliance evaluation — determines which agencies and treaty frameworks apply (DEA, FDA, CWC, EPA, EU REACH, BTWC, Australia Schedule, OPCW)."),
+        }).describe("Context for compliance evaluation — forwarded to the configured compliance service."),
       },
       outputSchema: z.object({
         smiles: z.string().nullish(),
         context: z.record(z.string(), z.unknown()).nullish(),
-        base_compliance: z.record(z.string(), z.unknown()).nullish(),
-        context_compliance: z.record(z.string(), z.unknown()).nullish(),
-        overall_status: z.string().nullish(),
-        recommendations: z.array(z.string()).nullish(),
-        regulatory_pathway: z.record(z.string(), z.unknown()).nullish(),
-        risk_assessment: z.record(z.string(), z.unknown()).nullish(),
+        compliance: z.record(z.string(), z.unknown()).nullish(),
       }).passthrough(),
-      _meta: { ui: { resourceUri: UI_RESOURCES.favesDashboard } },
     },
     async (args) => {
       try {
@@ -1092,7 +1015,7 @@ Why this matters: a user may run parallel conversations (e.g. cancer in one chat
     {
       title: "Optimize Molecule (MolMIM AI)",
       description:
-        "AI-powered molecular optimization using NVIDIA MolMIM. Generates variants by learned chemical transformations, optimized for QED, LogP, synthetic accessibility, and Tanimoto similarity to the input. Best for fine-tuning properties while staying structurally close to the input. NOT for scaffold hopping — use lead_optimization for that. Runs FAVES compliance on all generated variants.",
+        "AI-powered molecular optimization using NVIDIA MolMIM. Generates variants by learned chemical transformations, optimized for QED, LogP, synthetic accessibility, and Tanimoto similarity to the input. Best for fine-tuning properties while staying structurally close to the input. NOT for scaffold hopping — use lead_optimization for that. Returns RDKit physicochemical properties per variant.",
       inputSchema: z.object({
         smiles: z.string().describe("SMILES string of the molecule to optimize"),
         objectives: z.object({
@@ -1102,7 +1025,7 @@ Why this matters: a user may run parallel conversations (e.g. cancer in one chat
           similarity: z.number().min(0).max(1).optional().describe("Minimum Tanimoto similarity to input molecule (0-1)"),
         }).optional().describe("Optimization objectives. If not specified, defaults to QED=0.8, LogP=3.0"),
         num_variants: z.number().int().min(1).max(50).default(10).describe("Number of optimized variants to generate (max 50)"),
-        exclude_controlled: z.boolean().default(true).describe("Exclude variants flagged by FAVES compliance"),
+        exclude_controlled: z.boolean().default(true).describe("Exclude compliance-flagged variants (no-op unless a compliance service is configured)"),
         similarity_range: z.object({
           min: z.number().min(0).max(1).optional().describe("Lower Tanimoto bound (default 0.3)"),
           max: z.number().min(0).max(1).optional().describe("Upper Tanimoto bound (default 0.85)"),
@@ -1142,7 +1065,6 @@ Why this matters: a user may run parallel conversations (e.g. cancer in one chat
           rotatable_bonds: v.rotatable_bonds,
           lipinski_violations: v.lipinski_violations,
           veber_violations: v.veber_violations,
-          compliance_status: v.compliance?.status ?? (v.is_compliant === false ? "flagged" : v.is_compliant === true ? "clean" : undefined),
         }));
 
         const structured = {
@@ -1336,7 +1258,7 @@ Why this matters: a user may run parallel conversations (e.g. cancer in one chat
         "Structural lead optimization via RDKit scaffold hopping — swaps ring systems (benzene↔pyridine, cyclohexane↔piperidine, etc.) " +
         "to generate novel chemical series with improved metabolic or selectivity profiles. " +
         "This is the funnel step 6 tool for the discovery pipeline. Use when the user asks for scaffold hopping, structural diversification, " +
-        "or lead optimization. Enriches variants with chem-props + ADMET and filters via FAVES compliance. " +
+        "or lead optimization. Enriches variants with in-process RDKit physicochemical properties. " +
         "For AI-based property optimization (staying structurally similar), use optimize_molecule instead.",
       inputSchema: z.object({
         smiles: z.string().describe("SMILES of the lead compound to optimize"),
@@ -1400,7 +1322,6 @@ Why this matters: a user may run parallel conversations (e.g. cancer in one chat
           tanimoto_to_seed: v.tanimoto_to_seed,
           patent_risk: v.patent_risk,
           patent_note: v.patent_note,
-          compliance_status: v.compliance_status,
         }));
 
         const structured = {
@@ -1910,7 +1831,7 @@ Why this matters: a user may run parallel conversations (e.g. cancer in one chat
     { name: "get_platform_info", description: "Get NovoMCP platform information" },
     {
       name: "search_similar",
-      description: "Find molecules similar to a query SMILES by DiskANN vector similarity against the 122M compound database. Sub-second results.",
+      description: "Find molecules similar to a query SMILES by vector similarity against the 122M compound database. Sub-second results.",
       viewer: UI_RESOURCES.resultsTable,
       inputSchema: {
         smiles: z.string().describe("Query SMILES to search against"),
@@ -1937,7 +1858,7 @@ Why this matters: a user may run parallel conversations (e.g. cancer in one chat
     },
     {
       name: "batch_profile",
-      description: "Batch version of get_molecule_profile: ADMET (toxicity incl. hepatotoxicity, CYP metabolism, nuclear receptors, stress response), FAVES compliance, and properties for up to 100 molecules in one call. Pre-computed for known molecules; novel ones get on-the-fly properties + ML ADMET. Set include_admet=false for faster, cheaper properties-only screening. smiles_list MUST be a JSON array of strings, not a comma-separated string.",
+      description: "Batch version of get_molecule_profile: ADMET (toxicity incl. hepatotoxicity, CYP metabolism, nuclear receptors, stress response), structural alerts, and properties for up to 100 molecules in one call. Pre-computed for known molecules; novel ones get on-the-fly properties + ML ADMET. Set include_admet=false for faster, cheaper properties-only screening. smiles_list MUST be a JSON array of strings, not a comma-separated string.",
       viewer: UI_RESOURCES.resultsTable,
       inputSchema: {
         smiles_list: z.array(z.string()).min(1).max(100).describe("Array of SMILES strings (up to 100 molecules)"),
@@ -1954,15 +1875,10 @@ Why this matters: a user may run parallel conversations (e.g. cancer in one chat
     },
     {
       name: "screen_library",
-      description: "Screen a library of up to 1,000 molecules for ADMET flags, FAVES compliance, and optional context-dependent compliance. smiles_list MUST be a JSON array of strings, not a comma-separated string.",
+      description: "Screen a library of up to 1,000 molecules for drug-likeness, structural alerts (PAINS, Brenk), and ADMET flags. smiles_list MUST be a JSON array of strings, not a comma-separated string.",
       viewer: UI_RESOURCES.resultsTable,
       inputSchema: {
         smiles_list: z.array(z.string()).min(1).max(1000).describe("Array of SMILES strings (up to 1000 molecules)"),
-        context: z.object({
-          intended_use: z.string().optional(),
-          jurisdiction: z.string().optional(),
-          therapeutic_area: z.string().optional(),
-        }).passthrough().optional().describe("Context for context-dependent compliance screening"),
       },
     },
     { name: "save_funnel_context", description: "Save discovery funnel context for session resumption" },
@@ -1992,7 +1908,7 @@ Why this matters: a user may run parallel conversations (e.g. cancer in one chat
     },
     {
       name: "compare_candidates",
-      description: "Head-to-head comparison of specific molecules by CID. Returns full ADMET + FAVES profiles ranked by criterion. Use after drilling to leaf clusters.",
+      description: "Head-to-head comparison of specific molecules by CID. Returns full ADMET + structural-alert profiles ranked by criterion. Use after drilling to leaf clusters.",
       viewer: UI_RESOURCES.resultsTable,
       inputSchema: {
         cids: z.array(z.string()).min(1).max(20).describe("Array of CIDs to compare"),
@@ -2002,7 +1918,7 @@ Why this matters: a user may run parallel conversations (e.g. cancer in one chat
     },
     {
       name: "vector_search",
-      description: "Fast DiskANN vector similarity search over 122M molecules. Finds structural analogs in <100ms using Morgan fingerprint embeddings. Use when you already know the molecule — for broader exploration, use explore_chemical_space.",
+      description: "Fast vector similarity search over 122M molecules. Finds structural analogs in <100ms using Morgan fingerprint embeddings. Use when you already know the molecule — for broader exploration, use explore_chemical_space.",
       viewer: UI_RESOURCES.resultsTable,
       inputSchema: {
         smiles: z.string().describe("Query SMILES string"),
@@ -2052,7 +1968,7 @@ Why this matters: a user may run parallel conversations (e.g. cancer in one chat
           // Tools with a viewer publish structuredContent so the viewer has
           // typed data to read. Tools without a viewer keep the text-only
           // response shape. molecule-viewer tolerates partial payloads — a
-          // calculate_properties response without ADMET/FAVES simply skips
+          // calculate_properties response without ADMET simply skips
           // those sections (all fields in MoleculeToolInput are optional).
           if (hasViewer) {
             const resultObj = (result && typeof result === "object")
@@ -3055,7 +2971,6 @@ Why this matters: a user may run parallel conversations (e.g. cancer in one chat
     { uri: UI_RESOURCES.researchExplorer, file: "research-explorer.html", name: "Research Explorer" },
     { uri: UI_RESOURCES.structureViewer, file: "structure-viewer.html", name: "Structure Viewer" },
     { uri: UI_RESOURCES.creditUsage, file: "credit-usage.html", name: "Credit Usage" },
-    { uri: UI_RESOURCES.favesDashboard, file: "faves-dashboard.html", name: "FAVES Dashboard" },
     { uri: UI_RESOURCES.jobs, file: "jobs.html", name: "Pipeline Jobs" },
     { uri: UI_RESOURCES.funnels, file: "funnels.html", name: "Discovery Funnels" },
     { uri: UI_RESOURCES.mdResults, file: "md-results.html", name: "MD Results" },
@@ -3071,7 +2986,6 @@ Why this matters: a user may run parallel conversations (e.g. cancer in one chat
     { uri: UI_RESOURCES.materialsProject, file: "materials-project.html", name: "Materials Project Search" },
     { uri: UI_RESOURCES.qmCalculation, file: "qm-calculation.html", name: "QM Calculation" },
     { uri: UI_RESOURCES.targetDiscovery, file: "target-discovery.html", name: "Target Discovery" },
-    { uri: UI_RESOURCES.clinicalOutcomes, file: "clinical-outcomes.html", name: "Clinical Outcomes" },
     { uri: UI_RESOURCES.stratifyPatients, file: "stratify-patients.html", name: "Patient Stratification" },
     { uri: UI_RESOURCES.conformerSearch, file: "conformer-search.html", name: "Conformer Search" },
     { uri: UI_RESOURCES.generateDynamics, file: "generate-dynamics.html", name: "Conformational Dynamics" },

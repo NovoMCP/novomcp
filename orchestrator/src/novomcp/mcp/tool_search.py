@@ -93,7 +93,6 @@ TEMPLATE_MANIFESTS: Dict[str, List[str]] = {
         "optimize_molecule",
         "dock_molecules",
         "dock_with_strain",
-        "predict_clinical_outcomes",
         "audit_system",
         "run_molecular_dynamics",
         "generate_dynamics",
@@ -115,7 +114,6 @@ TEMPLATE_MANIFESTS: Dict[str, List[str]] = {
         "optimize_molecule",
         "dock_molecules",
         "dock_with_strain",
-        "predict_clinical_outcomes",
         "audit_system",
         "run_molecular_dynamics",
         "generate_dynamics",
@@ -577,9 +575,8 @@ def _tier_ok(tool_tier: ToolTier, user_tier: ToolTier) -> bool:
 
     Note: the existing /mcp/prompts + /mcp/tools endpoints in router.py use
     an ordering list that is missing CORE entirely, which silently filters
-    out all CORE-tiered tools (currently 2, including predict_clinical_outcomes)
-    for every user. That's a separate longstanding bug. Fixing it there is
-    a drive-by that belongs in its own PR.
+    out all CORE-tiered tools for every user. That's a separate longstanding
+    bug. Fixing it there is a drive-by that belongs in its own PR.
     """
     rank = {
         ToolTier.FREE: 0,

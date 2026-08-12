@@ -15,8 +15,8 @@
  *   - Optional columns render only when at least one row has the field
  *     (no empty toxicity column when search_similar didn't return ADMET)
  *
- * Columns: SMILES (truncated) · MW · LogP · TPSA · QED · Compliance
- * badge · Alerts badge · Toxicity badge. Sortable by every numeric
+ * Columns: SMILES (truncated) · MW · LogP · TPSA · QED · Alerts
+ * badge · Toxicity badge. Sortable by every numeric
  * column. Row-click → Claude gets a grounded question about that
  * specific molecule.
  */
@@ -47,19 +47,6 @@ interface Properties {
   [key: string]: unknown;
 }
 
-interface Compliance {
-  status?: string;
-  overall_status?: string;
-  is_dea_controlled?: boolean;
-  is_fda_banned?: boolean;
-  is_cwc_scheduled?: boolean;
-  is_epa_pbt?: boolean;
-  is_eu_reach_banned?: boolean;
-  is_whitelisted?: boolean;
-  faves_flag_count?: number;
-  [key: string]: unknown;
-}
-
 interface Admet {
   overall_toxicity_score?: number;
   is_aggregator_risk?: boolean;
@@ -83,12 +70,10 @@ interface MoleculeRow {
   data?: {
     properties?: Properties;
     admet?: Admet;
-    compliance?: Compliance;
     structural_alerts?: StructuralAlerts;
   };
   properties?: Properties;
   admet?: Admet;
-  compliance?: Compliance;
   structural_alerts?: StructuralAlerts;
   // Screen_library + filter_molecules occasionally flatten properties to the
   // top level too — e.g. direct molecular_weight / logp / qed. Capture via
@@ -109,9 +94,8 @@ interface ResultsTableInput {
     total?: number;
     known?: number;
     novel?: number;
-    clean?: number;
-    flagged?: number;
-    controlled?: number;
+    alert_free?: number;
+    with_alerts?: number;
     [key: string]: unknown;
   };
   total?: number;
@@ -140,8 +124,6 @@ interface NormalizedRow {
   qed: number | null;
   hbd: number | null;
   hba: number | null;
-  complianceStatus: string | null;
-  complianceBlocked: boolean;
   toxicityScore: number | null;
   alertCount: number;
   hasAlerts: boolean;
@@ -162,21 +144,8 @@ function pickNum(...values: unknown[]): number | null {
 function normalize(row: MoleculeRow): NormalizedRow {
   const props = row.data?.properties ?? row.properties ?? {};
   const admet = row.data?.admet ?? row.admet ?? {};
-  const compliance = row.data?.compliance ?? row.compliance ?? {};
   const alerts = row.data?.structural_alerts ?? row.structural_alerts ?? {};
   const topLevel = row as Record<string, unknown>;
-
-  const complianceStatus =
-    typeof compliance.status === "string" ? compliance.status :
-    typeof compliance.overall_status === "string" ? compliance.overall_status :
-    null;
-  const complianceBlocked = [
-    compliance.is_dea_controlled,
-    compliance.is_fda_banned,
-    compliance.is_cwc_scheduled,
-    compliance.is_epa_pbt,
-    compliance.is_eu_reach_banned,
-  ].some((flag) => flag === true) || complianceStatus === "STOP" || complianceStatus === "BLOCKED";
 
   const alertCount =
     (alerts.structural_alert_count as number | undefined) ??
@@ -197,8 +166,6 @@ function normalize(row: MoleculeRow): NormalizedRow {
     qed: pickNum(props.qed, topLevel.qed),
     hbd: pickNum(props.hbd_count, props.hbd, topLevel.hbd_count, topLevel.hbd),
     hba: pickNum(props.hba_count, props.hba, topLevel.hba_count, topLevel.hba),
-    complianceStatus,
-    complianceBlocked,
     toxicityScore: pickNum(admet.overall_toxicity_score),
     alertCount,
     hasAlerts,
@@ -239,38 +206,6 @@ function SmilesCell({ smiles }: { smiles: string }) {
       {truncated}
     </span>
   );
-}
-
-// =============================================================================
-// Compliance badge
-// =============================================================================
-
-function ComplianceBadge({ status, blocked }: { status: string | null; blocked: boolean }) {
-  if (!status && !blocked) {
-    return <span style={{ fontSize: 10, color: "var(--text-muted)" }}>—</span>;
-  }
-  if (blocked || status === "STOP" || status === "BLOCKED") {
-    return (
-      <span className="badge danger" title="Blocked by compliance check">
-        blocked
-      </span>
-    );
-  }
-  if (status === "CAUTION" || status === "CONDITIONAL" || status === "REVIEW_REQUIRED") {
-    return (
-      <span className="badge warning" title={status}>
-        caution
-      </span>
-    );
-  }
-  if (status === "PROCEED" || status === "PASS") {
-    return (
-      <span className="badge success" title={status}>
-        pass
-      </span>
-    );
-  }
-  return <span style={{ fontSize: 10, color: "var(--text-muted)" }}>{status}</span>;
 }
 
 // =============================================================================
@@ -347,13 +282,12 @@ export default function ResultsTableViewer(props: ResultsTableProps) {
   // table narrow when tools return just properties (no ADMET etc.).
   const showTox = rows.some((r) => r.toxicityScore != null);
   const showAlerts = rows.some((r) => r.hasAlerts || r.alertCount > 0);
-  const showCompliance = rows.some((r) => r.complianceStatus != null || r.complianceBlocked);
 
   // Summary counts (prefer explicit summary block, fall back to derived).
   const total = data.summary?.total ?? data.total ?? rows.length;
   const known = data.summary?.known ?? data.known_molecules ?? rows.filter((r) => r.inDatabase).length;
   const novel = data.summary?.novel ?? data.novel_molecules ?? rows.filter((r) => !r.inDatabase).length;
-  const flagged = data.summary?.flagged ?? rows.filter((r) => r.complianceBlocked || r.hasAlerts).length;
+  const flagged = data.summary?.with_alerts ?? rows.filter((r) => r.hasAlerts).length;
 
   const handleSort = (key: SortKey) => {
     if (sortKey === key) {
@@ -370,8 +304,6 @@ export default function ResultsTableViewer(props: ResultsTableProps) {
     if (row.logp != null) bits.push(`LogP ${row.logp.toFixed(2)}`);
     if (row.qed != null) bits.push(`QED ${row.qed.toFixed(2)}`);
     if (row.toxicityScore != null) bits.push(`toxicity ${row.toxicityScore.toFixed(2)}`);
-    if (row.complianceBlocked) bits.push("compliance BLOCKED");
-    else if (row.complianceStatus) bits.push(`compliance ${row.complianceStatus}`);
     if (row.hasAlerts) bits.push(`${row.alertCount || "some"} structural alerts`);
     const summary = bits.length > 0 ? ` (${bits.join(", ")})` : "";
     sendMessage({
@@ -383,7 +315,7 @@ export default function ResultsTableViewer(props: ResultsTableProps) {
             `I clicked this molecule in the results table: \`${row.smiles}\`${summary}. ` +
             `Give me a quick read on whether it's worth advancing — would you dock this, ` +
             `push it through optimization, or kick it out of the library? Flag anything in the ` +
-            `properties or compliance profile that should change the decision.`,
+            `properties or structural-alert profile that should change the decision.`,
         },
       ],
     });
@@ -429,7 +361,7 @@ export default function ResultsTableViewer(props: ResultsTableProps) {
         <SummaryCard label="Total" value={total} color="var(--accent)" />
         {known > 0 && <SummaryCard label="Known" value={known} color="var(--text-muted)" />}
         {novel > 0 && <SummaryCard label="Novel" value={novel} color="var(--text-muted)" />}
-        {flagged > 0 && <SummaryCard label="Flagged" value={flagged} color="var(--warning)" />}
+        {flagged > 0 && <SummaryCard label="With Alerts" value={flagged} color="var(--warning)" />}
       </div>
 
       {/* Results table */}
@@ -457,7 +389,6 @@ export default function ResultsTableViewer(props: ResultsTableProps) {
                   <Th sortable onClick={() => handleSort("logp")} active={sortKey === "logp"} dir={sortDir} align="right">LogP</Th>
                   <Th sortable onClick={() => handleSort("tpsa")} active={sortKey === "tpsa"} dir={sortDir} align="right">TPSA</Th>
                   <Th sortable onClick={() => handleSort("qed")} active={sortKey === "qed"} dir={sortDir} align="right">QED</Th>
-                  {showCompliance && <Th align="center">Compliance</Th>}
                   {showAlerts && <Th align="center">Alerts</Th>}
                   {showTox && <Th sortable onClick={() => handleSort("toxicityScore")} active={sortKey === "toxicityScore"} dir={sortDir} align="right">Tox</Th>}
                 </tr>
@@ -485,11 +416,6 @@ export default function ResultsTableViewer(props: ResultsTableProps) {
                     <Td align="right">{row.logp != null ? row.logp.toFixed(2) : "—"}</Td>
                     <Td align="right">{row.tpsa != null ? row.tpsa.toFixed(1) : "—"}</Td>
                     <Td align="right">{row.qed != null ? row.qed.toFixed(2) : "—"}</Td>
-                    {showCompliance && (
-                      <Td align="center">
-                        <ComplianceBadge status={row.complianceStatus} blocked={row.complianceBlocked} />
-                      </Td>
-                    )}
                     {showAlerts && (
                       <Td align="center">
                         <AlertsBadge hasAlerts={row.hasAlerts} count={row.alertCount} />
@@ -507,7 +433,7 @@ export default function ResultsTableViewer(props: ResultsTableProps) {
           </div>
           <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 8, lineHeight: 1.5 }}>
             Columns show only when the tool populated that field. Click any row to use the
-            properties and compliance profile as context for a follow-up question.
+            properties and structural-alert profile as context for a follow-up question.
           </div>
         </div>
       )}

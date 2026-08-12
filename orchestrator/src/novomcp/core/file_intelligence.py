@@ -91,20 +91,10 @@ def _get_aurora_password() -> Optional[str]:
     if db_pw:
         _pg_password_cache = db_pw
         return db_pw
-    try:
-        import boto3
-        sm = boto3.client("secretsmanager", region_name=AWS_REGION)
-        raw = sm.get_secret_value(SecretId=os.getenv("AURORA_SECRET_ID", "novomcp/aurora-admin-password"))["SecretString"]
-        try:
-            d = json.loads(raw)
-            pw = d.get("password") or d.get("Password") or next(iter(d.values()))
-        except json.JSONDecodeError:
-            pw = raw.strip()
-        _pg_password_cache = pw
-        return pw
-    except Exception as e:
-        logger.warning(f"File Intelligence: Aurora password fetch failed: {e}")
-        return None
+    # OSS engine: Aurora password loads from the DB_PASSWORD environment
+    # variable only. When unset, file intelligence operates without a
+    # persistence layer.
+    return None
 
 
 def _get_pool() -> Optional[psycopg2.pool.ThreadedConnectionPool]:

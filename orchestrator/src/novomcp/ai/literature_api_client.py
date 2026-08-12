@@ -11,8 +11,6 @@ from datetime import datetime, timedelta
 import json
 import logging
 import os
-import boto3
-from botocore.exceptions import ClientError
 import feedparser
 from urllib.parse import quote
 
@@ -23,60 +21,24 @@ class LiteratureAPIClient:
     """Real API connections for literature monitoring"""
 
     def __init__(self):
-        """Initialize with API keys from AWS Secrets Manager"""
+        """Initialize with API keys from environment variables"""
         self.api_keys = self._load_api_keys()
         self.session = None
 
     def _load_api_keys(self) -> Dict[str, str]:
-        """Load API keys from AWS Secrets Manager with environment fallback"""
-        secrets = {}
+        """Load API keys from environment variables"""
+        secrets = {
+            'ncbi': os.environ.get('NCBI_API_KEY', ''),
+            'uspto': os.environ.get('USPTO_API_KEY', ''),
+        }
 
-        # First try environment variables (for local development)
-        ncbi_key = os.environ.get('NCBI_API_KEY')
-        uspto_key = os.environ.get('USPTO_API_KEY')
-
-        if ncbi_key and uspto_key:
-            secrets['ncbi'] = ncbi_key
-            secrets['uspto'] = uspto_key
+        if secrets['ncbi'] and secrets['uspto']:
             logger.info("API keys loaded from environment variables")
-            return secrets
-
-        # Try AWS Secrets Manager for production
-        try:
-            client = boto3.client('secretsmanager', region_name='us-east-1')
-
-            # Load NCBI API key
-            try:
-                response = client.get_secret_value(SecretId='literature/ncbi-api-key')
-                secrets['ncbi'] = response['SecretString']
-                logger.info("NCBI API key loaded from AWS Secrets Manager")
-            except ClientError as e:
-                logger.warning(f"Failed to load NCBI key from Secrets Manager: {e}")
-
-            # Load USPTO API key
-            try:
-                response = client.get_secret_value(SecretId='literature/uspto-api-key')
-                secrets['uspto'] = response['SecretString']
-                logger.info("USPTO API key loaded from AWS Secrets Manager")
-            except ClientError as e:
-                logger.warning(f"Failed to load USPTO key from Secrets Manager: {e}")
-
-            if secrets.get('ncbi') and secrets.get('uspto'):
-                logger.info("All API keys loaded successfully from AWS Secrets Manager")
-                return secrets
-
-        except ClientError as e:
-            logger.error(f"Failed to connect to AWS Secrets Manager: {e}")
-
-        # If we still don't have keys, log error
-        if not secrets.get('ncbi') or not secrets.get('uspto'):
-            logger.error("Failed to load API keys from both environment and AWS Secrets Manager")
-            logger.error("Please set NCBI_API_KEY and USPTO_API_KEY environment variables or configure AWS Secrets")
-            # Return empty secrets to avoid hardcoded keys
-            if not secrets.get('ncbi'):
-                secrets['ncbi'] = ''
-            if not secrets.get('uspto'):
-                secrets['uspto'] = ''
+        else:
+            logger.warning(
+                "NCBI_API_KEY / USPTO_API_KEY not fully configured; "
+                "set these environment variables to enable literature API access"
+            )
 
         return secrets
 

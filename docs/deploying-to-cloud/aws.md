@@ -101,7 +101,7 @@ novomcp-eks (EKS cluster, us-east-1)
 │   ├── engine deployment
 │   ├── chem-props
 │   ├── addie-models
-│   └── faves-compliance
+│   └── molecule-index
 └── novomcp-gpu nodegroup (g5.xlarge × 0-4, scale-from-zero)
     ├── autodock-gpu
     ├── gromacs-md

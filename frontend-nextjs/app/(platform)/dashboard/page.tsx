@@ -49,11 +49,10 @@ const PROVIDER_LABELS: Record<string, { label: string; unlocks: string; envVar: 
   structure: { label: 'Structure prediction', unlocks: 'predict_structure, get_protein_structure', envVar: 'OPENFOLD3_URL' },
   qm: { label: 'Quantum mechanics', unlocks: 'run_qm_calculation, run_conformer_search', envVar: 'NOVOMCP_QM_URL' },
   nnp: { label: 'Neural network potentials', unlocks: 'compute_energy, optimize_geometry_nnp', envVar: 'NOVOMCP_NNP_URL' },
-  compliance: { label: 'Regulatory compliance', unlocks: 'check_compliance', envVar: 'NOVOMCP_COMPLIANCE_URL' },
+  compliance: { label: 'Compliance hook', unlocks: 'check_compliance', envVar: 'NOVOMCP_COMPLIANCE_URL' },
   molecule_index: { label: 'Molecule index', unlocks: 'search_similar, filter_molecules, tree tools', envVar: 'NOVOMCP_MOLECULE_INDEX_URL' },
   omics: { label: 'Omics data', unlocks: 'target_discovery, validate_target, stratify_patients', envVar: 'NOVOMCP_DB_HOST' },
   literature: { label: 'Literature search', unlocks: 'search_literature, search_patents', envVar: 'PINECONE_API_KEY' },
-  clinical_outcomes: { label: 'Clinical outcomes', unlocks: 'predict_clinical_outcomes', envVar: 'NOVOEXPERT_URL' },
   materials: { label: 'Materials Project', unlocks: 'search_materials_project', envVar: 'MP_API_KEY' },
 };
 

@@ -43,6 +43,6 @@ include = ["novomcp*"]
 
 [tool.setuptools.package-data]
 # Runtime data shipped inside the package (resolved relative to the module).
-novomcp = ["*.json"]                    # faves_reference_lists.json / openapi.json when present
+novomcp = ["*.json"]                    # openapi.json when present
 "novomcp.data" = ["*.json"]             # hgnc_symbols.json
 "novomcp.core.intake" = ["*.yaml"]      # pfam_roles.yaml

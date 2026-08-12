@@ -141,7 +141,7 @@ Cloud Run charges per request-second. For a low-traffic engine, this can be unde
 ### High-level
 
 - Deploy the engine to Cloud Run (auto-scaling, HTTPS-terminated at the front door)
-- Compute services on Cloud Run for CPU (chem-props, addie-models, faves-compliance)
+- Compute services on Cloud Run for CPU (chem-props, addie-models, molecule-index)
 - GPU services on GKE Autopilot with pod-triggered scale-from-zero, or on Vertex AI custom endpoints
 
 ### Cost estimate

@@ -1,28 +1,29 @@
 """
-AWS Secrets Manager integration for NovoMCP
-Fetches Azure OpenAI credentials securely from AWS Secrets Manager
+Secret retrieval shim for NovoMCP (OSS engine).
+
+The public engine loads all credentials from environment variables. This
+module keeps the historical SecretStore interface (`get_secrets_manager()`,
+`.available`, `.get_secret()`) so existing callers import and run unchanged,
+but every secret lookup short-circuits to None and the caller falls back to
+its environment-variable path.
 """
 
 import json
 import logging
 import os
 from typing import Dict, Optional, Any
-from functools import lru_cache
-import boto3
-from botocore.exceptions import ClientError
 
 logger = logging.getLogger(__name__)
 
-class SecretsManager:
-    """AWS Secrets Manager client for secure credential retrieval"""
-    
-    def __init__(self, region_name: str = None):
-        """Initialize Secrets Manager client.
+class SecretStore:
+    """No-op secret retriever. Always unavailable; callers fall back to env vars."""
 
-        AWS Secrets Manager lookups are OPT-IN via NOVO_USE_AWS_SECRETS=true.
-        When disabled (the default), all get_secret() calls short-circuit
-        to None and the caller falls back to environment variables. This
-        keeps local runs quiet and fast.
+    def __init__(self, region_name: str = None):
+        """Initialize the no-op secret retriever.
+
+        The OSS engine has no external secret store. `available` is always
+        False and `get_secret()` always returns None, so callers use their
+        environment-variable fallbacks.
         """
         self.region_name = region_name or os.getenv("AWS_REGION", "us-east-1")
         self.environment = os.getenv("ENVIRONMENT", "development")
@@ -30,69 +31,14 @@ class SecretsManager:
             "NOVO_SECRET_PREFIX",
             f"novomcp/{self.environment}",
         )
+        self.client = None
+        self.available = False
+        logger.debug("Secret store disabled; credentials load from environment variables")
 
-        self.enabled = os.getenv("NOVO_USE_AWS_SECRETS", "false").lower() == "true"
-        if not self.enabled:
-            self.client = None
-            self.available = False
-            logger.debug("AWS Secrets Manager disabled (set NOVO_USE_AWS_SECRETS=true to enable)")
-            return
-
-        try:
-            self.client = boto3.client(
-                'secretsmanager',
-                region_name=self.region_name
-            )
-            self.available = True
-            logger.info(f"AWS Secrets Manager client initialized for region: {self.region_name}")
-        except Exception as e:
-            logger.error(f"Failed to initialize AWS Secrets Manager client: {e}")
-            self.client = None
-            self.available = False
-    
-    @lru_cache(maxsize=10)
     def get_secret(self, secret_name: str) -> Optional[str]:
-        """
-        Retrieve a secret value from AWS Secrets Manager
-        
-        Args:
-            secret_name: Name of the secret to retrieve
-            
-        Returns:
-            Secret value as string, or None if not found
-        """
-        if not self.available:
-            return None
-        
-        try:
-            response = self.client.get_secret_value(SecretId=secret_name)
-            
-            # Secrets can be stored as either string or binary
-            if 'SecretString' in response:
-                return response['SecretString']
-            else:
-                # Binary secret (not used for our text-based secrets)
-                import base64
-                return base64.b64decode(response['SecretBinary']).decode('utf-8')
-                
-        except ClientError as e:
-            error_code = e.response['Error']['Code']
-            
-            if error_code == 'ResourceNotFoundException':
-                logger.warning(f"Secret {secret_name} not found in AWS Secrets Manager")
-            elif error_code == 'InvalidRequestException':
-                logger.error(f"Invalid request for secret {secret_name}: {e}")
-            elif error_code == 'InvalidParameterException':
-                logger.error(f"Invalid parameter for secret {secret_name}: {e}")
-            elif error_code == 'DecryptionFailure':
-                logger.error(f"Cannot decrypt secret {secret_name}: {e}")
-            elif error_code == 'InternalServiceError':
-                logger.error(f"Internal service error retrieving secret {secret_name}: {e}")
-            else:
-                logger.error(f"Unexpected error retrieving secret {secret_name}: {e}")
-            
-            return None
-    
+        """Always None in the OSS engine; callers fall back to environment variables."""
+        return None
+
     def get_azure_openai_config(self) -> Dict[str, Any]:
         """
         Get Azure OpenAI configuration from AWS Secrets Manager
@@ -190,16 +136,15 @@ class SecretsManager:
         return {}
     
     def clear_cache(self):
-        """Clear the secrets cache"""
-        self.get_secret.cache_clear()
-        logger.info("Secrets cache cleared")
+        """No-op; the OSS engine caches no secrets."""
+        return None
 
 # Global instance
 _secrets_manager = None
 
-def get_secrets_manager() -> SecretsManager:
-    """Get or create global SecretsManager instance"""
+def get_secrets_manager() -> SecretStore:
+    """Get or create global SecretStore instance"""
     global _secrets_manager
     if _secrets_manager is None:
-        _secrets_manager = SecretsManager()
+        _secrets_manager = SecretStore()
     return _secrets_manager

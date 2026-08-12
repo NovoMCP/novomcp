@@ -24,7 +24,7 @@ flowchart TB
     end
 
     subgraph ext["Data & external · optional"]
-        F["faves-compliance"]
+        F["molecule-index"]
         D["122M-molecule corpus · omics data pack"]
         L["LLM provider<br/>OpenAI · Anthropic · Ollama · Azure"]
     end
@@ -51,11 +51,11 @@ flowchart TB
 
 **Compute services.** Each heavy capability is a separate service you deploy when you need it — CPU services like `chem-props` and `addie-models`, GPU services like `autodock-gpu`, `gromacs-md`, and `openfold3`, and the native `novomcp-qm` / `nnp` / `neb` / `properties` stack. The engine dispatches to whichever are wired and reports the rest as unavailable rather than failing. See [Deploying services](deploying-services/README.md).
 
-**Data & external.** All optional. `faves-compliance` serves regulatory screening and cached lookups against the enriched corpus; the 122M-molecule corpus and omics data pack are downloadable datasets you point the engine at; the LLM provider (used for intent recognition and planning) is your own key. None are required to boot.
+**Data & external.** All optional. `molecule-index` serves cached lookups, similarity search, and property filtering against the enriched corpus; the 122M-molecule corpus and omics data pack are downloadable datasets you point the engine at; the LLM provider (used for intent recognition and planning) is your own key. None are required to boot.
 
 ## What runs with nothing wired
 
-Out of the 68-tool catalog, **11 tools work fully local** the moment the engine boots — molecular profiling and cheminformatics computed in-process via RDKit, plus the MCP handshake and funnel protocol. No compute services to deploy, no data pack, no LLM key. (Three of the 11 — the ChEMBL / ClinicalTrials.gov / bioRxiv searches — query public APIs; the rest are fully offline.) See [Tool availability](tool-availability.md) for the exact map of what's on by default and what each service unlocks.
+Out of the 67-tool catalog, **11 tools work fully local** the moment the engine boots — molecular profiling and cheminformatics computed in-process via RDKit, plus the MCP handshake and funnel protocol. No compute services to deploy, no data pack, no LLM key. (Three of the 11 — the ChEMBL / ClinicalTrials.gov / bioRxiv searches — query public APIs; the rest are fully offline.) See [Tool availability](tool-availability.md) for the exact map of what's on by default and what each service unlocks.
 
 ## What a tool call does
 

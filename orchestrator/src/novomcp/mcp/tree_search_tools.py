@@ -14,12 +14,12 @@ Each step narrows the search:
   122M molecules → ~1.2M → ~12K → ~100 → 1
 
 The LLM decides which branch to explore based on cluster summaries
-(MW range, avg QED, avg toxicity, scaffold distribution, FAVES status).
+(MW range, avg QED, avg toxicity, scaffold distribution, structural-alert status).
 
 Integration:
   - Import TREE_SEARCH_TOOLS and TREE_SEARCH_CREDITS into tools.py
   - Add execution methods to NovoMCPToolExecutor
-  - Backend: Cosmos DB 'cluster_hierarchy' container (DiskANN vector index)
+  - Backend: Cosmos DB 'cluster_hierarchy' container (vector index)
 """
 
 import logging
@@ -37,7 +37,7 @@ TREE_SEARCH_CREDITS: Dict[str, int] = {
     "explore_chemical_space": 3,   # Level 1: broad region scan
     "drill_into_cluster": 3,      # Level 2+: zone narrowing
     "compare_candidates": 5,      # Head-to-head with full profiles
-    "vector_search": 5,           # Direct DiskANN vector search (replaces old search_similar)
+    "vector_search": 5,           # Direct vector search (replaces old search_similar)
 }
 
 
@@ -67,7 +67,7 @@ TREE_SEARCH_TOOLS = {
             "regions (Level 1 clusters) that best match your target profile. Each region "
             "contains ~1.2M molecules with summary statistics: MW range, avg QED, avg "
             "toxicity, % orally bioavailable (GI absorption), % BBB-penetrant, % zero-PAINS, "
-            "Brenk alert rate, scaffold distribution, and FAVES compliance %. Use this as "
+            "Brenk alert rate, scaffold distribution, and structural-alert-clean %. Use this as "
             "the first step — read the summaries, then call drill_into_cluster on the most "
             "promising region to narrow further."
         ),
@@ -109,7 +109,7 @@ TREE_SEARCH_TOOLS = {
                         "mw_min": {"type": "number", "description": "Minimum avg MW for region"},
                         "mw_max": {"type": "number", "description": "Maximum avg MW for region"},
                         "qed_min": {"type": "number", "description": "Minimum avg QED for region"},
-                        "clean_pct_min": {"type": "number", "description": "Minimum % FAVES-clean molecules"},
+                        "clean_pct_min": {"type": "number", "description": "Minimum % structural-alert-clean (PAINS-clean) molecules"},
                         "gi_high_pct_min": {"type": "number", "description": "Minimum % orally bioavailable (GI High)"},
                         "bbb_yes_pct_min": {"type": "number", "description": "Minimum % BBB-penetrant"},
                         "pains_clean_pct_min": {"type": "number", "description": "Minimum % zero-PAINS alerts"},
@@ -187,8 +187,8 @@ TREE_SEARCH_TOOLS = {
         "description": (
             "Head-to-head comparison of specific molecules. Takes a list of CIDs "
             "(from drill_into_cluster sample_cids or any other source) and returns "
-            "their full profiles side-by-side: properties, ADMET predictions, FAVES "
-            "compliance, structural alerts. Designed for the final selection step "
+            "their full profiles side-by-side: properties, ADMET predictions, "
+            "structural alerts. Designed for the final selection step "
             "after narrowing via tree search."
         ),
         "tier": ToolTier.FREE,
@@ -222,13 +222,13 @@ TREE_SEARCH_TOOLS = {
     },
 
     # =========================================================================
-    # Direct Vector Search (DiskANN — replaces brute-force similarity)
+    # Direct Vector Search (the vector index — replaces brute-force similarity)
     # =========================================================================
     "vector_search": {
         "name": "vector_search",
         "title": "Vector Similarity Search",
         "description": (
-            "Fast approximate nearest-neighbor search over 122M molecules using DiskANN. "
+            "Fast approximate nearest-neighbor search over 122M molecules using approximate nearest-neighbor search. "
             "Given a query molecule (SMILES), finds the most structurally similar molecules "
             "in <100ms using Morgan fingerprint embeddings. This replaces the old brute-force "
             "Tanimoto search. Use this when you already know what molecule you want analogs "
@@ -284,7 +284,7 @@ class TreeSearchExecutor:
     """Execution logic for tree-guided retrieval tools.
 
     In production, integrate these methods into NovoMCPToolExecutor in tools.py.
-    Each method calls the faves-compliance service which fronts Cosmos DB.
+    Each method calls the molecule-index service which fronts Cosmos DB.
     """
 
     def __init__(self, call_service_fn, lookup_enriched_fn, map_cosmos_fn):
@@ -314,7 +314,7 @@ class TreeSearchExecutor:
 
         try:
             response = await self._call_service(
-                "faves-compliance",
+                "molecule-index",
                 "/api/tree/explore",
                 {
                     "query": query,
@@ -367,7 +367,7 @@ class TreeSearchExecutor:
 
         try:
             response = await self._call_service(
-                "faves-compliance",
+                "molecule-index",
                 "/api/tree/drill",
                 {
                     "cluster_id": cluster_id,
@@ -433,7 +433,7 @@ class TreeSearchExecutor:
 
         try:
             response = await self._call_service(
-                "faves-compliance",
+                "molecule-index",
                 "/api/tree/compare",
                 {
                     "cids": cids,
@@ -466,10 +466,10 @@ class TreeSearchExecutor:
             return {"success": False, "error": f"Candidate comparison failed: {str(e)}"}
 
     async def execute_vector_search(self, args: Dict[str, Any]) -> Dict[str, Any]:
-        """Direct DiskANN vector search — fast ANN over 122M molecules.
+        """Direct vector search — fast ANN over 122M molecules.
 
         Generates Morgan fingerprint embedding for the query SMILES,
-        runs VectorDistance() search on Cosmos DB with DiskANN index.
+        runs VectorDistance() search on Cosmos DB with vector index.
         Sub-100ms latency at 95%+ recall.
         """
         smiles = args.get("smiles")
@@ -482,7 +482,7 @@ class TreeSearchExecutor:
 
         try:
             response = await self._call_service(
-                "faves-compliance",
+                "molecule-index",
                 "/api/tree/vector-search",
                 {
                     "smiles": smiles,

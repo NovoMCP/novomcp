@@ -62,22 +62,17 @@ See [`orchestrator/mcp/spine.py`](https://github.com/NovoMCP/novomcp/blob/main/o
 
 Without either, the tools return clean `requires a funnel-persistence backend` errors. Raw tool calls still audit to `~/.novo/audit.jsonl`.
 
-### Compliance service (regulatory screening)
+### Compliance service (generic hook)
 
-Tools that consult it: `check_compliance`, plus the compliance blocks attached to `get_molecule_profile`, `screen_library`, `batch_profile`.
+The tool that consults it: `check_compliance`.
 
-The engine treats regulatory compliance as a **capability**, not a specific vendor. Any service that speaks the compliance protocol is valid. Three options:
+`check_compliance` is a **generic, unbranded hook**. The engine bundles no ruleset of its own — it simply forwards the molecule and context to whatever service you wire and returns that service's response. Bring your own compliance backend (regulatory screening, an internal policy service, an observability sink — anything that speaks the protocol).
 
-1. **Open reference implementation** — the `faves-compliance` Docker image ships in this OSS release (see [`deploying-services/faves-compliance.md`](deploying-services/faves-compliance.md)). Runs locally for triage; no paid subscription.
-2. **Hosted FAVES API** — the certified operational service at `api.novomcp.com`. Adds SLA, audit-log retention, drift monitoring, and IQ/OQ/PQ documentation for regulated submissions. Paid.
-3. **Your own service** — implement the compliance protocol against a different ruleset.
-
-Without any compliance service configured:
+Without a compliance service configured:
 - Basic path (RDKit properties + structural alerts via RDKit FilterCatalog) still works
 - `check_compliance` is hidden from `tools/list` and returns a structured 503 if called directly
-- ADMET/compliance blocks on `get_molecule_profile` come back `null` with an availability flag — never an error
 
-To wire (any backend):
+To wire:
 ```bash
 export NOVOMCP_COMPLIANCE_URL=http://localhost:8004  # or wherever your service runs
 ```
@@ -86,11 +81,10 @@ export NOVOMCP_COMPLIANCE_URL=http://localhost:8004  # or wherever your service 
 
 Tools that consult it: `search_similar`, `filter_molecules`, and the tree-guided retrieval tools (`explore_chemical_space`, `drill_into_cluster`, `vector_search`, `compare_candidates`).
 
-Same pluggable pattern as compliance. Any service that indexes molecules and returns similarity/filter results is valid. Options:
+The engine treats molecule indexing as a **capability**, not a specific vendor. Any service that indexes molecules and returns lookup/similarity/filter results is valid. Options:
 
-1. **v1.1.5 reference index server** (roadmap) — single-file FastAPI that reads a local parquet slice of the curated 122M corpus. Free, self-hosted, one Docker command.
-2. **FAVES hosted API** — the paid path also indexes the corpus.
-3. **Your own service** — any implementation of the index protocol.
+1. **Reference index server** (roadmap) — single-file FastAPI that reads a local parquet slice of the curated 122M corpus. Free, self-hosted, one Docker command.
+2. **Your own service** — any implementation of the index protocol.
 
 Without any molecule index configured, the index-backed tools are hidden from `tools/list`. The RDKit-in-process path still handles user-supplied SMILES (`calculate_properties`, `get_molecule_profile` basic path, `batch_profile`, `screen_library`).
 

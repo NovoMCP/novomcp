@@ -111,38 +111,6 @@ class AutoDockRequest(BaseModel):
         }
 
 
-class FAVESComplianceRequest(BaseModel):
-    """
-    Request model for faves-compliance service
-
-    Replaces: Dict passed to call_faves_compliance() in service_proxy.py
-    """
-    molecules: List[Dict[str, Any]] = Field(..., description="Molecules to validate")
-    campaign_id: str = Field(..., description="Campaign identifier")
-
-    # Compliance checks
-    checks: List[str] = Field(
-        default_factory=lambda: ["ethics", "safety", "regulatory"],
-        description="Compliance checks to perform"
-    )
-
-    # Regulatory jurisdiction
-    jurisdiction: str = Field(default="FDA", description="Regulatory jurisdiction: 'FDA', 'EMA', 'PMDA'")
-
-    # Thresholds
-    thresholds: Optional[Dict[str, Any]] = Field(default=None, description="Compliance threshold overrides")
-
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "molecules": [{"smiles": "CCO", "id": "mol-1"}],
-                "campaign_id": "campaign-abc-123",
-                "checks": ["ethics", "safety", "regulatory"],
-                "jurisdiction": "FDA"
-            }
-        }
-
-
 class GromacsSimulationRequest(BaseModel):
     """
     Request model for gromacs-md service
