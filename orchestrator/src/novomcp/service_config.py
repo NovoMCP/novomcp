@@ -275,15 +275,6 @@ class ServiceConfig:
                     "api_key": os.getenv("LEAD_OPT_API_KEY"),
                     "type": "https",
                 },
-                "gromacs-processor": {
-                    "url": _resolve_service_url(
-                        "gromacs-processor",
-                        "GROMACS_PROCESSOR_URL",
-                        "",
-                    ),
-                    "api_key": os.getenv("GROMACS_PROCESSOR_API_KEY") or "",
-                    "type": "https",
-                },
                 # NovoMD - Molecular Dynamics Service (Azure Container Apps)
                 "novomd": {
                     "url": _resolve_service_url(
@@ -339,7 +330,7 @@ class ServiceConfig:
             "knowledge-graph", "molecular-intelligence", "negative-data",
             "zinc-integration", "tdc-integration", "red-team",
             "prompt-library", "molmim-optimizer", "autodock-gpu",
-            "novo-quantum", "lead-optimization", "gromacs-processor", "novomd",
+            "novo-quantum", "lead-optimization", "novomd",
             "openfold3"
         ]
         

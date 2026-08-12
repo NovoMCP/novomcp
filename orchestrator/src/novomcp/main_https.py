@@ -256,13 +256,6 @@ _SERVICE_DEFAULTS = [
         "",
     ),
     ("gromacs-md", "GROMACS_MD_URL", "", "GROMACS_API_KEY", ""),
-    (
-        "gromacs-processor",
-        "GROMACS_PROCESSOR_URL",
-        "",
-        "GROMACS_PROCESSOR_API_KEY",
-        "",
-    ),
     # Quantum computing service
     (
         "novo-quantum",
