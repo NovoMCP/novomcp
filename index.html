@@ -1003,34 +1003,6 @@
   
   
     <li class="md-nav__item">
-      <a href="deploying-services/faves-compliance/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    faves-compliance
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="deploying-services/autodock-gpu/" class="md-nav__link">
         
   
@@ -1465,34 +1437,6 @@
     
   
     Overview
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="engineering-stories/tree-guided-retrieval-122m-molecules/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Tree-guided retrieval (122M molecules)
   
 
     
@@ -2080,9 +2024,7 @@
 <h2 id="what-lives-elsewhere">What lives elsewhere<a class="headerlink" href="#what-lives-elsewhere" title="Permanent link">&para;</a></h2>
 <p>By design, the following ship separately:</p>
 <ul>
-<li><strong>FAVES certified hosted API</strong> — the operational commitments (SLA, audit-log retention, drift monitoring, IQ/OQ/PQ) that a regulated submission needs, delivered as a paid service at <code>api.novomcp.com</code>. The V4 framework paper is <a href="https://zenodo.org/">published on Zenodo</a> under CC-BY-NC-ND 4.0. The <strong>open reference implementation</strong> of the framework ships in this OSS release as the <code>faves-compliance</code> Docker image — run locally for triage, route the shortlist through the hosted API when you need the certified record-of-audit.</li>
-<li><strong>Curated 122M-molecule enriched corpus</strong> — publishing to AWS Open Data / Kaggle / Zenodo as a downloadable dataset. Cached lookups happen through the FAVES compliance service when configured.</li>
-<li><strong>Trained clinical outcomes model weights</strong> — NovoExpert-3, separate license.</li>
+<li><strong>Curated 122M-molecule enriched corpus</strong> — publishing to AWS Open Data / Kaggle / Zenodo as a downloadable dataset. Cached lookups happen through the molecule-index service when configured.</li>
 </ul>
 <p>None of these are required for the engine to run.</p>
 <h2 id="licensing">Licensing<a class="headerlink" href="#licensing" title="Permanent link">&para;</a></h2>

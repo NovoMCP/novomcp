@@ -881,34 +881,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../deploying-services/faves-compliance/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    faves-compliance
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../deploying-services/autodock-gpu/" class="md-nav__link">
         
   
@@ -1343,34 +1315,6 @@
     
   
     Overview
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../engineering-stories/tree-guided-retrieval-122m-molecules/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Tree-guided retrieval (122M molecules)
   
 
     
@@ -1841,10 +1785,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#compliance-service-v200" class="md-nav__link">
+  <a href="#compliance-hook-v200" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Compliance service — v2.0.0
+        Compliance hook — v2.0.0
       
     </span>
   </a>
@@ -2133,10 +2077,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#compliance-service-v200" class="md-nav__link">
+  <a href="#compliance-hook-v200" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Compliance service — v2.0.0
+        Compliance hook — v2.0.0
       
     </span>
   </a>
@@ -2229,7 +2173,7 @@
 
 
 <h1 id="tool-availability">Tool availability<a class="headerlink" href="#tool-availability" title="Permanent link">&para;</a></h1>
-<p>NovoMCP ships a 68-tool catalog. Which ones are actually usable depends on what you've wired up. The engine only exposes tools whose dependencies are met — no tool clutter, no "unavailable" errors on tools you can't run.</p>
+<p>NovoMCP ships a 67-tool catalog. Which ones are actually usable depends on what you've wired up. The engine only exposes tools whose dependencies are met — no tool clutter, no "unavailable" errors on tools you can't run.</p>
 <h2 id="the-three-states">The three states<a class="headerlink" href="#the-three-states" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -2270,11 +2214,11 @@
 <p>No API keys, no databases, no compute services. Every one works on a laptop with just Python + internet.</p>
 <h3 id="whats-not-in-v1-but-ships-in-the-codebase-hidden">What's NOT in v1 (but ships in the codebase, hidden)<a class="headerlink" href="#whats-not-in-v1-but-ships-in-the-codebase-hidden" title="Permanent link">&para;</a></h3>
 <ul>
-<li><code>search_similar</code>, <code>filter_molecules</code> — need a molecule index. Hidden until <code>NOVOMCP_MOLECULE_INDEX_URL</code> is set. <strong>Roadmap: v1.1.5 similarity data connector</strong> ships a reference index server that reads a local parquet slice of the same corpus that unblocks omics — no paid service required.</li>
-<li>Compliance path (<code>check_compliance</code> + tree tools) — needs a compliance service. Hidden until <code>NOVOMCP_COMPLIANCE_URL</code> is set.</li>
+<li><code>search_similar</code>, <code>filter_molecules</code>, and the tree-guided retrieval tools (<code>explore_chemical_space</code>, <code>drill_into_cluster</code>, <code>vector_search</code>, <code>compare_candidates</code>) — need a molecule index. Hidden until <code>NOVOMCP_MOLECULE_INDEX_URL</code> is set. <strong>Roadmap: v1.1.5 similarity data connector</strong> ships a reference index server that reads a local parquet slice of the same corpus that unblocks omics — no paid service required.</li>
+<li><code>check_compliance</code> — a generic, unbranded compliance hook. Hidden until <code>NOVOMCP_COMPLIANCE_URL</code> is set; the engine bundles no ruleset of its own.</li>
 </ul>
 <h3 id="a-note-on-env-var-naming">A note on env-var naming<a class="headerlink" href="#a-note-on-env-var-naming" title="Permanent link">&para;</a></h3>
-<p>The engine treats molecule indexing and compliance as capabilities, not vendors. FAVES is one valid backend among several (open Kaggle-hosted index, self-hosted parquet, or your own service all work) — but the engine only ever sees the generic <code>NOVOMCP_*</code> env var. Point it at whichever backend you have.</p>
+<p>The engine treats molecule indexing and compliance as capabilities, not vendors. Any self-hosted parquet index or your own service works — the engine only ever sees the generic <code>NOVOMCP_*</code> env var. Point it at whichever backend you have.</p>
 <h2 id="coming-with-future-releases">Coming with future releases<a class="headerlink" href="#coming-with-future-releases" title="Permanent link">&para;</a></h2>
 <p>Everything else is on the <a href="https://github.com/NovoMCP/novomcp/blob/main/docs/product-roadmap.md">product roadmap</a> — carved out cleanly, coming in weekly releases, each unlocking a slice of the catalog. Here's the map:</p>
 <h3 id="omics-tools-v11x-sqlite-bundle">Omics tools — v1.1.x (SQLite bundle)<a class="headerlink" href="#omics-tools-v11x-sqlite-bundle" title="Permanent link">&para;</a></h3>
@@ -2337,11 +2281,6 @@
 <td>v1.3.x (bundled with docking walkthrough)</td>
 </tr>
 <tr>
-<td><code>NOVOEXPERT_URL</code></td>
-<td><code>predict_clinical_outcomes</code></td>
-<td>v1.7.x — NovoExpert-3 weights (MIT)</td>
-</tr>
-<tr>
 <td><code>LEAD_OPTIMIZATION_URL</code></td>
 <td><code>lead_optimization</code></td>
 <td>v1.6.x</td>
@@ -2357,23 +2296,23 @@
 <p>Requires: <code>FUNNEL_BACKEND_URL</code> pointing at an audit/credit-ledger service.</p>
 <p>Unlocks: <code>save_funnel_stage</code>, <code>save_funnel_context</code>, <code>save_funnel_memory</code>, <code>search_prior_runs</code>, <code>list_funnels</code>, <code>get_funnel_audit</code>, <code>get_funnel_context</code>, <code>get_pipeline_audit</code>, <code>get_credit_usage</code>, <code>generate_upload_url</code>, <code>get_file_status</code>, <code>list_files</code>, <code>list_jobs</code>, <code>get_job_status</code>, <code>cancel_job</code>.</p>
 <p>Roadmap: reference implementation of the backend + docs on plugging in your own via the pluggable spine (<code>NOVO_AUDIT=custom</code>).</p>
-<h3 id="compliance-service-v200">Compliance service — v2.0.0<a class="headerlink" href="#compliance-service-v200" title="Permanent link">&para;</a></h3>
+<h3 id="compliance-hook-v200">Compliance hook — v2.0.0<a class="headerlink" href="#compliance-hook-v200" title="Permanent link">&para;</a></h3>
 <p>Requires: <code>NOVOMCP_COMPLIANCE_URL</code> pointing at any compliance service.</p>
-<p>Unlocks: <code>check_compliance</code>, enriched paths of <code>get_molecule_profile</code> / <code>screen_library</code> / <code>filter_molecules</code>, <code>explore_chemical_space</code>, <code>drill_into_cluster</code>, <code>vector_search</code>, <code>compare_candidates</code>.</p>
-<p>Roadmap: FAVES-as-API subscription at <code>app.novomcp.com/faves</code> (one valid backend; users can also wire their own).</p>
+<p>Unlocks: <code>check_compliance</code> — a generic, unbranded hook that forwards the molecule + context to your configured service.</p>
+<p>Roadmap: reference implementations + docs on wiring your own compliance backend.</p>
 <h3 id="enterprise-data-connectors-post-v20">Enterprise data connectors — post-v2.0<a class="headerlink" href="#enterprise-data-connectors-post-v20" title="Permanent link">&para;</a></h3>
 <p>Hidden from OSS entirely. <code>push_to_destination</code>, <code>pull_from_source</code> (Snowflake, Databricks, BigQuery, Supabase) are hosted-only tools; no OSS user should see them in <code>tools/list</code>.</p>
 <h3 id="materials-project-user-brings-api-key">Materials Project — user brings API key<a class="headerlink" href="#materials-project-user-brings-api-key" title="Permanent link">&para;</a></h3>
 <p>Requires: <code>MP_API_KEY</code> (free, sign up at <a href="https://materialsproject.org/">materialsproject.org</a>).</p>
 <p>Unlocks: <code>search_materials_project</code>.</p>
 <h2 id="debug-mode">Debug mode<a class="headerlink" href="#debug-mode" title="Permanent link">&para;</a></h2>
-<p>To see the full 68-tool catalog regardless of what's wired:</p>
+<p>To see the full 67-tool catalog regardless of what's wired:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">NOVOMCP_SHOW_HIDDEN_TOOLS</span><span class="o">=</span><span class="m">1</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>python<span class="w"> </span>main_https.py
 </span></code></pre></div>
 <p>Tools that would normally be hidden show up in <code>tools/list</code>. Calls to unwired tools return structured "service unavailable" errors. Useful when developing / debugging or when you want to see everything at once.</p>
 <h2 id="why-hidden-and-not-visible-with-errors">Why hidden and not visible-with-errors<a class="headerlink" href="#why-hidden-and-not-visible-with-errors" title="Permanent link">&para;</a></h2>
-<p>The alternative would be to always show the full 68 tools and return "service unavailable" when unwired ones are called. That's what NovoMCP used to do. It felt like a broken product.</p>
+<p>The alternative would be to always show the full 67 tools and return "service unavailable" when unwired ones are called. That's what NovoMCP used to do. It felt like a broken product.</p>
 <p>Hidden-until-wired means:
 - <strong>Users see a working demo, not a lot of gray options.</strong> First impressions matter.
 - <strong><code>tools/list</code> is the truth.</strong> Every tool in it works. LLM clients that pick tools autonomously (Claude, Cursor, Zed) never try something that will fail.

@@ -881,34 +881,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../deploying-services/faves-compliance/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    faves-compliance
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../deploying-services/autodock-gpu/" class="md-nav__link">
         
   
@@ -1363,34 +1335,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../engineering-stories/tree-guided-retrieval-122m-molecules/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Tree-guided retrieval (122M molecules)
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../engineering-stories/server-side-tool-search/" class="md-nav__link">
         
   
@@ -1742,10 +1686,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#compliance-service-regulatory-screening" class="md-nav__link">
+  <a href="#compliance-service-generic-hook" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Compliance service (regulatory screening)
+        Compliance service (generic hook)
       
     </span>
   </a>
@@ -1989,10 +1933,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#compliance-service-regulatory-screening" class="md-nav__link">
+  <a href="#compliance-service-generic-hook" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Compliance service (regulatory screening)
+        Compliance service (generic hook)
       
     </span>
   </a>
@@ -2142,27 +2086,20 @@
 </span></code></pre></div>
 <p>See <a href="https://github.com/NovoMCP/novomcp/blob/main/orchestrator/mcp/spine.py"><code>orchestrator/mcp/spine.py</code></a> for the interfaces.</p>
 <p>Without either, the tools return clean <code>requires a funnel-persistence backend</code> errors. Raw tool calls still audit to <code>~/.novo/audit.jsonl</code>.</p>
-<h3 id="compliance-service-regulatory-screening">Compliance service (regulatory screening)<a class="headerlink" href="#compliance-service-regulatory-screening" title="Permanent link">&para;</a></h3>
-<p>Tools that consult it: <code>check_compliance</code>, plus the compliance blocks attached to <code>get_molecule_profile</code>, <code>screen_library</code>, <code>batch_profile</code>.</p>
-<p>The engine treats regulatory compliance as a <strong>capability</strong>, not a specific vendor. Any service that speaks the compliance protocol is valid. Three options:</p>
-<ol>
-<li><strong>Open reference implementation</strong> — the <code>faves-compliance</code> Docker image ships in this OSS release (see <a href="../deploying-services/faves-compliance/"><code>deploying-services/faves-compliance.md</code></a>). Runs locally for triage; no paid subscription.</li>
-<li><strong>Hosted FAVES API</strong> — the certified operational service at <code>api.novomcp.com</code>. Adds SLA, audit-log retention, drift monitoring, and IQ/OQ/PQ documentation for regulated submissions. Paid.</li>
-<li><strong>Your own service</strong> — implement the compliance protocol against a different ruleset.</li>
-</ol>
-<p>Without any compliance service configured:
+<h3 id="compliance-service-generic-hook">Compliance service (generic hook)<a class="headerlink" href="#compliance-service-generic-hook" title="Permanent link">&para;</a></h3>
+<p>The tool that consults it: <code>check_compliance</code>.</p>
+<p><code>check_compliance</code> is a <strong>generic, unbranded hook</strong>. The engine bundles no ruleset of its own — it simply forwards the molecule and context to whatever service you wire and returns that service's response. Bring your own compliance backend (regulatory screening, an internal policy service, an observability sink — anything that speaks the protocol).</p>
+<p>Without a compliance service configured:
 - Basic path (RDKit properties + structural alerts via RDKit FilterCatalog) still works
-- <code>check_compliance</code> is hidden from <code>tools/list</code> and returns a structured 503 if called directly
-- ADMET/compliance blocks on <code>get_molecule_profile</code> come back <code>null</code> with an availability flag — never an error</p>
-<p>To wire (any backend):
+- <code>check_compliance</code> is hidden from <code>tools/list</code> and returns a structured 503 if called directly</p>
+<p>To wire:
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">NOVOMCP_COMPLIANCE_URL</span><span class="o">=</span>http://localhost:8004<span class="w">  </span><span class="c1"># or wherever your service runs</span>
 </span></code></pre></div></p>
 <h3 id="molecule-index-similarity-filter">Molecule index (similarity + filter)<a class="headerlink" href="#molecule-index-similarity-filter" title="Permanent link">&para;</a></h3>
 <p>Tools that consult it: <code>search_similar</code>, <code>filter_molecules</code>, and the tree-guided retrieval tools (<code>explore_chemical_space</code>, <code>drill_into_cluster</code>, <code>vector_search</code>, <code>compare_candidates</code>).</p>
-<p>Same pluggable pattern as compliance. Any service that indexes molecules and returns similarity/filter results is valid. Options:</p>
+<p>The engine treats molecule indexing as a <strong>capability</strong>, not a specific vendor. Any service that indexes molecules and returns lookup/similarity/filter results is valid. Options:</p>
 <ol>
-<li><strong>v1.1.5 reference index server</strong> (roadmap) — single-file FastAPI that reads a local parquet slice of the curated 122M corpus. Free, self-hosted, one Docker command.</li>
-<li><strong>FAVES hosted API</strong> — the paid path also indexes the corpus.</li>
+<li><strong>Reference index server</strong> (roadmap) — single-file FastAPI that reads a local parquet slice of the curated 122M corpus. Free, self-hosted, one Docker command.</li>
 <li><strong>Your own service</strong> — any implementation of the index protocol.</li>
 </ol>
 <p>Without any molecule index configured, the index-backed tools are hidden from <code>tools/list</code>. The RDKit-in-process path still handles user-supplied SMILES (<code>calculate_properties</code>, <code>get_molecule_profile</code> basic path, <code>batch_profile</code>, <code>screen_library</code>).</p>

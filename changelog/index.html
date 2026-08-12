@@ -879,34 +879,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../deploying-services/faves-compliance/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    faves-compliance
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../deploying-services/autodock-gpu/" class="md-nav__link">
         
   
@@ -1341,34 +1313,6 @@
     
   
     Overview
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../engineering-stories/tree-guided-retrieval-122m-molecules/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Tree-guided retrieval (122M molecules)
   
 
     
@@ -1850,7 +1794,7 @@
 <h2 id="140-2026-07-30">[1.4.0] - 2026-07-30<a class="headerlink" href="#140-2026-07-30" title="Permanent link">&para;</a></h2>
 <h3 id="changed">Changed<a class="headerlink" href="#changed" title="Permanent link">&para;</a></h3>
 <ul>
-<li>The in-process cheminformatics and public-API search primitives (<code>calculate_properties</code>, <code>get_molecule_info</code>, <code>get_molecule_profile</code>, <code>batch_profile</code>, <code>screen_library</code>, <code>search_chembl</code>, <code>search_clinical_trials</code>, <code>search_biorxiv</code>) are now sourced from the open-source <a href="https://github.com/NovoMCP/novomcp-lite">novomcp-lite</a> package (<code>novomcp_tools</code>) rather than an inlined copy. The engine and the package now share one implementation — same fields, same numbers — with the engine layering its enrichment DB / ADMET / FAVES / credits on top. No behavior change for callers.</li>
+<li>The in-process cheminformatics and public-API search primitives (<code>calculate_properties</code>, <code>get_molecule_info</code>, <code>get_molecule_profile</code>, <code>batch_profile</code>, <code>screen_library</code>, <code>search_chembl</code>, <code>search_clinical_trials</code>, <code>search_biorxiv</code>) are now sourced from the open-source <a href="https://github.com/NovoMCP/novomcp-lite">novomcp-lite</a> package (<code>novomcp_tools</code>) rather than an inlined copy. The engine and the package now share one implementation — same fields, same numbers — with the engine layering its enrichment DB / ADMET / credits on top. No behavior change for callers.</li>
 </ul>
 <h2 id="130-2026-07-30">[1.3.0] - 2026-07-30<a class="headerlink" href="#130-2026-07-30" title="Permanent link">&para;</a></h2>
 <h3 id="added_1">Added<a class="headerlink" href="#added_1" title="Permanent link">&para;</a></h3>
@@ -1913,7 +1857,7 @@
 - Override with <code>NOVO_LLM=openai|anthropic|ollama|azure|disabled</code>
 - Optional: intent recognition, orchestration planning, project enrichment, semantic tool search, autonomous campaign decisions. None required to run tool calls.</p>
 <p><strong>Deployment</strong>
-- <code>docker compose up</code> brings up the engine and any subset of compute services you uncomment (chem-props, addie-models, autodock-gpu, gromacs-md, openfold3, novomcp-qm, novomcp-nnp, novomcp-neb, novomcp-properties, faves-compliance)
+- <code>docker compose up</code> brings up the engine and any subset of compute services you uncomment (chem-props, addie-models, autodock-gpu, gromacs-md, openfold3, novomcp-qm, novomcp-nnp, novomcp-neb, novomcp-properties)
 - Per-service deployment guides at <code>docs/deploying-services/</code> covering pre-reqs, deploy commands, env wiring, verification, and cost estimates for CPU vs GPU vs multi-GPU tiers
 - Cloud reference deploys at <code>docs/deploying-to-cloud/</code> for AWS, GCP, and Azure with three tiers each: single VM (docker compose), managed Kubernetes (EKS/GKE/AKS), and serverless spine + on-demand GPU (Fargate/Cloud Run/Container Apps)</p>
 <p><strong>Surfaces</strong>
@@ -1928,10 +1872,8 @@
 </ul>
 <h3 id="what-is-not-in-this-repo">What is not in this repo<a class="headerlink" href="#what-is-not-in-this-repo" title="Permanent link">&para;</a></h3>
 <p>By design, the following live separately:
-- The FAVES operational compliance service (curated ruleset + certified deployment; the reference implementation ships here)
 - Curated enrichment datasets at 122M-molecule scale
-- Novo AG autonomous discovery-funnel heuristics
-- Trained clinical outcomes model weights</p>
+- Novo AG autonomous discovery-funnel heuristics</p>
 <p>None of these are required for the engine to run.</p>
 <h3 id="verified-startup-output">Verified startup output<a class="headerlink" href="#verified-startup-output" title="Permanent link">&para;</a></h3>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>INFO  Loaded 17 service configurations

@@ -972,34 +972,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../deploying-services/faves-compliance/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    faves-compliance
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../deploying-services/autodock-gpu/" class="md-nav__link">
         
   
@@ -1434,34 +1406,6 @@
     
   
     Overview
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../engineering-stories/tree-guided-retrieval-122m-molecules/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Tree-guided retrieval (122M molecules)
   
 
     
@@ -1984,7 +1928,7 @@
     end
 
     subgraph ext["Data &amp; external · optional"]
-        F["faves-compliance"]
+        F["molecule-index"]
         D["122M-molecule corpus · omics data pack"]
         L["LLM provider&lt;br/&gt;OpenAI · Anthropic · Ollama · Azure"]
     end
@@ -2006,9 +1950,9 @@
 <li><strong>Pluggable adapters</strong> — <code>AuthGate</code>, <code>CreditMeter</code>, and <code>AuditSink</code> swap via environment variables. The OSS defaults are <code>LocalAuthGate</code> (every request is an unlimited <code>local</code> user), <code>NoopMeter</code> (no credit accounting), and <code>FileAuditSink</code> (appends to <code>~/.novo/audit.jsonl</code>). Swap them to run the same core authenticated, metered, and audited in production.</li>
 </ul>
 <p><strong>Compute services.</strong> Each heavy capability is a separate service you deploy when you need it — CPU services like <code>chem-props</code> and <code>addie-models</code>, GPU services like <code>autodock-gpu</code>, <code>gromacs-md</code>, and <code>openfold3</code>, and the native <code>novomcp-qm</code> / <code>nnp</code> / <code>neb</code> / <code>properties</code> stack. The engine dispatches to whichever are wired and reports the rest as unavailable rather than failing. See <a href="../deploying-services/">Deploying services</a>.</p>
-<p><strong>Data &amp; external.</strong> All optional. <code>faves-compliance</code> serves regulatory screening and cached lookups against the enriched corpus; the 122M-molecule corpus and omics data pack are downloadable datasets you point the engine at; the LLM provider (used for intent recognition and planning) is your own key. None are required to boot.</p>
+<p><strong>Data &amp; external.</strong> All optional. <code>molecule-index</code> serves cached lookups, similarity search, and property filtering against the enriched corpus; the 122M-molecule corpus and omics data pack are downloadable datasets you point the engine at; the LLM provider (used for intent recognition and planning) is your own key. None are required to boot.</p>
 <h2 id="what-runs-with-nothing-wired">What runs with nothing wired<a class="headerlink" href="#what-runs-with-nothing-wired" title="Permanent link">&para;</a></h2>
-<p>Out of the 68-tool catalog, <strong>11 tools work fully local</strong> the moment the engine boots — molecular profiling and cheminformatics computed in-process via RDKit, plus the MCP handshake and funnel protocol. No compute services to deploy, no data pack, no LLM key. (Three of the 11 — the ChEMBL / ClinicalTrials.gov / bioRxiv searches — query public APIs; the rest are fully offline.) See <a href="../tool-availability/">Tool availability</a> for the exact map of what's on by default and what each service unlocks.</p>
+<p>Out of the 67-tool catalog, <strong>11 tools work fully local</strong> the moment the engine boots — molecular profiling and cheminformatics computed in-process via RDKit, plus the MCP handshake and funnel protocol. No compute services to deploy, no data pack, no LLM key. (Three of the 11 — the ChEMBL / ClinicalTrials.gov / bioRxiv searches — query public APIs; the rest are fully offline.) See <a href="../tool-availability/">Tool availability</a> for the exact map of what's on by default and what each service unlocks.</p>
 <h2 id="what-a-tool-call-does">What a tool call does<a class="headerlink" href="#what-a-tool-call-does" title="Permanent link">&para;</a></h2>
 <ol>
 <li>A client sends a request to a surface (<code>/mcp/</code> or <code>/v1</code>).</li>

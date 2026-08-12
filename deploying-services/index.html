@@ -988,34 +988,6 @@
   
   
     <li class="md-nav__item">
-      <a href="faves-compliance/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    faves-compliance
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="autodock-gpu/" class="md-nav__link">
         
   
@@ -1450,34 +1422,6 @@
     
   
     Overview
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../engineering-stories/tree-guided-retrieval-122m-molecules/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Tree-guided retrieval (122M molecules)
   
 
     
@@ -2019,8 +1963,8 @@
 </tr>
 <tr>
 <td><code>search_similar</code></td>
-<td><code>chem-props</code></td>
-<td>CPU-only. Morgan fingerprint similarity.</td>
+<td><code>molecule-index</code></td>
+<td>Morgan fingerprint similarity against the enriched index.</td>
 </tr>
 <tr>
 <td><code>search_chembl</code></td>
@@ -2039,8 +1983,8 @@
 </tr>
 <tr>
 <td><code>check_compliance</code></td>
-<td><code>faves-compliance</code></td>
-<td>CPU-only. Regulatory screening.</td>
+<td><code>compliance</code> (generic hook)</td>
+<td>Optional. Forwards to <code>NOVOMCP_COMPLIANCE_URL</code>; no bundled ruleset.</td>
 </tr>
 <tr>
 <td><code>dock_molecules</code></td>
@@ -2159,7 +2103,6 @@ AWS Marketplace and GCP Cloud Marketplace listings under development.</p>
 - <a href="chem-props/"><code>chem-props.md</code></a>, molecular property calculator (RDKit)
 - <a href="novomcp-qm/"><code>novomcp-qm.md</code></a>, quantum-mechanical calculations (xTB, CREST, MCPB.py)
 - <a href="novomcp-properties/"><code>novomcp-properties.md</code></a>, pKa, solubility, BDE
-- <a href="faves-compliance/"><code>faves-compliance.md</code></a>, regulatory screening
 - <a href="addie-models/"><code>addie-models.md</code></a>, ADMET prediction (CPU works; GPU is faster)</p>
 <p><strong>GPU services</strong>:
 - <a href="autodock-gpu/"><code>autodock-gpu.md</code></a>, molecular docking (AutoDock-GPU)
