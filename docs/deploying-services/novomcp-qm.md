@@ -16,7 +16,7 @@ docker run -d \
   --name novomcp-qm \
   -p 8031:8031 \
   --restart unless-stopped \
-  ghcr.io/NovoMCP/novomcp-qm:latest
+  ghcr.io/novomcp/novomcp-qm:latest
 ```
 
 ## Wire into the engine

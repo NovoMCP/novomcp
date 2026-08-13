@@ -23,14 +23,14 @@ docker run -d \
   --gpus all \
   -p 8032:8032 \
   --restart unless-stopped \
-  ghcr.io/NovoMCP/novomcp-nnp:latest
+  ghcr.io/novomcp/novomcp-nnp:latest
 
 # CPU only
 docker run -d \
   --name novomcp-nnp \
   -p 8032:8032 \
   --restart unless-stopped \
-  ghcr.io/NovoMCP/novomcp-nnp:latest
+  ghcr.io/novomcp/novomcp-nnp:latest
 ```
 
 ## Wire into the engine

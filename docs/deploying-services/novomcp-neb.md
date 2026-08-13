@@ -16,7 +16,7 @@ docker run -d \
   --name novomcp-neb \
   -p 8034:8034 \
   --restart unless-stopped \
-  ghcr.io/NovoMCP/novomcp-neb:latest
+  ghcr.io/novomcp/novomcp-neb:latest
 ```
 
 ## Wire into the engine
