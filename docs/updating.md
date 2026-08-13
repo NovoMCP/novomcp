@@ -35,7 +35,7 @@ The v1.0 install paths above cover git-comfortable + docker-comfortable users. T
 | Path | Ships in | Command (when available) |
 |---|---|---|
 | **PyPI package** | v1.0.1 (targeted week 1-2 post-launch) | `pip install novomcp` — thin wrapper that installs the engine + a `novomcp` entry point |
-| **Prebuilt Docker image (GHCR)** | v1.0.1 or v1.0.2 | `docker pull ghcr.io/NovoMCP/novomcp:latest` — skips the local build step; ~30 sec to running vs 2-3 min |
+| **Prebuilt Docker image (GHCR)** | v1.0.1 or v1.0.2 | `docker pull ghcr.io/novomcp/novomcp:latest` — skips the local build step; ~30 sec to running vs 2-3 min |
 | **`novo` CLI** (`npx novo` / `npm i -g novo`) | v1.4.5 | `novo dock ...`, `novo funnel run ...` — thin scriptable client, does NOT bundle GPU compute |
 | **Homebrew tap** | later, based on demand | `brew install novomcp` |
 
@@ -92,7 +92,7 @@ pip install --upgrade novomcp
 ### Prebuilt Docker image (v1.0.1+ when available)
 
 ```bash
-docker pull ghcr.io/NovoMCP/novomcp:latest
+docker pull ghcr.io/novomcp/novomcp:latest
 docker restart novomcp   # or however your compose/k8s manifest names it
 ```
 
@@ -135,7 +135,7 @@ docker compose up -d
 pip install novomcp==1.1.0
 
 # prebuilt docker (v1.0.1+)
-docker pull ghcr.io/NovoMCP/novomcp:v1.1.0
+docker pull ghcr.io/novomcp/novomcp:v1.1.0
 ```
 
 Then [open an issue](https://github.com/NovoMCP/novomcp/issues) so we can fix it forward.

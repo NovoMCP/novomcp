@@ -89,6 +89,14 @@ python main_https.py
 
 **Fix:** retry. If it keeps failing on your network specifically, check whether your firewall / VPN is blocking these hosts.
 
+### PDB fetch times out when a compute service runs on AWS/EC2
+
+**Symptoms:** `run_molecular_dynamics`, `generate_dynamics`, or `dock_molecules` fail with a PDB-fetch timeout when the gromacs-md or autodock-gpu service is deployed on an AWS EC2 instance, even though the same service works from a laptop and general internet is reachable from the instance.
+
+**Cause:** RCSB (`files.rcsb.org`) blocks or rate-limits the AWS IP range, so a fetch-by-PDB-ID times out from EC2 while other hosts stay reachable. This is upstream of the engine, in the compute service's structure fetch.
+
+**Fix:** provide the structure directly instead of by ID. `dock_molecules` accepts `protein_pdb_content`, so pass the PDB text and skip the fetch. For MD, pre-seed the structure from a mirror that does not block AWS, such as PDBe (`https://www.ebi.ac.uk/pdbe/entry-files/download/pdb<id>.ent`), and point the service at the cached file. Deploying the service outside AWS also avoids the block.
+
 ## Updates
 
 ### The boot-time update check spams the log

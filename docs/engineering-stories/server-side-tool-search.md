@@ -7,7 +7,7 @@
 
 ---
 
-In April 2026, Anthropic shipped tool search in the Claude Agent SDK. It defers tool schema loading so agents can operate over catalogs of hundreds of tools without losing selection accuracy. Our MCP platform crossed that threshold this year. We now expose 68 tools to the AI assistants our customers use, ranging across target discovery, quantum chemistry, molecular dynamics, clinical outcome prediction, and materials science.
+In April 2026, Anthropic shipped tool search in the Claude Agent SDK. It defers tool schema loading so agents can operate over catalogs of hundreds of tools without losing selection accuracy. Our MCP platform crossed that threshold this year. We now expose 68 tools to the AI assistants our customers use, ranging across target discovery, quantum chemistry, molecular dynamics, docking, and materials science.
 
 The SDK feature was designed for exactly our problem. It did not reach us.
 
