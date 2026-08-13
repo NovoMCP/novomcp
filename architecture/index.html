@@ -1918,7 +1918,7 @@
     subgraph engine["NovoMCP engine · localhost:8018"]
         S["Surfaces&lt;br/&gt;MCP JSON-RPC /mcp/ · REST + OpenAPI 3.1 /v1"]
         K["Orchestrator core (BSL 1.1)&lt;br/&gt;intent → plan → tool dispatch&lt;br/&gt;11-stage discovery funnel"]
-        A["Pluggable adapters · env-swappable&lt;br/&gt;AuthGate · CreditMeter · AuditSink"]
+        A["Pluggable adapters · env-swappable&lt;br/&gt;AuthGate · UsageMeter · AuditSink"]
     end
 
     subgraph compute["Compute services · deploy as needed"]
@@ -1947,7 +1947,7 @@
 <ul>
 <li><strong>Surfaces</strong> — MCP JSON-RPC at <code>/mcp/</code> and a curated REST API + OpenAPI 3.1 spec at <code>/v1</code>. Both routes land in the same orchestrator, so a tool behaves identically whether an agent calls it or a <code>curl</code> does.</li>
 <li><strong>Orchestrator core</strong> — intent recognition, orchestration planning, semantic tool search, and the governed 11-stage discovery funnel. This is the part licensed under BSL 1.1 (see <a href="../#licensing">Licensing</a>); everything around it is Apache-2.0.</li>
-<li><strong>Pluggable adapters</strong> — <code>AuthGate</code>, <code>CreditMeter</code>, and <code>AuditSink</code> swap via environment variables. The OSS defaults are <code>LocalAuthGate</code> (every request is an unlimited <code>local</code> user), <code>NoopMeter</code> (no credit accounting), and <code>FileAuditSink</code> (appends to <code>~/.novo/audit.jsonl</code>). Swap them to run the same core authenticated, metered, and audited in production.</li>
+<li><strong>Pluggable adapters</strong> — <code>AuthGate</code>, <code>UsageMeter</code>, and <code>AuditSink</code> swap via environment variables. The OSS defaults are <code>LocalAuthGate</code> (every request is an unlimited <code>local</code> user), <code>NoopMeter</code> (no usage accounting), and <code>FileAuditSink</code> (appends to <code>~/.novo/audit.jsonl</code>). Swap them to run the same core authenticated, metered, and audited in production.</li>
 </ul>
 <p><strong>Compute services.</strong> Each heavy capability is a separate service you deploy when you need it — CPU services like <code>chem-props</code> and <code>addie-models</code>, GPU services like <code>autodock-gpu</code>, <code>gromacs-md</code>, and <code>openfold3</code>, and the native <code>novomcp-qm</code> / <code>nnp</code> / <code>neb</code> / <code>properties</code> stack. The engine dispatches to whichever are wired and reports the rest as unavailable rather than failing. See <a href="../deploying-services/">Deploying services</a>.</p>
 <p><strong>Data &amp; external.</strong> All optional. <code>molecule-index</code> serves cached lookups, similarity search, and property filtering against the enriched corpus; the 122M-molecule corpus and omics data pack are downloadable datasets you point the engine at; the LLM provider (used for intent recognition and planning) is your own key. None are required to boot.</p>
@@ -1958,7 +1958,7 @@
 <li>A client sends a request to a surface (<code>/mcp/</code> or <code>/v1</code>).</li>
 <li><code>AuthGate</code> resolves the caller (a <code>local</code> user, unauthenticated, in OSS defaults).</li>
 <li>The core plans and dispatches to the right handler — computed in-process for local tools, or proxied to a compute service for the rest.</li>
-<li><code>CreditMeter</code> records usage (a no-op in OSS defaults).</li>
+<li><code>UsageMeter</code> records usage (a no-op in OSS defaults).</li>
 <li><code>AuditSink</code> logs the call (<code>~/.novo/audit.jsonl</code> in OSS defaults).</li>
 <li>The result returns on the same surface it came in on.</li>
 </ol>

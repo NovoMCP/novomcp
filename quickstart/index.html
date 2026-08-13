@@ -2175,7 +2175,7 @@
 <p>The engine boots with:</p>
 <ul>
 <li><strong>Auth</strong>: none required (<code>LocalAuthGate</code>, every request resolves to a <code>local</code> user with unlimited tier)</li>
-<li><strong>Metering</strong>: none (<code>NoopMeter</code>, no credit accounting)</li>
+<li><strong>Metering</strong>: none (<code>NoopMeter</code>, no usage accounting)</li>
 <li><strong>Audit</strong>: local file (<code>FileAuditSink</code>, appends JSON-lines to <code>~/.novo/audit.jsonl</code>)</li>
 </ul>
 <p>If you accidentally create the venv with Python 3.9, <code>python main_https.py</code> fails fast with an actionable message telling you which install command to run.</p>
@@ -2215,7 +2215,7 @@
 <h3 id="audit-sink">Audit sink<a class="headerlink" href="#audit-sink" title="Permanent link">&para;</a></h3>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>tail<span class="w"> </span>-3<span class="w"> </span>~/.novo/audit.jsonl
 </span></code></pre></div>
-<p>Every tool call is logged as a JSON-lines row. Structure: <code>event</code>, <code>timestamp</code>, <code>payload</code> (tool, funnel_id, success, credits, duration, surface).</p>
+<p>Every tool call is logged as a JSON-lines row. Structure: <code>event</code>, <code>timestamp</code>, <code>payload</code> (tool, funnel_id, success, duration, surface).</p>
 <h2 id="what-next">What next<a class="headerlink" href="#what-next" title="Permanent link">&para;</a></h2>
 <ul>
 <li><strong><a href="../configuring-llm/">Configure an LLM provider</a></strong> — enable intent recognition, orchestration planning, and semantic tool search</li>

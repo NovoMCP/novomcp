@@ -2213,7 +2213,7 @@
 <li>Engine on <strong>ECS Fargate</strong> (no EC2 to manage, ~$0.04/hr for 1 vCPU / 2 GB)</li>
 <li>Compute services on <strong>EC2 GPU instances</strong> launched on-demand by SQS-triggered Lambda (or a queue-based autoscaler)</li>
 <li>Audit logs to S3 (via a custom <code>AuditSink</code> implementation)</li>
-<li>Aurora Serverless v2 if you want durable audit + credit accounting</li>
+<li>Aurora Serverless v2 if you want durable audit + usage accounting</li>
 </ul>
 <h3 id="cost-estimate_2">Cost estimate<a class="headerlink" href="#cost-estimate_2" title="Permanent link">&para;</a></h3>
 <ul>
