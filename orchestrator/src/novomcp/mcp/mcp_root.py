@@ -18,7 +18,7 @@ from datetime import datetime
 from fastapi import APIRouter, Request, Response, HTTPException, Header
 from fastapi.responses import JSONResponse, StreamingResponse
 
-from .tools import MCP_TOOLS, MCP_PROMPTS, MCP_PROMPT_TEMPLATES, MCP_RESOURCES, MCP_RESOURCE_DATA, MCPToolExecutor, ToolTier, host_is_compute, is_tool_visible
+from .tools import MCP_TOOLS, MCP_PROMPTS, MCP_PROMPT_TEMPLATES, MCP_RESOURCES, MCP_RESOURCE_DATA, MCPToolExecutor, host_is_compute, is_tool_visible
 from .auth import MCPUser, validate_via_spine
 from .spine import build_spine
 from novomcp.version import __version__
@@ -361,33 +361,19 @@ async def _handle_tools_list(params: Dict, request: Request, session_id: str) ->
             detail="Authentication required to list tools."
         )
 
-    user_tier = user.tier.value
-
-    # Get tools available for this tier
-    # Order must match the ToolTier enum and the executor's own gate — omitting
-    # CORE makes tier_order.index() raise a ValueError on any CORE-tier tool and
-    # 500s the whole tools/list response.
-    tier_order = [ToolTier.FREE, ToolTier.CORE, ToolTier.PRO, ToolTier.TEAM, ToolTier.ENTERPRISE]
-    try:
-        user_tier_index = tier_order.index(ToolTier(user_tier))
-    except ValueError:
-        user_tier_index = 0  # Default to free
-
-    # Surface gate (Novo vs Novo Compute) layered on top of the tier gate:
-    # a tool must be both visible on this host's surface AND within the user's tier.
+    # Surface gate (Novo vs Novo Compute): a tool must be visible on this
+    # host's surface. The local user is always highest-tier, so no tier gate.
     is_compute = host_is_compute(request.headers.get("host"))
 
     tools = []
     for name, tool in MCP_TOOLS.items():
         if not is_tool_visible(name, is_compute):
             continue
-        tool_tier_index = tier_order.index(tool["tier"])
-        if user_tier_index >= tool_tier_index:
-            tools.append({
-                "name": tool["name"],
-                "description": tool["description"],
-                "inputSchema": tool["inputSchema"]
-            })
+        tools.append({
+            "name": tool["name"],
+            "description": tool["description"],
+            "inputSchema": tool["inputSchema"]
+        })
 
     surface = "compute" if is_compute else "core"
     logger.info(f"Tools listed for user {user.user_id} on {surface} surface: {len(tools)} tools")
@@ -424,19 +410,17 @@ async def _handle_tools_call(params: Dict, request: Request, session_id: str) ->
     if not _tool_executor:
         raise HTTPException(status_code=503, detail="Tool executor not initialized")
 
-    # Execute tool with credit tracking
+    # Execute tool
     result = await _tool_executor.execute(
         tool_name=tool_name,
         arguments=arguments,
-        user_tier=ToolTier(user.tier.value),
         org_id=user.org_id,
         user_id=user.user_id,
         session_id=session_id,
-        credits_available=user.credits_available,
     )
 
-    # Usage/credit metering is handled inside MCPToolExecutor.execute() via
-    # the spine meter (NoopMeter locally); no separate accounting needed here.
+    # Usage recording is handled inside MCPToolExecutor.execute() via the
+    # spine meter (NoopMeter locally, un-metered); no separate accounting here.
 
     if result.success:
         return {

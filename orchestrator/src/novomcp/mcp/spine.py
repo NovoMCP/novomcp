@@ -1,5 +1,5 @@
 """
-Auth, credit-metering, and audit interfaces.
+Auth, usage-metering, and audit interfaces.
 
 Three protocols — `AuthGate`, `UsageMeter`, `AuditSink` — plus default
 implementations that let the engine run standalone with no external
@@ -8,7 +8,8 @@ selected via environment variable.
 
 `UsageMeter` and `AuditSink` are intentionally separate contracts: audit
 is useful without metering (self-hosters get real audit logging with no
-credit accounting), and metering without audit is unusual.
+usage accounting), and metering without audit is unusual. The self-hosted
+engine is un-metered — the default `NoopMeter` records nothing.
 
 Environment configuration (all default to local when unset):
 
@@ -43,18 +44,17 @@ class User:
     """Represents an authenticated caller.
 
     A minimal, framework-agnostic identity returned by auth gates. Custom
-    implementations can carry richer metadata (tier, credits, org info)
+    implementations can carry richer metadata (org info, JWT claims, etc.)
     in the `extra` slot.
     """
 
     user_id: str
     email: str = ""
-    tier: str = "unlimited"        # local default; hosted values: free/core/team/enterprise
     org_id: Optional[str] = None
     org_name: Optional[str] = None
 
-    # Optional metadata slot for custom implementations (credits, limits,
-    # JWT claims, etc.). The default local implementation leaves it empty.
+    # Optional metadata slot for custom implementations (limits, JWT
+    # claims, etc.). The default local implementation leaves it empty.
     extra: dict = field(default_factory=dict)
 
 
@@ -83,20 +83,21 @@ class AuthGate(Protocol):
 
 
 class UsageMeter(Protocol):
-    """Record a tool call and (optionally) deduct credits.
+    """Record a completed tool call for analytics.
 
     Separate from AuditSink by design — audit and metering are independent
-    concerns and can be satisfied by different backends.
+    concerns and can be satisfied by different backends. The self-hosted
+    engine is un-metered (see `NoopMeter`); a managed deployment can swap
+    in an implementation that does its own accounting.
     """
 
     async def record(
         self,
         user: User,
         tool: str,
-        cost_credits: int,
         meta: Optional[dict] = None,
     ) -> "RecordResult":
-        """Record a completed tool call and deduct credits if applicable.
+        """Record a completed tool call.
 
         Must never raise for the local case. Custom implementations may
         raise on unreachable backends; callers decide whether that's a
@@ -123,7 +124,6 @@ class RecordResult:
     """Result of a UsageMeter.record() call."""
 
     success: bool
-    remaining_credits: Optional[float] = None
     reason: Optional[str] = None  # populated when success=False
 
 
@@ -137,16 +137,13 @@ class LocalAuthGate:
     Returns a single 'local' user regardless of what credential is
     presented (including None). No network calls; no external state.
 
-    Tier is set to "enterprise" (the highest tier in the ToolTier enum)
-    so all tools are accessible in local mode. OSS local users get
-    unmetered access to everything by default — no tier gating, no
-    credit accounting (NoopMeter handles that side).
+    OSS local users get un-metered access to everything by default — no
+    tier gating, no usage accounting (NoopMeter handles that side).
     """
 
     _LOCAL_USER = User(
         user_id="local",
         email="local@localhost",
-        tier="enterprise",
         org_id="local",
         org_name="local",
     )
@@ -160,18 +157,17 @@ class LocalAuthGate:
 class NoopMeter:
     """Meter that records nothing and always succeeds.
 
-    Every tool call returns success without a credit deduction and without
-    any network I/O. Pair with `FileAuditSink` for local observability.
+    Every tool call returns success without any accounting and without any
+    network I/O. Pair with `FileAuditSink` for local observability.
     """
 
     async def record(
         self,
         user: User,
         tool: str,
-        cost_credits: int,
         meta: Optional[dict] = None,
     ) -> RecordResult:
-        return RecordResult(success=True, remaining_credits=None)
+        return RecordResult(success=True)
 
 
 class FileAuditSink:
@@ -221,7 +217,7 @@ class Spine:
     """The three interfaces bundled together.
 
     Set on `app.state.spine` at startup; passed through requests via
-    `RequestContext`. Code that needs auth / credit / audit reads it
+    `RequestContext`. Code that needs auth / metering / audit reads it
     from here explicitly.
     """
 

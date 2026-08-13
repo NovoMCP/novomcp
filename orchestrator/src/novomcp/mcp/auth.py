@@ -56,10 +56,6 @@ class MCPUser:
     _daily_limit: int = 100  # From org
     created_at: datetime = field(default_factory=datetime.utcnow)
 
-    # Trial enforcement
-    credits_available: Optional[float] = None
-    trial_expires_at: Optional[datetime] = None
-
     # Usage tracking (kept in Redis for performance)
     daily_queries: int = 0
     monthly_queries: int = 0
@@ -92,33 +88,12 @@ class MCPUser:
 
     @property
     def is_trial_blocked(self) -> bool:
-        """True if org cannot execute tools due to depleted credits or expired trial."""
-        # Paid tiers with overage are never blocked
-        if self.tier in (UserTier.ENTERPRISE, UserTier.TEAM):
-            return False
-        # Core: blocked only when credits exhausted (no trial expiry, no overage)
-        if self.tier == UserTier.CORE:
-            return self.credits_available is not None and self.credits_available <= 0
-        # Free: blocked when credits exhausted OR trial expired
-        if self.credits_available is not None and self.credits_available <= 0:
-            return True
-        if self.trial_expires_at is not None and datetime.utcnow() > self.trial_expires_at:
-            return True
+        """Self-hosted engine is un-metered — callers are never blocked."""
         return False
 
     @property
     def trial_block_reason(self) -> Optional[str]:
-        """Reason for block: credits_exhausted, trial_expired, or None."""
-        if self.tier in (UserTier.ENTERPRISE, UserTier.TEAM):
-            return None
-        if self.tier == UserTier.CORE:
-            if self.credits_available is not None and self.credits_available <= 0:
-                return "credits_exhausted"
-            return None
-        if self.credits_available is not None and self.credits_available <= 0:
-            return "credits_exhausted"
-        if self.trial_expires_at is not None and datetime.utcnow() > self.trial_expires_at:
-            return "trial_expired"
+        """Self-hosted engine is un-metered — no block reason."""
         return None
 
     def can_query(self, count: int = 1) -> bool:
@@ -151,8 +126,6 @@ class MCPUser:
             "daily_queries": self.daily_queries,
             "monthly_queries": self.monthly_queries,
             "last_query_date": self.last_query_date.isoformat() if self.last_query_date else None,
-            "credits_available": self.credits_available,
-            "trial_expires_at": self.trial_expires_at.isoformat() if self.trial_expires_at else None
         }
 
     @classmethod
@@ -171,8 +144,6 @@ class MCPUser:
             daily_queries=data.get("daily_queries", 0),
             monthly_queries=data.get("monthly_queries", 0),
             last_query_date=datetime.fromisoformat(data["last_query_date"]) if data.get("last_query_date") else None,
-            credits_available=data.get("credits_available"),
-            trial_expires_at=datetime.fromisoformat(data["trial_expires_at"]) if data.get("trial_expires_at") else None
         )
 
 
@@ -184,7 +155,7 @@ async def validate_via_spine(
     Local runs resolve every credential to the unlimited local user via
     LocalAuthGate; a custom (hosted) AuthGate may wrap a richer MCPUser in the
     spine User's ``extra['mcp_user']`` slot. Otherwise we synthesize an
-    enterprise-tier user so downstream code that expects tier/credit/limit
+    enterprise-tier user so downstream code that expects tier/limit
     fields keeps working. Shared by the MCP router, the root handler, and the
     OAuth flow so all three authenticate through the same seam.
     """
