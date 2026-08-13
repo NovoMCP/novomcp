@@ -129,7 +129,7 @@ Not the primary path but supported. Useful for tests and Jupyter workflows.
 
 ## Tool categories
 
-The 67 tools group into these categories (each with per-tool descriptions in the OpenAPI spec):
+The 68 tools group into these categories (each with per-tool descriptions in the OpenAPI spec):
 
 - **Cheminformatics** — `calculate_properties`, `get_molecule_profile`, `search_similar`, `filter_molecules`, `screen_library`, `batch_profile`, `get_molecule_info`
 - **ADMET + safety** — `predict_admet`, `check_compliance`
