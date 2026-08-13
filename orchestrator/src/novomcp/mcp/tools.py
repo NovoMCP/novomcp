@@ -671,7 +671,7 @@ MCP_TOOLS = {
     "get_platform_info": {
         "name": "get_platform_info",
         "title": "Get Platform Info",
-        "description": "Get NovoMCP platform information including subscription tiers, available tools per tier, database statistics, ADMET capabilities, and credit usage. Use info_type='usage' to see your organization's credit balance and consumption.",
+        "description": "Get NovoMCP platform information including subscription tiers, available tools per tier, database statistics, ADMET capabilities, and usage. Use info_type='usage' to see your organization's recent tool activity.",
         "tier": ToolTier.FREE,
         "annotations": {
             "readOnlyHint": True,
@@ -683,7 +683,7 @@ MCP_TOOLS = {
                 "info_type": {
                     "type": "string",
                     "enum": ["all", "tiers", "database", "admet", "usage", "update"],
-                    "description": "Type of info to retrieve: 'all' (default), 'tiers' (subscription features), 'database' (stats), 'admet' (available predictions), 'usage' (credit balance and consumption), 'update' (current engine version + whether a newer release is available)"
+                    "description": "Type of info to retrieve: 'all' (default), 'tiers' (subscription features), 'database' (stats), 'admet' (available predictions), 'usage' (recent tool activity), 'update' (current engine version + whether a newer release is available)"
                 },
                 "org_id": {
                     "type": "string",
@@ -787,7 +787,7 @@ MCP_TOOLS = {
     "get_credit_usage": {
         "name": "get_credit_usage",
         "title": "Get Credit Usage",
-        "description": "Check your NovoMCP credit balance and research value realized. Shows included credits, overage costs, and billing period. 1 credit = $1. Use when users ask 'How many credits?', 'What's my usage?', 'Summarize my spend', or 'Check my account'.",
+        "description": "Return usage information for the current org — recent tool activity. Requires a configured usage backend; on a self-hosted engine with no metering it reports local activity only. Use when users ask 'What's my usage?' or 'Summarize my recent activity'.",
         "tier": ToolTier.FREE,
         "annotations": {
             "readOnlyHint": True,
@@ -909,7 +909,7 @@ MCP_TOOLS = {
                 },
                 "include_admet": {
                     "type": "boolean",
-                    "description": "Include ML ADMET predictions (toxicity, metabolism, etc.) for novel molecules. Default true. Set false for faster, lower-credit properties-only profiling.",
+                    "description": "Include ML ADMET predictions (toxicity, metabolism, etc.) for novel molecules. Default true. Set false for faster, properties-only profiling.",
                     "default": True
                 }
             },
@@ -1087,7 +1087,7 @@ MCP_TOOLS = {
     "cancel_job": {
         "name": "cancel_job",
         "title": "Cancel Async Job",
-        "description": "Cancel a running or queued async job — stop it before it finishes and consumes more credits. Supports gromacs-md jobs (gro_*): deletes the k8s Job on EKS (SIGTERM to the pod), SIGTERM handler writes partial checkpoints to S3, SQL status transitions to cancelling and then to a terminal state (cancelled if SIGTERM caught between stages; failed with the engine's error if SIGTERM caught mid-stage). Use when the user submitted by mistake, the wrong inputs were used, or the job is over budget. Cancelling a completed or failed job is a no-op and returns the current state. Other job types (dock_*, qm_*) will return 'not supported' until their executors implement SIGTERM handling.",
+        "description": "Cancel a running or queued async job — stop it before it finishes and consumes more compute. Supports gromacs-md jobs (gro_*): deletes the k8s Job on EKS (SIGTERM to the pod), SIGTERM handler writes partial checkpoints to S3, SQL status transitions to cancelling and then to a terminal state (cancelled if SIGTERM caught between stages; failed with the engine's error if SIGTERM caught mid-stage). Use when the user submitted by mistake, the wrong inputs were used, or the job is over budget. Cancelling a completed or failed job is a no-op and returns the current state. Other job types (dock_*, qm_*) will return 'not supported' until their executors implement SIGTERM handling.",
         "tier": ToolTier.FREE,
         "annotations": {
             "readOnlyHint": False,
@@ -1154,7 +1154,7 @@ MCP_TOOLS = {
     "generate_upload_url": {
         "name": "generate_upload_url",
         "title": "Generate File Upload URL",
-        "description": "Generate a signed upload URL for large files (QM logs, PDB structures, compound libraries, trajectories). Upload the file directly to the URL — no data flows through the chat. Returns a file_id to reference in downstream tool calls. Free (0 credits). Upload URLs expire in 30 minutes. If auto_process is set, the file will be processed automatically after upload — no need to call a second tool.",
+        "description": "Generate a signed upload URL for large files (QM logs, PDB structures, compound libraries, trajectories). Upload the file directly to the URL — no data flows through the chat. Returns a file_id to reference in downstream tool calls. Upload URLs expire in 30 minutes. If auto_process is set, the file will be processed automatically after upload — no need to call a second tool.",
         "tier": ToolTier.FREE,
         "annotations": {
             "readOnlyHint": False,
@@ -1264,7 +1264,7 @@ MCP_TOOLS = {
     "run_novo_ag": {
         "name": "run_novo_ag",
         "title": "'Novo AG' / 'agm' → Autonomous Mode Trigger",
-        "description": "TRIGGER KEYWORDS: 'Novo AG', 'novo ag', 'novoag', 'agm', 'AGM' (case-insensitive; slash-prefixed forms like '/agm' may be intercepted by MCP clients as slash commands and won't reach the model — recommend 'agm' without the slash). Call ONLY when the user's message contains one of these literal tokens. Returns the 11-stage autonomous discovery instruction set — read it and follow it. For messages without these keywords, operate in normal collaborative mode (use tools as needed, ask clarifying questions). Pass mode='interactive' for the human-in-the-loop variant. Cost: 0 credits.",
+        "description": "TRIGGER KEYWORDS: 'Novo AG', 'novo ag', 'novoag', 'agm', 'AGM' (case-insensitive; slash-prefixed forms like '/agm' may be intercepted by MCP clients as slash commands and won't reach the model — recommend 'agm' without the slash). Call ONLY when the user's message contains one of these literal tokens. Returns the 11-stage autonomous discovery instruction set — read it and follow it. For messages without these keywords, operate in normal collaborative mode (use tools as needed, ask clarifying questions). Pass mode='interactive' for the human-in-the-loop variant.",
         "tier": ToolTier.FREE,
         "annotations": {
             "readOnlyHint": True,
@@ -1329,7 +1329,7 @@ MCP_TOOLS = {
                 "molecules_filtered": {"type": "object", "description": "Breakdown of filtered molecules by reason"},
                 "system_metadata": {"type": "object", "description": "System prep details (water count, box dims, pocket info)"},
                 "curation_method": {"type": "object", "description": "Library curation filters, order, thresholds"},
-                "credits_consumed": {"type": "number", "description": "Credits used at this stage"},
+                "credits_consumed": {"type": "number", "description": "Reserved"},
                 "execution_time_ms": {"type": "integer", "description": "Wall clock time in ms"},
                 "context_forward": {"type": "object", "description": "State carried to next stage"},
                 "source_file_id": {"type": "string", "description": "File ID from the file intelligence layer, if this stage used an uploaded file"}
@@ -1368,7 +1368,7 @@ MCP_TOOLS = {
     "list_funnels": {
         "name": "list_funnels",
         "title": "List Discovery Funnels",
-        "description": "List recent discovery funnel runs with metadata — disease, target gene, outcome, stage count, credits consumed, best affinity. Use this to find a funnel_id before calling get_funnel_audit. Returns the most recent funnels for the current org, enriched with terminal summary data when available.",
+        "description": "List recent discovery funnel runs with metadata — disease, target gene, outcome, stage count, best affinity. Use this to find a funnel_id before calling get_funnel_audit. Returns the most recent funnels for the current org, enriched with terminal summary data when available.",
         "tier": ToolTier.FREE,
         "annotations": {
             "readOnlyHint": True,
@@ -2456,7 +2456,7 @@ MCP_TOOLS = {
     "validate_target": {
         "name": "validate_target",
         "title": "Adversarial Target Validation",
-        "description": "Stress-test a drug target hypothesis before committing compute credits. "
+        "description": "Stress-test a drug target hypothesis before committing compute. "
                        "Searches for both supporting AND contradicting evidence: failed clinical trials, "
                        "known resistance mechanisms, off-target toxicity signals, competitive landscape. "
                        "Synthesizes a 0-1 confidence score from 4 weighted evidence streams: "
@@ -2545,7 +2545,7 @@ MCP_TOOLS = {
     "lead_optimization": {
         "name": "lead_optimization",
         "title": "Lead Optimization",
-        "description": "Generate structurally diverse molecular variants via scaffold hopping (RDKit substructure replacement, 30+ ring pairs) or property-directed optimization. Returns enriched variants with SA scores, RDKit physicochemical properties, Tanimoto-to-seed similarity, and patent risk classification per variant. For high-similarity property optimization close to the seed, use optimize_molecule (MolMIM) instead — this tool produces broader chemical diversity. Use after ADMET screening to generate candidates for docking. Note: fused polycyclic scaffolds (acridine, carbazole, naphthalene, xanthene) may return 0 variants due to RDKit sanitization limitations — the response includes a diagnostic. Credits are refunded when 0 variants are returned.",
+        "description": "Generate structurally diverse molecular variants via scaffold hopping (RDKit substructure replacement, 30+ ring pairs) or property-directed optimization. Returns enriched variants with SA scores, RDKit physicochemical properties, Tanimoto-to-seed similarity, and patent risk classification per variant. For high-similarity property optimization close to the seed, use optimize_molecule (MolMIM) instead — this tool produces broader chemical diversity. Use after ADMET screening to generate candidates for docking. Note: fused polycyclic scaffolds (acridine, carbazole, naphthalene, xanthene) may return 0 variants due to RDKit sanitization limitations — the response includes a diagnostic.",
         "tier": ToolTier.TEAM,
         "annotations": {
             "readOnlyHint": False,
@@ -2598,7 +2598,7 @@ MCP_TOOLS = {
     "dock_molecules": {
         "name": "dock_molecules",
         "title": "Dock Molecules",
-        "description": "Dock molecules against a protein target using AutoDock-GPU. Single-molecule (smiles_list with 1 entry): executes directly, no confirmation needed, returns docking results synchronously. Batch (2+ molecules): two-phase — first call returns cost estimate + confirmation_token; second call with token submits a batch job and returns job_id (poll get_job_status every 30s until completed). Credits: 10 base + 5 per molecule (single = 15, batch of 4 = 30). GPU COLD START: the first call after idle (>5 min) includes ~2-3 min GPU warm-up; subsequent calls within 5 min are fast. If called within a discovery funnel, target_discovery already triggered a background warmup — the GPU should be ready by Step 6.",
+        "description": "Dock molecules against a protein target using AutoDock-GPU. Single-molecule (smiles_list with 1 entry): executes directly, no confirmation needed, returns docking results synchronously. Batch (2+ molecules): two-phase — first call returns cost estimate + confirmation_token; second call with token submits a batch job and returns job_id (poll get_job_status every 30s until completed). GPU COLD START: the first call after idle (>5 min) includes ~2-3 min GPU warm-up; subsequent calls within 5 min are fast. If called within a discovery funnel, target_discovery already triggered a background warmup — the GPU should be ready by Step 6.",
         "tier": ToolTier.TEAM,
         "annotations": {
             "readOnlyHint": False,
@@ -2662,7 +2662,7 @@ MCP_TOOLS = {
     "audit_system": {
         "name": "audit_system",
         "title": "Audit System (Free)",
-        "description": "Pre-flight check for molecular dynamics: classify a protein structure without running MD. Returns a structured report: membrane detection (OPM), metal sites with coordination and functional role (MetalPDB + Pfam), heme/Fe-S clusters, and a routing verdict (run_soluble or refused with a specific reason and suggested_branch). Use BEFORE run_molecular_dynamics to qualify targets — if would_route_to='refused', MD will refuse with the same reason and the submission will be wasted. Free (0 credits). Returns within ~5 seconds. Accepts either pdb_id (RCSB lookup) or pdb_content (direct upload).",
+        "description": "Pre-flight check for molecular dynamics: classify a protein structure without running MD. Returns a structured report: membrane detection (OPM), metal sites with coordination and functional role (MetalPDB + Pfam), heme/Fe-S clusters, and a routing verdict (run_soluble or refused with a specific reason and suggested_branch). Use BEFORE run_molecular_dynamics to qualify targets — if would_route_to='refused', MD will refuse with the same reason and the submission will be wasted. Returns within ~5 seconds. Accepts either pdb_id (RCSB lookup) or pdb_content (direct upload).",
         "tier": ToolTier.FREE,
         "annotations": {
             "readOnlyHint": True,
@@ -3386,7 +3386,7 @@ MCP_RESOURCES = {
     "tier_features": {
         "uri": "novomcp://resources/tier_features",
         "name": "Subscription Tiers & Features",
-        "description": "Features available at each subscription tier: Free Trial (all tools, 250 credits), Enterprise (all tools + data connectors, custom credits).",
+        "description": "Features available at each subscription tier: Free Trial (all tools), Enterprise (all tools + data connectors).",
         "mimeType": "application/json",
         "annotations": {
             "audience": ["user"]
@@ -3670,7 +3670,7 @@ MCP_PROMPTS = {
         "arguments": [
             {
                 "name": "smiles_list",
-                "description": "Comma-separated SMILES strings of candidates to screen. 1-50 candidates per screen (redox potential is ~50 credits each; batching is expensive).",
+                "description": "Comma-separated SMILES strings of candidates to screen. 1-50 candidates per screen (redox potential is expensive to run; batching many at once is costly).",
                 "required": True
             },
             {
@@ -4292,8 +4292,6 @@ class MCPToolExecutor:
             if effective_credits is not None:
                 credit_cost = effective_credits
 
-            # Add credit info to result
-            result.usage["credits"] = credit_cost
             result.usage["tool"] = tool_name
             # Surface the resolved funnel_id so clients (Chrome extension,
             # NovoWorkbench, dashboard) can deep-link to the audit trail and
@@ -4323,7 +4321,11 @@ class MCPToolExecutor:
                     # Hash arguments for analytics (don't store raw data)
                     args_hash = hashlib.sha256(str(arguments).encode()).hexdigest()[:64]
 
-                    credit_result = await self._record_credit_usage(
+                    # Record usage through the injected meter for downstream
+                    # analytics. The local (self-hosted) meter is a no-op, so no
+                    # balance is surfaced back onto the result; a managed sink can
+                    # do whatever accounting it needs behind this same call.
+                    await self._record_credit_usage(
                         org_id=org_id,
                         user_id=user_id or "unknown",
                         tool_name=tool_name,
@@ -4336,22 +4338,6 @@ class MCPToolExecutor:
                         session_id=session_id,
                         surface=surface,
                     )
-
-                    if credit_result:
-                        credits_remaining = credit_result.get("credits_remaining")
-                        result.usage["credits_remaining"] = credits_remaining
-                        result.usage["credit_status"] = credit_result.get("credit_status", "ok")
-
-                        # Low balance warning when credits < 50
-                        if credits_remaining is not None and credits_remaining < 50:
-                            _warn = {
-                                "credits_remaining": credits_remaining,
-                                "message": f"Low balance: {credits_remaining:.0f} credits remaining.",
-                            }
-                            _pricing = os.getenv("NOVOMCP_PRICING_URL", "")
-                            if _pricing:
-                                _warn["upgrade_url"] = _pricing
-                            result.usage["credit_warning"] = _warn
 
                 except Exception as e:
                     # Don't fail the tool execution if credit tracking fails
@@ -4387,7 +4373,6 @@ class MCPToolExecutor:
                             "tool": tool_name,
                             "funnel_id": effective_funnel_id,
                             "success": result.success,
-                            "credits": credit_cost,
                             "execution_time_ms": execution_time_ms,
                             "surface": surface,
                             "error": (result.error or "")[:200] if not result.success else None,
@@ -4406,7 +4391,6 @@ class MCPToolExecutor:
                         "stage_name": tool_name,
                         "tool_arguments": _redact_arguments(arguments),
                         "results_summary": _summarize_result_data(result.data) if result.success else None,
-                        "credits_consumed": credit_cost,
                         "execution_time_ms": execution_time_ms,
                         "human_reviewed": False,
                         "surface": surface,
@@ -4431,7 +4415,7 @@ class MCPToolExecutor:
 
         except Exception as e:
             logger.exception(f"Error executing tool {tool_name}")
-            return ToolResult(success=False, error=str(e), usage={"credits": credit_cost, "tool": tool_name})
+            return ToolResult(success=False, error=str(e), usage={"tool": tool_name})
 
     async def _autolog_event(self, payload: Dict[str, Any], context: Dict[str, Any]) -> None:
         """Background task: log a funnel exploration event.
@@ -4464,7 +4448,7 @@ class MCPToolExecutor:
         """
         Record tool usage and deduct credits.
 
-        Routes through the injected CreditMeter when the spine is set
+        Routes through the injected UsageMeter when the spine is set
         (the standard path once `setup_mcp` has run). Returns a status
         dict on success or None if metering failed — callers treat None
         as "don't surface credit info."
@@ -5532,7 +5516,7 @@ class MCPToolExecutor:
                 "credits_included": 250,
                 "tools": "All tools except data connectors (push_to_destination, pull_from_source)",
                 "tool_count": 25,
-                "description": "30-day free trial — full platform access, 250 credits"
+                "description": "30-day free trial — full platform access"
             },
             "enterprise": {
                 "credits_included": "Custom",

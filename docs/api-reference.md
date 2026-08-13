@@ -47,8 +47,8 @@ Content-Type: application/json
 | Mode | Token | Meter | Audit |
 |---|---|---|---|
 | Local | any string in `Authorization: Bearer` | none | file (`~/.novo/audit.jsonl`) |
-| Hosted | real `nmcp_*` (core) or `ncmcp_*` (compute) keys | credit ledger via managed backend | Aurora + retention |
-| Custom | your own `AuthGate` implementation | your own `CreditMeter` | your own `AuditSink` |
+| Hosted | real `nmcp_*` (core) or `ncmcp_*` (compute) keys | usage ledger via managed backend | Aurora + retention |
+| Custom | your own `AuthGate` implementation | your own `UsageMeter` | your own `AuditSink` |
 
 Set `NOVO_AUTH=custom` and provide a `spine_custom` module implementing the three protocols. See [`orchestrator/mcp/spine.py`](https://github.com/NovoMCP/novomcp/blob/main/orchestrator/mcp/spine.py) for the interfaces.
 

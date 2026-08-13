@@ -29,7 +29,7 @@ Implementing that in a protocol-compliant way takes about 100 lines of Python.
 
 **One embedding call per query.** A new endpoint, `POST /mcp/tool-search`, takes a user query string. We embed the query, compute the dot product against all 68 tool vectors, return the top-K with similarity scores. Typical round trip: 25 milliseconds end to end.
 
-**A core whitelist of eight tools that always surface.** Platform info, credit usage, funnel logging, the autonomous-mode trigger, job polling. Ensures a caller can orient itself even when retrieval misses.
+**A core whitelist of eight tools that always surface.** Platform info, usage lookup, funnel logging, the autonomous-mode trigger, job polling. Ensures a caller can orient itself even when retrieval misses.
 
 **Template manifests for known workflows.** When a caller names a prompt template, our discovery funnel, an OLED screening pipeline, an electrolyte stability screen, the endpoint skips retrieval and returns that template's full tool set. Templates encode their flow; encoding their tool set alongside is a small extension that prevents retrieval from missing a tool the workflow depends on.
 

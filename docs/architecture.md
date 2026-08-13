@@ -14,7 +14,7 @@ flowchart TB
     subgraph engine["NovoMCP engine · localhost:8018"]
         S["Surfaces<br/>MCP JSON-RPC /mcp/ · REST + OpenAPI 3.1 /v1"]
         K["Orchestrator core (BSL 1.1)<br/>intent → plan → tool dispatch<br/>11-stage discovery funnel"]
-        A["Pluggable adapters · env-swappable<br/>AuthGate · CreditMeter · AuditSink"]
+        A["Pluggable adapters · env-swappable<br/>AuthGate · UsageMeter · AuditSink"]
     end
 
     subgraph compute["Compute services · deploy as needed"]
@@ -47,7 +47,7 @@ flowchart TB
 
 - **Surfaces** — MCP JSON-RPC at `/mcp/` and a curated REST API + OpenAPI 3.1 spec at `/v1`. Both routes land in the same orchestrator, so a tool behaves identically whether an agent calls it or a `curl` does.
 - **Orchestrator core** — intent recognition, orchestration planning, semantic tool search, and the governed 11-stage discovery funnel. This is the part licensed under BSL 1.1 (see [Licensing](index.md#licensing)); everything around it is Apache-2.0.
-- **Pluggable adapters** — `AuthGate`, `CreditMeter`, and `AuditSink` swap via environment variables. The OSS defaults are `LocalAuthGate` (every request is an unlimited `local` user), `NoopMeter` (no credit accounting), and `FileAuditSink` (appends to `~/.novo/audit.jsonl`). Swap them to run the same core authenticated, metered, and audited in production.
+- **Pluggable adapters** — `AuthGate`, `UsageMeter`, and `AuditSink` swap via environment variables. The OSS defaults are `LocalAuthGate` (every request is an unlimited `local` user), `NoopMeter` (no usage accounting), and `FileAuditSink` (appends to `~/.novo/audit.jsonl`). Swap them to run the same core authenticated, metered, and audited in production.
 
 **Compute services.** Each heavy capability is a separate service you deploy when you need it — CPU services like `chem-props` and `addie-models`, GPU services like `autodock-gpu`, `gromacs-md`, and `openfold3`, and the native `novomcp-qm` / `nnp` / `neb` / `properties` stack. The engine dispatches to whichever are wired and reports the rest as unavailable rather than failing. See [Deploying services](deploying-services/README.md).
 
@@ -62,7 +62,7 @@ Out of the 67-tool catalog, **11 tools work fully local** the moment the engine 
 1. A client sends a request to a surface (`/mcp/` or `/v1`).
 2. `AuthGate` resolves the caller (a `local` user, unauthenticated, in OSS defaults).
 3. The core plans and dispatches to the right handler — computed in-process for local tools, or proxied to a compute service for the rest.
-4. `CreditMeter` records usage (a no-op in OSS defaults).
+4. `UsageMeter` records usage (a no-op in OSS defaults).
 5. `AuditSink` logs the call (`~/.novo/audit.jsonl` in OSS defaults).
 6. The result returns on the same surface it came in on.
 
