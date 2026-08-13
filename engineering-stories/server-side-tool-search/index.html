@@ -2026,7 +2026,7 @@
 <p><strong>Published:</strong> April 23, 2026
 <strong>Author:</strong> NovoMCP engineering</p>
 <hr />
-<p>In April 2026, Anthropic shipped tool search in the Claude Agent SDK. It defers tool schema loading so agents can operate over catalogs of hundreds of tools without losing selection accuracy. Our MCP platform crossed that threshold this year. We now expose 68 tools to the AI assistants our customers use, ranging across target discovery, quantum chemistry, molecular dynamics, clinical outcome prediction, and materials science.</p>
+<p>In April 2026, Anthropic shipped tool search in the Claude Agent SDK. It defers tool schema loading so agents can operate over catalogs of hundreds of tools without losing selection accuracy. Our MCP platform crossed that threshold this year. We now expose 68 tools to the AI assistants our customers use, ranging across target discovery, quantum chemistry, molecular dynamics, docking, and materials science.</p>
 <p>The SDK feature was designed for exactly our problem. It did not reach us.</p>
 <p>We serve two surfaces beyond Claude.ai. One is NovoWorkbench, a desktop application written in Rust with a custom HTTP router that speaks to Claude, GPT-5.2, Gemini, and Ollama on equal footing. No SDK in the hot path. No Anthropic tool search. The other surface is Claude.ai itself, but there, remote MCP servers load all tool schemas upfront. The deferred-loading pattern only activates for SDK-based applications, not for servers reached over the protocol.</p>
 <p>The problem the SDK solves exists everywhere. The SDK's solution reaches one slice of the problem.</p>

@@ -1806,6 +1806,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#pdb-fetch-times-out-when-a-compute-service-runs-on-awsec2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        PDB fetch times out when a compute service runs on AWS/EC2
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -2039,6 +2050,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#pdb-fetch-times-out-when-a-compute-service-runs-on-awsec2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        PDB fetch times out when a compute service runs on AWS/EC2
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -2163,6 +2185,10 @@
 <p><strong>Symptoms:</strong> These three tools sometimes fail with transient connection errors even when other tools work fine.</p>
 <p><strong>Cause:</strong> these tools hit external public APIs (<code>api.biorxiv.org</code>, <code>www.ebi.ac.uk/chembl</code>, <code>data.rcsb.org</code>) directly. When those services rate-limit, hit maintenance, or your network drops packets to them, the tool fails. No config change on your side helps — retry in a minute.</p>
 <p><strong>Fix:</strong> retry. If it keeps failing on your network specifically, check whether your firewall / VPN is blocking these hosts.</p>
+<h3 id="pdb-fetch-times-out-when-a-compute-service-runs-on-awsec2">PDB fetch times out when a compute service runs on AWS/EC2<a class="headerlink" href="#pdb-fetch-times-out-when-a-compute-service-runs-on-awsec2" title="Permanent link">&para;</a></h3>
+<p><strong>Symptoms:</strong> <code>run_molecular_dynamics</code>, <code>generate_dynamics</code>, or <code>dock_molecules</code> fail with a PDB-fetch timeout when the gromacs-md or autodock-gpu service is deployed on an AWS EC2 instance, even though the same service works from a laptop and general internet is reachable from the instance.</p>
+<p><strong>Cause:</strong> RCSB (<code>files.rcsb.org</code>) blocks or rate-limits the AWS IP range, so a fetch-by-PDB-ID times out from EC2 while other hosts stay reachable. This is upstream of the engine, in the compute service's structure fetch.</p>
+<p><strong>Fix:</strong> provide the structure directly instead of by ID. <code>dock_molecules</code> accepts <code>protein_pdb_content</code>, so pass the PDB text and skip the fetch. For MD, pre-seed the structure from a mirror that does not block AWS, such as PDBe (<code>https://www.ebi.ac.uk/pdbe/entry-files/download/pdb&lt;id&gt;.ent</code>), and point the service at the cached file. Deploying the service outside AWS also avoids the block.</p>
 <h2 id="updates">Updates<a class="headerlink" href="#updates" title="Permanent link">&para;</a></h2>
 <h3 id="the-boot-time-update-check-spams-the-log">The boot-time update check spams the log<a class="headerlink" href="#the-boot-time-update-check-spams-the-log" title="Permanent link">&para;</a></h3>
 <p><strong>Symptoms:</strong> every boot logs about a newer version being available.</p>
