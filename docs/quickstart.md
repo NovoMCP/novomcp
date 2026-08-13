@@ -94,7 +94,7 @@ python main_https.py      # or: novomcp
 The engine boots with:
 
 - **Auth**: none required (`LocalAuthGate`, every request resolves to a `local` user with unlimited tier)
-- **Metering**: none (`NoopMeter`, no credit accounting)
+- **Metering**: none (`NoopMeter`, no usage accounting)
 - **Audit**: local file (`FileAuditSink`, appends JSON-lines to `~/.novo/audit.jsonl`)
 
 If you accidentally create the venv with Python 3.9, `python main_https.py` fails fast with an actionable message telling you which install command to run.
@@ -156,7 +156,7 @@ Returns server info, capabilities, and the funnel-id instructions blurb. This is
 tail -3 ~/.novo/audit.jsonl
 ```
 
-Every tool call is logged as a JSON-lines row. Structure: `event`, `timestamp`, `payload` (tool, funnel_id, success, credits, duration, surface).
+Every tool call is logged as a JSON-lines row. Structure: `event`, `timestamp`, `payload` (tool, funnel_id, success, duration, surface).
 
 ## What next
 

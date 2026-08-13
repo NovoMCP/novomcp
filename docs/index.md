@@ -62,7 +62,7 @@ New here? [Boot it in 2 minutes](quickstart.md), then see [how it fits together]
 - **REST API** with a curated OpenAPI 3.1 spec at `/v1/openapi.json`
 - **MCP JSON-RPC** at `/mcp/` — usable from any MCP-compatible client (Claude Desktop, Cursor, Codex, Zed, Cline, and others)
 - **Autonomous discovery funnel** — trigger with "Novo AG" or "agm" from any MCP client, returns an 11-stage protocol for the LLM to execute
-- **Pluggable everything** — auth (`AuthGate`), metering (`CreditMeter`), audit (`AuditSink`), LLM providers (OpenAI, Anthropic, Ollama, Azure) all swap via env vars
+- **Pluggable everything** — auth (`AuthGate`), metering (`UsageMeter`), audit (`AuditSink`), LLM providers (OpenAI, Anthropic, Ollama, Azure) all swap via env vars
 
 ## What lives elsewhere
 

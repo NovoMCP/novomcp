@@ -1,12 +1,12 @@
 """
 Auth, credit-metering, and audit interfaces.
 
-Three protocols — `AuthGate`, `CreditMeter`, `AuditSink` — plus default
+Three protocols — `AuthGate`, `UsageMeter`, `AuditSink` — plus default
 implementations that let the engine run standalone with no external
 services. Each interface can also be swapped for a custom implementation
 selected via environment variable.
 
-`CreditMeter` and `AuditSink` are intentionally separate contracts: audit
+`UsageMeter` and `AuditSink` are intentionally separate contracts: audit
 is useful without metering (self-hosters get real audit logging with no
 credit accounting), and metering without audit is unusual.
 
@@ -82,7 +82,7 @@ class AuthGate(Protocol):
         ...
 
 
-class CreditMeter(Protocol):
+class UsageMeter(Protocol):
     """Record a tool call and (optionally) deduct credits.
 
     Separate from AuditSink by design — audit and metering are independent
@@ -120,7 +120,7 @@ class AuditSink(Protocol):
 
 @dataclass
 class RecordResult:
-    """Result of a CreditMeter.record() call."""
+    """Result of a UsageMeter.record() call."""
 
     success: bool
     remaining_credits: Optional[float] = None
@@ -226,7 +226,7 @@ class Spine:
     """
 
     auth: AuthGate
-    meter: CreditMeter
+    meter: UsageMeter
     audit: AuditSink
 
 
@@ -247,7 +247,7 @@ class RequestContext:
         return self.spine.auth
 
     @property
-    def meter(self) -> CreditMeter:
+    def meter(self) -> UsageMeter:
         return self.spine.meter
 
     @property
@@ -268,7 +268,7 @@ def build_spine() -> Spine:
     """
 
     auth: AuthGate = LocalAuthGate()
-    meter: CreditMeter = NoopMeter()
+    meter: UsageMeter = NoopMeter()
     audit: AuditSink = FileAuditSink()
 
     want_custom_auth = os.getenv("NOVO_AUTH", "local").lower() == "custom"
@@ -282,14 +282,14 @@ def build_spine() -> Spine:
             raise RuntimeError(
                 "NOVO_AUTH/METER/AUDIT=custom requested but no "
                 "`spine_custom` module is available. Provide one that "
-                "implements AuthGate / CreditMeter / AuditSink, or unset "
+                "implements AuthGate / UsageMeter / AuditSink, or unset "
                 "the env vars to use the local defaults."
             ) from e
 
         if want_custom_auth:
             auth = spine_custom.AuthGate()  # type: ignore[assignment]
         if want_custom_meter:
-            meter = spine_custom.CreditMeter()  # type: ignore[assignment]
+            meter = spine_custom.UsageMeter()  # type: ignore[assignment]
         if want_custom_audit:
             audit = spine_custom.AuditSink()  # type: ignore[assignment]
 

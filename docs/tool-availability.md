@@ -72,7 +72,7 @@ Each service is a Docker image (`ghcr.io/novomcp/<service>:latest`). Point the e
 
 ### Funnel-persistence tools — v1.8.x
 
-Requires: `FUNNEL_BACKEND_URL` pointing at an audit/credit-ledger service.
+Requires: `FUNNEL_BACKEND_URL` pointing at an audit/usage-ledger service.
 
 Unlocks: `save_funnel_stage`, `save_funnel_context`, `save_funnel_memory`, `search_prior_runs`, `list_funnels`, `get_funnel_audit`, `get_funnel_context`, `get_pipeline_audit`, `get_credit_usage`, `generate_upload_url`, `get_file_status`, `list_files`, `list_jobs`, `get_job_status`, `cancel_job`.
 

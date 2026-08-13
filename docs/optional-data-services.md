@@ -44,7 +44,7 @@ These persist audit + discovery-funnel state to a backing service so future runs
 
 Two ways to wire it:
 
-**A — Point at an HTTP audit/credit-ledger service** (like our hosted `managed backend`):
+**A — Point at an HTTP audit/usage-ledger service** (like our hosted `managed backend`):
 
 ```bash
 export FUNNEL_BACKEND_URL=http://your-backend.example.com

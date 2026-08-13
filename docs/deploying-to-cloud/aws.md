@@ -130,7 +130,7 @@ Cheapest at low steady-state, most complex to configure.
 - Engine on **ECS Fargate** (no EC2 to manage, ~$0.04/hr for 1 vCPU / 2 GB)
 - Compute services on **EC2 GPU instances** launched on-demand by SQS-triggered Lambda (or a queue-based autoscaler)
 - Audit logs to S3 (via a custom `AuditSink` implementation)
-- Aurora Serverless v2 if you want durable audit + credit accounting
+- Aurora Serverless v2 if you want durable audit + usage accounting
 
 ### Cost estimate
 
