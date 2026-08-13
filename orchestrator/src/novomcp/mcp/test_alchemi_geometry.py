@@ -13,7 +13,6 @@ import pytest
 from novomcp.mcp.tools import (
     MCPToolExecutor,
     MCP_TOOLS,
-    TOOL_CREDITS,
     BATCH_TOOLS,
     COMPUTE_ONLY_TOOLS,
 )
@@ -62,8 +61,8 @@ def test_batch_tool_is_registered():
     spec = MCP_TOOLS["batch_geometry_relaxation"]
     assert spec["inputSchema"]["required"] == ["smiles_list"]
     assert spec["inputSchema"]["properties"]["engine"]["default"] == "alchemi"
-    assert TOOL_CREDITS["batch_geometry_relaxation"] > 0
-    # per-item billing + compute-tier surface
+    assert "batch_geometry_relaxation" in {t["name"] for t in MCP_TOOLS.values()}
+    # per-item batch + compute-tier surface
     assert BATCH_TOOLS["batch_geometry_relaxation"] == "smiles_list"
     assert "batch_geometry_relaxation" in COMPUTE_ONLY_TOOLS
 

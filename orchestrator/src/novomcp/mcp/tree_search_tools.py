@@ -17,37 +17,15 @@ The LLM decides which branch to explore based on cluster summaries
 (MW range, avg QED, avg toxicity, scaffold distribution, structural-alert status).
 
 Integration:
-  - Import TREE_SEARCH_TOOLS and TREE_SEARCH_CREDITS into tools.py
+  - Import TREE_SEARCH_TOOLS into tools.py
   - Add execution methods to NovoMCPToolExecutor
   - Backend: Cosmos DB 'cluster_hierarchy' container (vector index)
 """
 
 import logging
 from typing import Dict, List, Any, Optional
-from enum import Enum
 
 logger = logging.getLogger(__name__)
-
-
-# =============================================================================
-# Tool Credits
-# =============================================================================
-
-TREE_SEARCH_CREDITS: Dict[str, int] = {
-    "explore_chemical_space": 3,   # Level 1: broad region scan
-    "drill_into_cluster": 3,      # Level 2+: zone narrowing
-    "compare_candidates": 5,      # Head-to-head with full profiles
-    "vector_search": 5,           # Direct vector search (replaces old search_similar)
-}
-
-
-# =============================================================================
-# Tool Tier (imported from tools.py at integration time)
-# =============================================================================
-
-class ToolTier(str, Enum):
-    FREE = "free"
-    ENTERPRISE = "enterprise"
 
 
 # =============================================================================
@@ -71,7 +49,6 @@ TREE_SEARCH_TOOLS = {
             "the first step — read the summaries, then call drill_into_cluster on the most "
             "promising region to narrow further."
         ),
-        "tier": ToolTier.FREE,
         "annotations": {
             "readOnlyHint": True,
             "destructiveHint": False
@@ -138,7 +115,6 @@ TREE_SEARCH_TOOLS = {
             "molecules (Level 2) or ~100 molecules (Level 3). At Level 3, you get "
             "sample molecule CIDs you can pass to get_molecule_profile or compare_candidates."
         ),
-        "tier": ToolTier.FREE,
         "annotations": {
             "readOnlyHint": True,
             "destructiveHint": False
@@ -191,7 +167,6 @@ TREE_SEARCH_TOOLS = {
             "structural alerts. Designed for the final selection step "
             "after narrowing via tree search."
         ),
-        "tier": ToolTier.FREE,
         "annotations": {
             "readOnlyHint": True,
             "destructiveHint": False
@@ -234,7 +209,6 @@ TREE_SEARCH_TOOLS = {
             "Tanimoto search. Use this when you already know what molecule you want analogs "
             "of. For broader exploration, use explore_chemical_space instead."
         ),
-        "tier": ToolTier.FREE,
         "annotations": {
             "readOnlyHint": True,
             "destructiveHint": False

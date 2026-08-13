@@ -26,7 +26,7 @@ from fastapi.responses import JSONResponse, FileResponse
 import uuid
 import httpx
 
-from .tools import MCP_TOOLS, MCP_RESOURCES, MCP_RESOURCE_DATA, MCP_PROMPTS, MCP_PROMPT_TEMPLATES, MCPToolExecutor, ToolTier, visible_tools, visible_prompts, host_is_compute, is_tool_visible, host_is_rest_api, rest_tool_visible, is_tool_locally_available
+from .tools import MCP_TOOLS, MCP_RESOURCES, MCP_RESOURCE_DATA, MCP_PROMPTS, MCP_PROMPT_TEMPLATES, MCPToolExecutor, visible_tools, visible_prompts, host_is_compute, is_tool_visible, host_is_rest_api, rest_tool_visible, is_tool_locally_available
 from .auth import MCPUser, UserTier, validate_via_spine
 from .rate_limiter import MCPRateLimiter, RateLimitResult
 from .spine import Spine, build_spine
@@ -68,37 +68,14 @@ _rate_limiter: Optional[MCPRateLimiter] = None
 _spine: Optional[Spine] = None
 
 
-def _user_tier_enum(user) -> "ToolTier":
-    """Return the user's tier as a ToolTier enum, tolerating both str and enum inputs.
-
-    The ``User`` dataclass declares ``tier: str``, but hosted auth gates may
-    return a ToolTier enum, and legacy code paths accessed ``_user_tier_value(user)``
-    which crashes on plain strings. This helper handles both, and normalizes
-    the legacy "unlimited" local-mode value to ENTERPRISE (highest tier) so
-    local users pass every tier check.
-    """
-    from .tools import ToolTier as _TT
-    t = getattr(user, "tier", None)
-    if t is None:
-        return _TT.FREE
-    # If already an enum, return its value coerced
-    if hasattr(t, "value"):
-        raw = t.value
-    else:
-        raw = str(t)
-    # Legacy local default → ENTERPRISE
-    if raw == "unlimited":
-        return _TT.ENTERPRISE
-    try:
-        return _TT(raw)
-    except ValueError:
-        # Unknown tier string → fall back to FREE for safety
-        return _TT.FREE
-
-
 def _user_tier_value(user) -> str:
-    """String form of the user's tier ("free" | "core" | "team" | "enterprise")."""
-    return _user_tier_enum(user).value
+    """String form of the user's tier ("free" | "core" | "team" | "enterprise").
+
+    The local user is always highest-tier; this value is only load-bearing for
+    the REST-host compute paywall (rest_tool_visible) and the rate limiter.
+    """
+    t = getattr(user, "tier", "enterprise")
+    return t.value if hasattr(t, "value") else str(t)
 
 
 def setup_mcp(
@@ -202,10 +179,8 @@ async def list_tools(request: Request, user: MCPUser = Depends(get_mcp_user)):
     List available MCP tools.
 
     Returns tool definitions in MCP format.
-    Filters by surface (Novo vs Novo Compute, from Host header) and user tier.
+    Filters by surface (Novo vs Novo Compute, from Host header).
     """
-    tier_order = [ToolTier.FREE, ToolTier.PRO, ToolTier.CORE, ToolTier.TEAM, ToolTier.ENTERPRISE]
-    user_tier_index = tier_order.index(_user_tier_enum(user))
     host = request.headers.get("host")
     is_rest = host_is_rest_api(host)
     is_compute = host_is_compute(host)
@@ -225,17 +200,15 @@ async def list_tools(request: Request, user: MCPUser = Depends(get_mcp_user)):
         # same filter. Override with NOVOMCP_SHOW_HIDDEN_TOOLS=1 for debugging.
         if not is_tool_locally_available(name):
             continue
-        tool_tier_index = tier_order.index(tool["tier"])
-        if user_tier_index >= tool_tier_index:
-            tool_def = {
-                "name": tool["name"],
-                "description": tool["description"],
-                "inputSchema": tool["inputSchema"]
-            }
-            # Include _meta.ui for MCP Apps support (v2.7)
-            if "_meta" in tool:
-                tool_def["_meta"] = tool["_meta"]
-            available_tools.append(tool_def)
+        tool_def = {
+            "name": tool["name"],
+            "description": tool["description"],
+            "inputSchema": tool["inputSchema"]
+        }
+        # Include _meta.ui for MCP Apps support (v2.7)
+        if "_meta" in tool:
+            tool_def["_meta"] = tool["_meta"]
+        available_tools.append(tool_def)
 
     return {
         "tools": available_tools,
@@ -281,9 +254,8 @@ async def execute_tool(
     # Unified REST surface (api.novomcp.com): all tools are reachable, but
     # compute tools require a paid tier (the REST API is one host, so the
     # ncmcp_/compute paywall is enforced by tier here instead of by host).
-    # Mirrors validate-compute-key's COMPUTE_TIERS. Per-tool ToolTier checks
-    # still apply downstream in the executor. The MCP connectors (ai./compute.)
-    # use the JSON-RPC path and keep host-based gating.
+    # Mirrors validate-compute-key's COMPUTE_TIERS. The MCP connectors
+    # (ai./compute.) use the JSON-RPC path and keep host-based gating.
     if host_is_rest_api(request.headers.get("host")) and not rest_tool_visible(tool_name, _user_tier_value(user)):
         raise HTTPException(
             status_code=403,
@@ -316,29 +288,6 @@ async def execute_tool(
             }
         )
 
-    # Trial enforcement gate — return 402 with upgrade options
-    if user.is_trial_blocked:
-        reason = user.trial_block_reason or "credits_exhausted"
-        if reason == "trial_expired":
-            message = "Your free trial has expired. Upgrade to Core to continue using NovoMCP."
-        elif _user_tier_value(user) == "core":
-            message = "Your credits are depleted. Purchase a credit pack to continue."
-        else:
-            message = "Your free trial credits are used up. Upgrade to Core ($20) to continue."
-        raise HTTPException(
-            status_code=402,
-            detail={
-                "error": reason,
-                "message": message,
-                "upgrade_url": os.getenv("NOVOMCP_PRICING_URL", ""),
-                "packs": [
-                    {"name": "Starter", "credits": 20, "price": "$20"},
-                    {"name": "Researcher", "credits": 110, "price": "$100"},
-                    {"name": "Professional", "credits": 600, "price": "$500"},
-                ],
-            },
-        )
-
     # Execute tool
     # Allow X-Org-ID header to override the API key's org_id.
     # The BFF forwards the real user's org_id from their session;
@@ -368,17 +317,15 @@ async def execute_tool(
     result = await _tool_executor.execute(
         tool_name,
         arguments,
-        _user_tier_enum(user),
         org_id=org_id,
         user_id=request.headers.get("X-User-ID") or user.user_id,
         user_email=user.email,
-        credits_available=user.credits_available,
         surface=surface,
         client_tag=client_tag,
     )
 
-    # Usage/credit metering happens inside MCPToolExecutor.execute() via the
-    # spine meter (NoopMeter locally); no separate accounting needed here.
+    # Usage recording happens inside MCPToolExecutor.execute() via the spine
+    # meter (NoopMeter locally, un-metered); no separate accounting needed here.
 
     if result.success:
         return {
@@ -405,26 +352,16 @@ async def list_resources(user: MCPUser = Depends(get_mcp_user)):
     List available MCP resources.
 
     Returns resource definitions in MCP format.
-    Resources are tier-gated like tools.
     """
-    tier_order = [ToolTier.FREE, ToolTier.PRO, ToolTier.CORE, ToolTier.TEAM, ToolTier.ENTERPRISE]
-    user_tier_index = tier_order.index(_user_tier_enum(user))
-
     available_resources = []
     for name, resource in MCP_RESOURCES.items():
-        resource_tier = resource.get("tier", ToolTier.FREE)
-        if isinstance(resource_tier, str):
-            resource_tier = ToolTier(resource_tier)
-        resource_tier_index = tier_order.index(resource_tier)
-
-        if user_tier_index >= resource_tier_index:
-            available_resources.append({
-                "uri": resource["uri"],
-                "name": resource["name"],
-                "description": resource["description"],
-                "mimeType": resource.get("mimeType", "application/json"),
-                "annotations": resource.get("annotations", {})
-            })
+        available_resources.append({
+            "uri": resource["uri"],
+            "name": resource["name"],
+            "description": resource["description"],
+            "mimeType": resource.get("mimeType", "application/json"),
+            "annotations": resource.get("annotations", {})
+        })
 
     return {
         "resources": available_resources,
@@ -448,20 +385,6 @@ async def get_resource(
         raise HTTPException(status_code=404, detail=f"Resource not found: {resource_name}")
 
     resource = MCP_RESOURCES[resource_name]
-
-    # Check tier access
-    tier_order = [ToolTier.FREE, ToolTier.PRO, ToolTier.CORE, ToolTier.TEAM, ToolTier.ENTERPRISE]
-    user_tier_index = tier_order.index(_user_tier_enum(user))
-    resource_tier = resource.get("tier", ToolTier.FREE)
-    if isinstance(resource_tier, str):
-        resource_tier = ToolTier(resource_tier)
-    resource_tier_index = tier_order.index(resource_tier)
-
-    if user_tier_index < resource_tier_index:
-        raise HTTPException(
-            status_code=403,
-            detail=f"Resource {resource_name} requires {resource_tier.value} tier or higher"
-        )
 
     # Return resource content
     # First check for inline content, then look up in MCP_RESOURCE_DATA
@@ -489,22 +412,13 @@ async def list_prompts(user: MCPUser = Depends(get_mcp_user)):
     Returns prompt definitions in MCP format.
     Prompts are pre-defined interaction templates.
     """
-    tier_order = [ToolTier.FREE, ToolTier.PRO, ToolTier.CORE, ToolTier.TEAM, ToolTier.ENTERPRISE]
-    user_tier_index = tier_order.index(_user_tier_enum(user))
-
     available_prompts = []
     for name, prompt in visible_prompts().items():
-        prompt_tier = prompt.get("tier", ToolTier.FREE)
-        if isinstance(prompt_tier, str):
-            prompt_tier = ToolTier(prompt_tier)
-        prompt_tier_index = tier_order.index(prompt_tier)
-
-        if user_tier_index >= prompt_tier_index:
-            available_prompts.append({
-                "name": prompt["name"],
-                "description": prompt["description"],
-                "arguments": prompt.get("arguments", [])
-            })
+        available_prompts.append({
+            "name": prompt["name"],
+            "description": prompt["description"],
+            "arguments": prompt.get("arguments", [])
+        })
 
     return {
         "prompts": available_prompts,
@@ -528,20 +442,6 @@ async def get_prompt(
         raise HTTPException(status_code=404, detail=f"Prompt not found: {prompt_name}")
 
     prompt = MCP_PROMPTS[prompt_name]
-
-    # Check tier access
-    tier_order = [ToolTier.FREE, ToolTier.PRO, ToolTier.CORE, ToolTier.TEAM, ToolTier.ENTERPRISE]
-    user_tier_index = tier_order.index(_user_tier_enum(user))
-    prompt_tier = prompt.get("tier", ToolTier.FREE)
-    if isinstance(prompt_tier, str):
-        prompt_tier = ToolTier(prompt_tier)
-    prompt_tier_index = tier_order.index(prompt_tier)
-
-    if user_tier_index < prompt_tier_index:
-        raise HTTPException(
-            status_code=403,
-            detail=f"Prompt {prompt_name} requires {prompt_tier.value} tier or higher"
-        )
 
     # Get messages from prompt definition or from MCP_PROMPT_TEMPLATES
     messages = prompt.get("messages")
@@ -581,16 +481,7 @@ async def tool_search_rebuild(user: MCPUser = Depends(get_mcp_user)):
     Useful when the startup build failed (e.g., Azure OpenAI was transiently
     unavailable, env vars were misconfigured then fixed) and we need to
     retry without restarting the container. Returns the post-rebuild status.
-
-    Scoped to TEAM+ tier to avoid arbitrary traffic forcing rebuilds.
     """
-    user_tier = _user_tier_enum(user)
-    tier_order = [ToolTier.FREE, ToolTier.PRO, ToolTier.CORE, ToolTier.TEAM, ToolTier.ENTERPRISE]
-    if tier_order.index(user_tier) < tier_order.index(ToolTier.TEAM):
-        raise HTTPException(
-            status_code=403,
-            detail="tool-search rebuild requires TEAM tier or higher",
-        )
     await tool_search_module.build_index()
     return tool_search_module.status()
 
@@ -656,18 +547,12 @@ async def tool_search_query(
             detail="Field 'include_core_whitelist', if provided, must be a bool.",
         )
 
-    user_tier = _user_tier_enum(user)
     result = await tool_search_module.search(
         query=query.strip(),
-        user_tier=user_tier,
         top_k=top_k,
         template=template,
         include_core_whitelist=include_core_whitelist,
     )
-
-    # Attach caller tier so clients can display "what tier is driving this
-    # filtering?" if they care. Zero sensitive info.
-    result.setdefault("_meta", {})["user_tier"] = _user_tier_value(user)
     return result
 
 
@@ -862,11 +747,10 @@ async def _handle_tools_call(params: Dict[str, Any], request: Request) -> Dict[s
     if not _tool_executor:
         raise HTTPException(status_code=503, detail="MCP not initialized")
 
-    # Execute tool (using FREE tier for unauthenticated requests)
+    # Execute tool
     result = await _tool_executor.execute(
         tool_name,
         arguments,
-        ToolTier.FREE,
         org_id="public",
         user_id="anonymous"
     )
@@ -1154,11 +1038,6 @@ async def get_usage(user: MCPUser = Depends(get_mcp_user)):
         "email": user.email,
         "org": user.org_name,
         "tier": _user_tier_value(user),
-        # Surface the cached credits balance so callers (Chrome extension popup,
-        # NovoWorkbench status bar) don't need a separate managed backend
-        # round-trip. Cached on MCPUser via the same auth fetch that validated
-        # the key, so this is free.
-        "credits_available": user.credits_available,
         **stats
     }
 

@@ -150,7 +150,6 @@ async def agent_chat(request: Request, user: MCPUser = Depends(_router.get_mcp_u
                 org_id=user.org_id,
                 user_id=user.user_id,
                 user_email=user.email,
-                credits_available=user.credits_available,
                 funnel_id=funnel_id,
             ):
                 yield _sse(event)

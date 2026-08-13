@@ -15,15 +15,15 @@ Flow
   them via Azure OpenAI `text-embedding-3-large` at 1536 dims (matches
   save_funnel_memory's matryoshka pattern), and stores the result.
 - Per request, `search()` embeds the query and returns the top-K tools by
-  cosine similarity, tier-filtered for the caller.
+  cosine similarity. All tools are eligible — no tier filtering.
 - If the embedding API is unreachable, a keyword-match fallback keeps the
   endpoint functional (degraded) instead of 500-ing.
 
 Core whitelist
 --------------
-Eight tools are always returned regardless of query — platform info,
-credits, funnel logging, autonomous trigger, job polling. Ensures the
-caller can always orient itself even if retrieval misses.
+A handful of tools are always returned regardless of query — platform info,
+metering status, funnel logging, autonomous trigger, job polling. Ensures
+the caller can always orient itself even if retrieval misses.
 """
 
 from __future__ import annotations
@@ -37,7 +37,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 
-from .tools import MCP_TOOLS, ToolTier
+from .tools import MCP_TOOLS
 
 logger = logging.getLogger(__name__)
 
@@ -151,7 +151,6 @@ class IndexedTool:
 
     name: str
     description: str
-    tier: ToolTier
     input_schema: Dict[str, Any]
     searchable_text: str  # the blob that was embedded
 
@@ -396,17 +395,10 @@ async def build_index() -> ToolSearchIndex:
 
     tools: List[IndexedTool] = []
     for tool_name, tool_def in MCP_TOOLS.items():
-        tier = tool_def.get("tier", ToolTier.FREE)
-        if isinstance(tier, str):
-            try:
-                tier = ToolTier(tier)
-            except ValueError:
-                tier = ToolTier.FREE
         tools.append(
             IndexedTool(
                 name=tool_name,
                 description=tool_def.get("description", ""),
-                tier=tier,
                 input_schema=tool_def.get("inputSchema", {}),
                 searchable_text=_build_searchable_text(tool_name, tool_def),
             )
@@ -562,50 +554,21 @@ async def _embed_batch_cohere(texts: List[str], input_type: str) -> Tuple[Option
         return None, err
 
 
-def _tier_ok(tool_tier: ToolTier, user_tier: ToolTier) -> bool:
-    """Return True if `user_tier` has access to a tool requiring `tool_tier`.
-
-    Ordering (from least to most privileged):
-        FREE = PRO (legacy alias for FREE) < CORE < TEAM < ENTERPRISE
-
-    Unknown / unrecognized tiers default to FREE on both sides — this is
-    intentionally permissive, since server-level tool execution enforces the
-    real gate on call. The tool-search visibility layer should not be stricter
-    than execution itself.
-
-    Note: the existing /mcp/prompts + /mcp/tools endpoints in router.py use
-    an ordering list that is missing CORE entirely, which silently filters
-    out all CORE-tiered tools for every user. That's a separate longstanding
-    bug. Fixing it there is a drive-by that belongs in its own PR.
-    """
-    rank = {
-        ToolTier.FREE: 0,
-        ToolTier.PRO: 0,  # Legacy — mapped to FREE per tools.py enum comment
-        ToolTier.CORE: 1,
-        ToolTier.TEAM: 2,
-        ToolTier.ENTERPRISE: 3,
-    }
-    user_rank = rank.get(user_tier, 0)
-    tool_rank = rank.get(tool_tier, 0)
-    return user_rank >= tool_rank
-
-
 async def search(
     query: str,
-    user_tier: ToolTier,
     top_k: int = 5,
     template: Optional[str] = None,
     include_core_whitelist: bool = True,
 ) -> Dict[str, Any]:
     """Retrieve relevant tools for a query.
 
+    All tools are always eligible — the self-hosted engine is un-metered
+    and has no tier gating.
+
     Parameters
     ----------
     query : str
         The user's message or search text.
-    user_tier : ToolTier
-        The caller's entitlement tier. Tools requiring a higher tier are
-        filtered out of results.
     top_k : int
         How many retrieved tools to return (before merging with whitelist /
         template manifest).
@@ -614,8 +577,7 @@ async def search(
         template's manifest instead. Caller is responsible for matching
         prompt invocation to this.
     include_core_whitelist : bool
-        If True, always include the CORE_WHITELIST tools in the response
-        (tier-filtered).
+        If True, always include the CORE_WHITELIST tools in the response.
 
     Returns
     -------
@@ -652,8 +614,6 @@ async def search(
                 if prev is None or similarity > prev:
                     selected[tool.name]["similarity"] = similarity
             selected[tool.name]["_sources"].append(source)
-            return
-        if not _tier_ok(tool.tier, user_tier):
             return
         entry = tool.to_public_dict()
         if similarity is not None:

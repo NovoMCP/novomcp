@@ -31,7 +31,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 import httpx
 import redis.asyncio as aioredis
-from novomcp.mcp.tree_search_tools import TREE_SEARCH_TOOLS, TREE_SEARCH_CREDITS, TreeSearchExecutor
+from novomcp.mcp.tree_search_tools import TREE_SEARCH_TOOLS, TreeSearchExecutor
 from novomcp.version import __version__ as ENGINE_VERSION
 
 # The in-process cheminformatics + public-API search primitives are sourced
@@ -92,28 +92,6 @@ def _pairwise_tanimoto(seed_smiles: str, variant_smiles_list) -> Dict[str, float
     return out
 
 
-class ToolTier(str, Enum):
-    """Tool access tiers for rate limiting and pricing."""
-    FREE = "free"
-    CORE = "core"
-    PRO = "pro"        # Legacy — mapped to FREE
-    TEAM = "team"
-    ENTERPRISE = "enterprise"
-
-
-def normalize_tier(tier: str) -> str:
-    """Map legacy tiers to current tiers.
-
-    Current pricing: Free Trial + Core (PAYG) + Team ($500/mo) + Enterprise.
-    Legacy pro users are grandfathered as free.
-    """
-    if tier == "pro":
-        return "free"
-    return tier
-
-
-# =============================================================================
-# TOOL CREDIT COSTS (Hybrid Billing v3.0)
 # =============================================================================
 # Funnel auto-logging: tools that should NOT fire an exploration event.
 # - funnel/audit tools themselves (recursion, noise)
@@ -391,109 +369,7 @@ def _summarize_result_data(data: Any) -> Dict[str, Any]:
     return summary
 
 
-# =============================================================================
-# 1 Credit = $1.00 USD
-# Tiers include monthly credits; overage billed at tier-specific rate
-# Costs are based on computational complexity and external API usage
-
-TOOL_CREDITS: Dict[str, int] = {
-    # Tier 1: Free/Basic Tools (0-2 credits)
-    "get_molecule_info": 1,           # Simple RDKit computation
-    "get_platform_info": 0,           # Free - encourages visibility
-    "get_credit_usage": 0,            # Free - users should always see their credits
-    "get_structure_result": 0,        # Free - result retrieval
-    "get_job_status": 0,              # Free - status checks
-    "cancel_job": 0,                   # Free - aborting a job is always free
-    "list_jobs": 0,                    # Free - job listing
-    "get_pipeline_audit": 0,           # Free - audit trail retrieval
-    "save_funnel_stage": 0,            # Free - log a funnel stage for reproducibility
-    "get_funnel_audit": 0,             # Free - retrieve full funnel audit log
-    "list_funnels": 0,                 # Free - list recent discovery funnels with metadata
-    "save_funnel_memory": 0,           # Free - write terminal summary for cross-run learning
-    "search_prior_runs": 0,            # Free - query cross-run memory (includes lazy backstop write)
-    "run_novo_ag": 0,                  # Free - trigger that returns the autonomous prompt text
-    "audit_system": 0,                 # Free - pre-flight MD target classification (no GPU)
-    "parameterize_metal": 50,          # MCPB.py QM→FF bridge (CPU-heavy, no GPU)
-    "generate_upload_url": 0,          # Free - file upload is free, consuming tools charge
-    "get_file_status": 0,              # Free - file status check
-    "list_files": 0,                   # Free - file inventory
-
-    # Tier 2: Enriched Lookup (2-5 credits)
-    "get_molecule_profile": 2,        # Database lookup
-    "get_protein_structure": 5,       # PDB fetch (free) or OpenFold3 fallback (+100)
-    "check_compliance": 3,            # Generic compliance hook (NOVOMCP_COMPLIANCE_URL)
-
-    # Tier 3: Search/Filter (5-10 credits)
-    "search_similar": 5,              # Vector similarity search
-    "filter_molecules": 5,            # Database query with filters
-    "search_literature": 5,           # Pinecone vector search
-    "search_patents": 5,              # Pinecone vector search
-    "search_biorxiv": 3,              # bioRxiv preprint search (free API)
-    "search_chembl": 5,               # ChEMBL compound/target search
-    "search_clinical_trials": 3,      # ClinicalTrials.gov search (free API)
-    "validate_target": 8,             # Adversarial validation (orchestrates 5-6 internal calls, lowered April 4)
-    "batch_profile": 10,              # Batch processing (per batch)
-
-    # Tier 4: ML Inference (10-25 credits)
-    "calculate_properties": 10,       # RDKit + fingerprints
-    "get_3d_properties": 15,          # NovoMD conformer generation
-    "predict_admet": 20,              # 31 ML model inference
-    "analyze_admet_trajectory": 15,   # batched ADMET over a series (one /addie/process call, <=100 mols) + trajectory read; flat like batch_profile
-    "optimize_molecule": 25,          # MolMIM API
-
-    # Tier 5: Heavy Compute (50-100 credits)
-    "screen_library": 50,             # Batch screening
-    "predict_structure": 100,         # OpenFold3 GPU inference
-
-    # Tier 6: Quantum/Long-running (v4/v5 - 150-500 credits)
-    "lead_optimization": 150,         # Multi-objective optimization
-    "dock_molecules": 10,             # AutoDock-GPU base cost (dynamic: 10 + 5/molecule)
-    "run_molecular_dynamics": 250,    # GROMACS simulation
-    "generate_dynamics": 25,          # GPU-tier: A100 for 1-5 minutes
-
-    # Tier 7: Property Prediction (pKa, solubility, BDE)
-    "predict_pka": 10,                # pKa prediction (ionizable groups)
-    "predict_solubility": 10,         # Aqueous solubility (LogS)
-    "predict_bde": 15,                # Bond dissociation energy (alfabet)
-
-    # Tier 7b: QM Compute
-    "run_qm_calculation": 20,         # xTB energy/optimize/solvation
-    "run_qm_hessian": 30,             # xTB frequency/thermochemistry (--hess)
-    "predict_frontier_orbitals": 20,  # HOMO/LUMO/emission/OLED classification (now with stTDA)
-    "run_excited_states": 25,         # sTDA-xTB excited states (S1/T1/oscillator strengths)
-    "predict_redox_potential": 50,    # Oxidation/reduction potential (3 xTB optimizations)
-    "predict_reaction_thermodynamics": 60,  # ΔG/ΔH/TΔS for reactions (Hessian per species)
-    "find_transition_state": 80,      # NEB transition state search (activation barrier)
-    "run_conformer_search": 25,       # CREST or RDKit conformer ensemble
-    "dock_with_strain": 15,           # xTB strain energy on docked pose
-
-    # Tier 7c: Materials Database
-    "search_materials_project": 5,    # Materials Project lookup (formula, band gap, stability)
-
-    # Tier 7d: Neural Network Potentials
-    "compute_energy": 5,              # NNP energy + forces (ANI-2x/MACE, fast)
-    "optimize_geometry_nnp": 10,      # NNP geometry optimization (ASE BFGS or ALCHEMI batched)
-    "batch_geometry_relaxation": 10,  # Per-molecule cost × len(smiles_list) via BATCH_TOOLS
-
-    # Tier 8: Omics Tools
-    "target_discovery": 10,           # Cosmos omics_targets query
-    "stratify_patients": 15,          # Cosmos omics_pgx + omics_resistance query
-
-    # Tier 9: Funnel Persistence (free)
-    "save_funnel_context": 0,         # Free — persistence utility
-    "get_funnel_context": 0,          # Free — retrieval utility
-
-    # Tier 7: Enterprise Data Export/Import
-    "push_to_destination": 5,                 # Export to connected destinations
-    "pull_from_source": 5,                    # Base cost; pipeline costs computed dynamically
-}
-
-# Merge tree-guided retrieval tool credits
-TOOL_CREDITS.update(TREE_SEARCH_CREDITS)
-
 # Batch-capable tools. Maps tool_name → argument name that holds the batch list.
-# Pre-flight credit check multiplies TOOL_CREDITS[tool] by len(args[batch_param])
-# to prevent partial-batch overshoot (e.g. 7 of 10 docked, 3 failed, credits drained).
 def _kruskal_mst(n_nodes: int, edges: list) -> list:
     """Minimum spanning tree via Kruskal's algorithm.
 
@@ -539,53 +415,9 @@ BATCH_TOOLS: Dict[str, str] = {
     "batch_geometry_relaxation": "smiles_list",
 }
 
-# Pull row limits by tier (data connectors require Team+)
-PULL_ROW_LIMITS = {
-    "free": 0,
-    "core": 0,
-    "team": 10000,
-    "enterprise": 10000,
-}
-
-# =============================================================================
-# TIER BILLING CONFIGURATION (v6.0 — Free Trial + Core + Scale + Enterprise)
-# =============================================================================
-# Display-only mirror of the canonical table in
-# NovoServices/managed backend/routers/mcp.py:95. managed backend
-# is the source of truth — it drives signup grants, tier changes, monthly
-# resets, and deductions via sp_record_tool_usage. This local copy is used
-# only by get_credit_usage (below) to render the user-facing dashboard.
-# Keep this table SYNCED with managed backend's TIER_BILLING. ISSUES.md
-# B8 (resolved 2026-05-13) was the bug where these had drifted apart.
-#
-# Credits never expire for Core packs. Scale/Enterprise renew monthly.
-
-TIER_BILLING: Dict[str, Dict[str, Any]] = {
-    "free": {
-        "credits_included": 750,
-        "overage_rate": 0.0,           # No overage — trial ends at 0
-        "overage_allowed": False,
-        "monthly_price": 0,
-    },
-    "core": {
-        "credits_included": 0,         # Pay-as-you-go, no monthly included
-        "overage_rate": 0.0,
-        "overage_allowed": False,      # Must purchase credit packs
-        "monthly_price": 0,
-    },
-    "team": {
-        "credits_included": 15000,
-        "overage_rate": 0.33,
-        "overage_allowed": True,
-        "monthly_price": 500,
-    },
-    "enterprise": {
-        "credits_included": 50000,     # Custom, use as default
-        "overage_rate": 0.33,          # Negotiated, use as default
-        "overage_allowed": True,
-        "monthly_price": 0,            # Custom pricing
-    },
-}
+# Max rows a single data-connector pull may return. Un-metered self-hosted
+# engine — one flat cap, no tier tiers.
+PULL_ROW_LIMIT = 10000
 
 
 # =============================================================================
@@ -600,7 +432,6 @@ MCP_TOOLS = {
         "name": "get_molecule_profile",
         "title": "Get Molecule Profile",
         "description": "Full molecular profile — the PRIMARY tool for profiling any molecule. Always returns live RDKit physicochemical properties (MW, logP, TPSA, HBD/HBA, rotatable bonds, aromatic rings, QED, Lipinski pass) and RDKit-based structural alerts (PAINS, Brenk). ADMET predictions are attached when the optional ADMET service is configured; otherwise that block comes back null with an availability flag — never an error.",
-        "tier": ToolTier.FREE,
         "annotations": {
             "readOnlyHint": True,
             "destructiveHint": False
@@ -621,7 +452,6 @@ MCP_TOOLS = {
         "name": "get_molecule_info",
         "title": "Get Molecule Info",
         "description": "Quick lookup of basic molecular properties only (MW, formula, LogP, TPSA, H-bond counts). Lightweight — no ADMET or compliance data. Use get_molecule_profile instead if you need a complete analysis.",
-        "tier": ToolTier.FREE,
         "annotations": {
             "readOnlyHint": True,
             "destructiveHint": False
@@ -642,7 +472,6 @@ MCP_TOOLS = {
         "name": "get_protein_structure",
         "title": "Get Protein Structure",
         "description": "Smart protein structure resolver with interactive 3D visualization. Accepts: (1) PDB ID (e.g., '1M17'), (2) Protein name (e.g., 'EGFR', 'CDK2'), or (3) Amino acid sequence. First tries to fetch from RCSB PDB (validated experimental structures). If not found and sequence provided, falls back to OpenFold3 prediction. Supports common drug targets: EGFR, CDK2, BRAF, ALK, JAK2, BTK, ABL, HIV Protease, SARS-CoV-2 Mpro, etc.",
-        "tier": ToolTier.FREE,
         "annotations": {
             "readOnlyHint": True,
             "destructiveHint": False
@@ -672,7 +501,6 @@ MCP_TOOLS = {
         "name": "get_platform_info",
         "title": "Get Platform Info",
         "description": "Get NovoMCP platform information including subscription tiers, available tools per tier, database statistics, ADMET capabilities, and usage. Use info_type='usage' to see your organization's recent tool activity.",
-        "tier": ToolTier.FREE,
         "annotations": {
             "readOnlyHint": True,
             "destructiveHint": False
@@ -682,12 +510,8 @@ MCP_TOOLS = {
             "properties": {
                 "info_type": {
                     "type": "string",
-                    "enum": ["all", "tiers", "database", "admet", "usage", "update"],
-                    "description": "Type of info to retrieve: 'all' (default), 'tiers' (subscription features), 'database' (stats), 'admet' (available predictions), 'usage' (recent tool activity), 'update' (current engine version + whether a newer release is available)"
-                },
-                "org_id": {
-                    "type": "string",
-                    "description": "Organization ID for usage data (optional - auto-detected from auth)"
+                    "enum": ["all", "database", "admet", "update"],
+                    "description": "Type of info to retrieve: 'all' (default), 'database' (stats), 'admet' (available predictions), 'update' (current engine version + whether a newer release is available)"
                 }
             },
             "required": []
@@ -702,7 +526,6 @@ MCP_TOOLS = {
         "name": "push_to_destination",
         "title": "Push to Destination",
         "description": "Push tool results to a connected destination such as Google Sheets or BigQuery.",
-        "tier": ToolTier.ENTERPRISE,
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -719,7 +542,6 @@ MCP_TOOLS = {
         "name": "pull_from_source",
         "title": "Pull from Source",
         "description": "Pull compound data from a connected data warehouse (Snowflake, Databricks), run ADMET/compliance/optimization, and optionally push enriched results back. Actions: preview (inspect table), pull (read rows), estimate_pipeline (cost estimate), execute_pipeline (run full pipeline).",
-        "tier": ToolTier.ENTERPRISE,
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -788,7 +610,6 @@ MCP_TOOLS = {
         "name": "get_credit_usage",
         "title": "Get Credit Usage",
         "description": "Return usage information for the current org — recent tool activity. Requires a configured usage backend; on a self-hosted engine with no metering it reports local activity only. Use when users ask 'What's my usage?' or 'Summarize my recent activity'.",
-        "tier": ToolTier.FREE,
         "annotations": {
             "readOnlyHint": True,
             "destructiveHint": False
@@ -807,7 +628,6 @@ MCP_TOOLS = {
         "name": "search_similar",
         "title": "Search Similar Molecules",
         "description": "Find structurally similar molecules by Morgan fingerprint Tanimoto similarity against a configured molecule index. Returns matches with their physicochemical properties; ADMET blocks attached when the optional ADMET service is configured.",
-        "tier": ToolTier.FREE,
         "annotations": {
             "readOnlyHint": True,
             "destructiveHint": False
@@ -852,7 +672,6 @@ MCP_TOOLS = {
         "name": "filter_molecules",
         "title": "Filter Molecules",
         "description": "Filter a configured molecule index by physicochemical property ranges (MW, logP, TPSA, HBD/HBA, rotatable bonds, QED). Returns matches with their properties; ADMET blocks attached per-molecule when the optional ADMET service is configured.",
-        "tier": ToolTier.FREE,
         "annotations": {
             "readOnlyHint": True,
             "destructiveHint": False
@@ -893,7 +712,6 @@ MCP_TOOLS = {
         "name": "batch_profile",
         "title": "Batch Profile Molecules",
         "description": "Batch version of get_molecule_profile: RDKit physicochemical properties and structural alerts for up to 100 molecules in one call. ADMET (toxicity, CYP metabolism, nuclear receptors, stress response) is attached when the optional ADMET service is configured. Set include_admet=false for faster properties-only screening.",
-        "tier": ToolTier.FREE,
         "annotations": {
             "readOnlyHint": True,
             "destructiveHint": False
@@ -924,7 +742,6 @@ MCP_TOOLS = {
         "name": "optimize_molecule",
         "title": "Optimize Molecule",
         "description": "Property-directed molecular optimization using NVIDIA MolMIM (generative AI). Given a seed molecule and target objectives (QED, LogP, TPSA, similarity), generates structurally similar variants biased toward the desired property profile. Returns 3-10 optimized SMILES with property deltas vs seed. Keeps structural similarity high (Tanimoto > 0.4 typical) — for diverse scaffold hopping, use lead_optimization instead.",
-        "tier": ToolTier.FREE,
         "annotations": {
             "readOnlyHint": True,
             "destructiveHint": False
@@ -982,7 +799,6 @@ MCP_TOOLS = {
         "name": "predict_structure",
         "title": "Predict Protein Structure",
         "description": "Predict 3D protein structure using OpenFold3 with interactive visualization. Supports proteins, DNA, RNA, and protein-ligand complexes. Waits up to 60 seconds for completion. For longer predictions, returns a job_id — use get_structure_result to check progress. Short peptides (<20 residues) typically complete within the wait time. For single-molecule predictions, you may pass a top-level `sequence` (auto-inferred as protein/DNA/RNA from alphabet) or `smiles` (treated as ligand) instead of the full molecules array.",
-        "tier": ToolTier.FREE,
         "annotations": {
             "readOnlyHint": True,
             "destructiveHint": False
@@ -1029,7 +845,6 @@ MCP_TOOLS = {
         "name": "get_structure_result",
         "title": "Get Structure Result (Deprecated)",
         "description": "Deprecated — use get_job_status for structure prediction results. Retained for backward compatibility.",
-        "tier": ToolTier.FREE,
         "annotations": {
             "readOnlyHint": True,
             "destructiveHint": False
@@ -1056,7 +871,6 @@ MCP_TOOLS = {
         "name": "get_job_status",
         "title": "Get Job Status",
         "description": "Check progress and retrieve results for ANY async NovoMCP job: molecular dynamics (gro_*), docking (dock_*, dock_batch_*), structure prediction (of3_*), quantum (qc_*), lead optimization (lo_*). Returns status, progress percentage, estimated remaining time, and full results when complete. IMPORTANT: If the job is still running, you MUST keep polling every 30-60 seconds until it completes — do NOT give up or treat 'running' as an error.",
-        "tier": ToolTier.FREE,
         "annotations": {
             "readOnlyHint": True,
             "destructiveHint": False
@@ -1088,7 +902,6 @@ MCP_TOOLS = {
         "name": "cancel_job",
         "title": "Cancel Async Job",
         "description": "Cancel a running or queued async job — stop it before it finishes and consumes more compute. Supports gromacs-md jobs (gro_*): deletes the k8s Job on EKS (SIGTERM to the pod), SIGTERM handler writes partial checkpoints to S3, SQL status transitions to cancelling and then to a terminal state (cancelled if SIGTERM caught between stages; failed with the engine's error if SIGTERM caught mid-stage). Use when the user submitted by mistake, the wrong inputs were used, or the job is over budget. Cancelling a completed or failed job is a no-op and returns the current state. Other job types (dock_*, qm_*) will return 'not supported' until their executors implement SIGTERM handling.",
-        "tier": ToolTier.FREE,
         "annotations": {
             "readOnlyHint": False,
             "destructiveHint": True
@@ -1114,7 +927,6 @@ MCP_TOOLS = {
         "name": "list_jobs",
         "title": "List Pipeline Jobs",
         "description": "List async pipeline jobs (MD simulations, docking batches, structure predictions, etc.) with optional status and service filters. Returns job IDs, status, progress, and timestamps. Use to check what jobs are running or recently completed.",
-        "tier": ToolTier.FREE,
         "annotations": {
             "readOnlyHint": True,
             "destructiveHint": False
@@ -1155,7 +967,6 @@ MCP_TOOLS = {
         "name": "generate_upload_url",
         "title": "Generate File Upload URL",
         "description": "Generate a signed upload URL for large files (QM logs, PDB structures, compound libraries, trajectories). Upload the file directly to the URL — no data flows through the chat. Returns a file_id to reference in downstream tool calls. Upload URLs expire in 30 minutes. If auto_process is set, the file will be processed automatically after upload — no need to call a second tool.",
-        "tier": ToolTier.FREE,
         "annotations": {
             "readOnlyHint": False,
             "destructiveHint": False
@@ -1191,7 +1002,6 @@ MCP_TOOLS = {
         "name": "get_file_status",
         "title": "Get File Status",
         "description": "Check the status of an uploaded file — pending, uploaded, processing, completed. Shows linked tool calls, job IDs, and processing results. Use after uploading a file to verify it's ready for tool consumption.",
-        "tier": ToolTier.FREE,
         "annotations": {
             "readOnlyHint": True,
             "destructiveHint": False
@@ -1212,7 +1022,6 @@ MCP_TOOLS = {
         "name": "list_files",
         "title": "List Uploaded Files",
         "description": "List files uploaded to your account. Filter by file type (qm_log, pdb, trajectory, library) or status (uploaded, processing, completed). Shows file IDs, names, sizes, and linked jobs.",
-        "tier": ToolTier.FREE,
         "annotations": {
             "readOnlyHint": True,
             "destructiveHint": False
@@ -1244,7 +1053,6 @@ MCP_TOOLS = {
         "name": "get_pipeline_audit",
         "title": "Get Pipeline Audit Log",
         "description": "Retrieve the per-molecule audit trail for a completed pipeline execution. Shows what happened to each molecule: input SMILES, standardization, per-tool results (ADMET, compliance, properties), disposition (included/excluded), and exclusion reasons. Use for GxP compliance documentation.",
-        "tier": ToolTier.FREE,
         "annotations": {
             "readOnlyHint": True,
             "destructiveHint": False
@@ -1265,7 +1073,6 @@ MCP_TOOLS = {
         "name": "run_novo_ag",
         "title": "'Novo AG' / 'agm' → Autonomous Mode Trigger",
         "description": "TRIGGER KEYWORDS: 'Novo AG', 'novo ag', 'novoag', 'agm', 'AGM' (case-insensitive; slash-prefixed forms like '/agm' may be intercepted by MCP clients as slash commands and won't reach the model — recommend 'agm' without the slash). Call ONLY when the user's message contains one of these literal tokens. Returns the 11-stage autonomous discovery instruction set — read it and follow it. For messages without these keywords, operate in normal collaborative mode (use tools as needed, ask clarifying questions). Pass mode='interactive' for the human-in-the-loop variant.",
-        "tier": ToolTier.FREE,
         "annotations": {
             "readOnlyHint": True,
             "destructiveHint": False
@@ -1297,7 +1104,6 @@ MCP_TOOLS = {
         "name": "save_funnel_stage",
         "title": "Save Funnel Stage",
         "description": "Record a HUMAN-REVIEWED checkpoint decision in the discovery funnel. **You do NOT need to call this to log tool calls — every tool call is already auto-logged server-side as an 'exploration' event under the session funnel_id. NEVER ask the user whether to log; logging is automatic and client-agnostic.** Call save_funnel_stage ONLY to capture the user's explicit decision/approval at a reviewed checkpoint in an interactive funnel (pass human_reviewed: true with human_decision + human_prompt) — that human context is the one thing the auto-log cannot capture. For checkpoint events inside the canonical 11-stage funnel, pass `funnel_stage` (1-11). Do NOT pass `stage_index` — it is a monotonic event counter the server auto-assigns per funnel_id. stage_name defaults to the tool name. See docs/AGENTMODE-ARCHITECTURE.md §1 for the canonical stage table.",
-        "tier": ToolTier.FREE,
         "annotations": {
             "readOnlyHint": False,
             "destructiveHint": False
@@ -1342,7 +1148,6 @@ MCP_TOOLS = {
         "name": "get_funnel_audit",
         "title": "Get Funnel Audit Log",
         "description": "Retrieve the reproducibility log for a discovery funnel run. Shows every event (checkpoints + exploration tool calls) with tool arguments, result summaries, AI recommendations, human decisions, molecule counts, filtering details, and compute costs. Filter by event_type='checkpoint' for a clean peer-review view that excludes ad-hoc exploration.",
-        "tier": ToolTier.FREE,
         "annotations": {
             "readOnlyHint": True,
             "destructiveHint": False
@@ -1369,7 +1174,6 @@ MCP_TOOLS = {
         "name": "list_funnels",
         "title": "List Discovery Funnels",
         "description": "List recent discovery funnel runs with metadata — disease, target gene, outcome, stage count, best affinity. Use this to find a funnel_id before calling get_funnel_audit. Returns the most recent funnels for the current org, enriched with terminal summary data when available.",
-        "tier": ToolTier.FREE,
         "annotations": {
             "readOnlyHint": True,
             "destructiveHint": False
@@ -1399,7 +1203,6 @@ MCP_TOOLS = {
         "name": "save_funnel_memory",
         "title": "Save Funnel Memory (terminal summary)",
         "description": "Write a terminal summary of a completed discovery funnel to cross-run memory. Called once at the end of a funnel run (typically after Stage 11 completion). Captures target metadata, outcome, failure patterns, key decisions, and a natural-language summary for analogical retrieval. Powers search_prior_runs — future funnels targeting the same gene/disease can learn from this run's outcome and avoid repeating mistakes. Semantic embedding generated automatically from the summary via Azure OpenAI text-embedding-3-large.",
-        "tier": ToolTier.FREE,
         "annotations": {
             "readOnlyHint": False,
             "destructiveHint": False
@@ -1438,7 +1241,6 @@ MCP_TOOLS = {
         "name": "search_prior_runs",
         "title": "Search Prior Discovery Runs",
         "description": "Query cross-run memory for past discovery funnels that targeted the same gene, PDB, or therapeutic area. Returns terminal summaries, outcomes, and lessons from prior attempts. Call at funnel start to learn from precedents — avoid repeating known failure modes, reuse successful scaffolds, calibrate threshold expectations. Includes a lazy backstop that auto-generates template summaries for completed funnels that lack explicit memory entries, ensuring cross-run coverage is complete.",
-        "tier": ToolTier.FREE,
         "annotations": {
             "readOnlyHint": True,
             "destructiveHint": False
@@ -1465,7 +1267,6 @@ MCP_TOOLS = {
         "name": "get_3d_properties",
         "title": "Get 3D Properties",
         "description": "Get 3D molecular properties from conformer generation. Returns 32+ properties including geometry (radius of gyration, asphericity, PMI), energy (conformer energy, VDW, electrostatic, strain), electrostatics (dipole moment, partial charges), surface/volume (SASA, molecular volume, globularity), and full 3D coordinates.",
-        "tier": ToolTier.FREE,
         "annotations": {
             "readOnlyHint": True,
             "destructiveHint": False
@@ -1502,7 +1303,6 @@ MCP_TOOLS = {
         "name": "calculate_properties",
         "title": "Calculate Properties",
         "description": "Calculate RDKit molecular properties on-demand. Returns Lipinski descriptors, drug-likeness scores (QED, SA_Score), physicochemical properties (LogP, TPSA, MW), and structural features. Does NOT include ADMET or compliance — use get_molecule_profile for a complete analysis.",
-        "tier": ToolTier.FREE,
         "annotations": {
             "readOnlyHint": True,
             "destructiveHint": False
@@ -1528,7 +1328,6 @@ MCP_TOOLS = {
         "name": "predict_admet",
         "title": "Predict ADMET",
         "description": "Predict toxicity and ADMET properties: cardiotoxicity, hepatotoxicity, nephrotoxicity, carcinogenicity, CYP450 inhibition (1A2/2C9/2C19/2D6/3A4 substrate + inhibitor), nuclear receptor activity (AR/ER/PR/GR/PPAR), stress response (p53, oxidative stress), absorption, distribution, metabolism, excretion. Returns per-model probabilities with severity categories. 40+ ML models from addie-models backend. Normally called automatically by get_molecule_profile; use directly for ADMET-only queries.",
-        "tier": ToolTier.FREE,
         "annotations": {
             "readOnlyHint": True,
             "destructiveHint": False
@@ -1554,7 +1353,6 @@ MCP_TOOLS = {
         "name": "analyze_admet_trajectory",
         "title": "Analyze ADMET Trajectory",
         "description": "Read an ADMET *series*, not a single molecule. Given an ORDERED list of SMILES that walk one optimization direction (a homologous series, a synthetic route, analogs from one repeating modification), scores every molecule with addie-models and classifies how each ADMET endpoint MOVES along the series: frozen (moved then plateaued — a dead-end you cannot tune further this way), climbing / descending (you are actively driving it), cliff (a single-step discontinuity), flat (this modification is irrelevant to it), or complex (non-monotone). Answers the campaign-level question a per-molecule prediction cannot: which liabilities are dead-ends, which you are worsening, and which you can ignore along this modification. ORDER MATTERS — pass the molecules in modification order. Needs 3–100 molecules. CALIBRATION: the labels are trend reads (Spearman rank correlation + threshold cutoffs). `cliff` is validated against a documented Ames cliff (4-aminobiphenyl fires `cliff` at the alert step). `frozen` is validated as PREDICTIVE on 54,312 real homologous series: axes it labels on a prefix move +0.108 SD less over the held-out tail than others, beyond a step-order null no permutation in 500 reached (issue #36) — quote that excess, not the raw contrast, since the null is not zero. climbing/descending/flat are directional and robust; cliff is honestly conservative — a real cliff can read as `climbing` when the model's baseline for the non-alert analogs is already elevated (the bound is the model, not the labeler), so verify against the underlying series.",
-        "tier": ToolTier.FREE,
         "annotations": {
             "readOnlyHint": True,
             "destructiveHint": False
@@ -1593,7 +1391,6 @@ MCP_TOOLS = {
         "name": "search_literature",
         "title": "Search Literature",
         "description": "Find published journal articles and research papers on drug discovery topics. Searches 14,398 curated peer-reviewed publications via Pinecone semantic search. Returns paper titles, abstracts, authors, DOIs, and relevance scores. Covers ADMET research, target validation, medicinal chemistry, SAR studies, and clinical pharmacology. Use for literature review, prior art assessment, and evidence gathering during target evaluation.",
-        "tier": ToolTier.FREE,
         "annotations": {
             "readOnlyHint": True,
             "destructiveHint": False
@@ -1624,7 +1421,6 @@ MCP_TOOLS = {
         "name": "search_patents",
         "title": "Search Patents",
         "description": "Search granted and pending USPTO pharmaceutical patent filings (2,416 documents, Pinecone semantic search). Returns patent titles, abstracts, applicants, filing dates, and relevance scores. Use for intellectual property landscape analysis, freedom-to-operate assessment, prior art search, and competitive intelligence on patented scaffolds or mechanisms.",
-        "tier": ToolTier.FREE,
         "annotations": {
             "readOnlyHint": True,
             "destructiveHint": False
@@ -1658,7 +1454,6 @@ MCP_TOOLS = {
         "name": "search_biorxiv",
         "title": "Search bioRxiv",
         "description": "Find pre-publication preprints from bioRxiv and medRxiv (live API query, not curated — searches all recent preprints). Returns preprint titles, abstracts, authors, DOIs, and publication dates. Useful for finding cutting-edge research before formal peer review, recent findings on emerging targets, and early-stage results not yet in the published literature. Complements search_literature which covers peer-reviewed publications only.",
-        "tier": ToolTier.FREE,
         "annotations": {
             "readOnlyHint": True,
             "destructiveHint": False
@@ -1696,7 +1491,6 @@ MCP_TOOLS = {
         "name": "search_chembl",
         "title": "Search ChEMBL",
         "description": "Measured bioactivity data from ChEMBL — 2.4M compounds with assay activities, targets, IC50/Ki values. Returns compound structures, target information, and activity values. Search by compound, target, or activity type.",
-        "tier": ToolTier.FREE,
         "annotations": {
             "readOnlyHint": True,
             "destructiveHint": False
@@ -1729,7 +1523,6 @@ MCP_TOOLS = {
         "name": "search_clinical_trials",
         "title": "Search Clinical Trials",
         "description": "Registered clinical trial records from ClinicalTrials.gov, including recruitment status and trial phase (live API query). Returns trial titles, phases, status, conditions, interventions, sponsors, and enrollment numbers. Essential for competitive intelligence and indication research.",
-        "tier": ToolTier.FREE,
         "annotations": {
             "readOnlyHint": True,
             "destructiveHint": False
@@ -1774,7 +1567,6 @@ MCP_TOOLS = {
         "name": "check_compliance",
         "title": "Check Compliance",
         "description": "Context-dependent regulatory/compliance screening for a molecule. Proxies to whatever compliance service is configured via NOVOMCP_COMPLIANCE_URL and returns that service's structured verdict, keyed on the supplied intended_use + jurisdiction + therapeutic_area context. If no compliance service is configured, returns the standard 'service not configured' response so the tool degrades gracefully. The engine bundles no ruleset of its own — bring your own compliance backend.",
-        "tier": ToolTier.FREE,
         "annotations": {
             "readOnlyHint": True,
             "destructiveHint": False
@@ -1825,7 +1617,6 @@ MCP_TOOLS = {
         "name": "screen_library",
         "title": "Screen Library",
         "description": "Screen up to 1,000 molecules for drug-likeness and structural alerts (PAINS, Brenk) in one call. Returns RDKit physicochemical properties and structural alerts always; ADMET predictions are attached when the optional ADMET service is configured. Use for HTS triage, library QC, or pre-docking filtering.",
-        "tier": ToolTier.FREE,
         "annotations": {
             "readOnlyHint": True,
             "destructiveHint": False
@@ -1856,7 +1647,6 @@ MCP_TOOLS = {
         "name": "predict_pka",
         "title": "Predict pKa",
         "description": "Predict acid dissociation constant (pKa) for a molecule. Identifies ionizable functional groups (carboxylic acids, amines, phenols, sulfonamides, etc.) and returns pKa values. Critical for understanding drug absorption, formulation pH, and charge state at physiological pH. Returns ionizable groups detected and confidence level.",
-        "tier": ToolTier.FREE,
         "annotations": {
             "readOnlyHint": True,
             "destructiveHint": False
@@ -1877,7 +1667,6 @@ MCP_TOOLS = {
         "name": "predict_solubility",
         "title": "Predict Aqueous Solubility",
         "description": "Predict aqueous solubility as LogS (log10 mol/L) with optional temperature dependence. Returns LogS value, solubility in mg/mL, and a category (highly_soluble, soluble, slightly_soluble, insoluble). Essential for formulation development and oral bioavailability assessment. Default temperature is 25C (298.15K).",
-        "tier": ToolTier.FREE,
         "annotations": {
             "readOnlyHint": True,
             "destructiveHint": False
@@ -1903,7 +1692,6 @@ MCP_TOOLS = {
         "name": "predict_bde",
         "title": "Predict Bond Dissociation Energy",
         "description": "Predict homolytic bond dissociation energies (BDE) in kcal/mol for all C-H bonds in a molecule using the alfabet model. Identifies the weakest bond — useful for predicting metabolic soft spots, radical reactivity, and oxidative stability. Lower BDE = more susceptible to hydrogen abstraction by CYP enzymes.",
-        "tier": ToolTier.FREE,
         "annotations": {
             "readOnlyHint": True,
             "destructiveHint": False
@@ -1927,7 +1715,6 @@ MCP_TOOLS = {
         "name": "run_qm_calculation",
         "title": "Run QM Calculation",
         "description": "Run a semi-empirical quantum mechanics calculation (GFN2-xTB) on a molecule. Supports single-point energy, geometry optimization, and solvation energy (ALPB model). Returns electronic energy, HOMO-LUMO gap, dipole moment, and optionally optimized geometry. Supports charged species (charge) and open-shell systems (uhf). Pass xyz_input to bypass SMILES-to-3D conversion and use a pre-optimized geometry (e.g., for redox thermodynamic cycles).",
-        "tier": ToolTier.FREE,
         "annotations": {
             "readOnlyHint": True,
             "destructiveHint": False
@@ -1973,7 +1760,6 @@ MCP_TOOLS = {
         "name": "run_qm_hessian",
         "title": "Vibrational Frequencies & Thermochemistry",
         "description": "Compute vibrational frequencies, normal modes, and thermochemistry via xTB Hessian calculation. Returns all vibrational frequencies (cm⁻¹), explicitly flags imaginary frequencies (negative values indicating the structure is not a true minimum — it's a transition state or saddle point), plus zero-point energy (ZPE), enthalpy correction, Gibbs free energy correction (ΔG = ΔH - TΔS), and entropy. Essential for reaction thermodynamics and verifying optimized geometries are minima. Tip: pass xyz_input from a prior optimization for meaningful thermochemistry at the true minimum, or set optimize_first=true to optimize then run Hessian in one call.",
-        "tier": ToolTier.FREE,
         "annotations": {
             "readOnlyHint": True,
             "destructiveHint": False
@@ -2022,7 +1808,6 @@ MCP_TOOLS = {
         "name": "predict_frontier_orbitals",
         "title": "Frontier Orbital Analysis (OLED/Optoelectronics)",
         "description": "Predict frontier orbital properties for OLED and optoelectronics screening. Returns HOMO, LUMO, gap, emission wavelength, emission color (UV/blue/green/yellow/red/IR), triplet energy, and OLED suitability classification (phosphorescent emitter, fluorescent emitter, charge transport, host material). Detects OLED-relevant functional groups (carbazole, triphenylamine, anthracene, oxadiazole, Ir/Pt complexes, etc.). Uses GFN2-xTB for orbital energies + empirical calibration for emission prediction.",
-        "tier": ToolTier.FREE,
         "annotations": {
             "readOnlyHint": True,
             "destructiveHint": False
@@ -2047,7 +1832,6 @@ MCP_TOOLS = {
         "name": "run_excited_states",
         "title": "Excited State Calculation (sTDA-xTB)",
         "description": "Compute excited states using the simplified Tamm-Dancoff Approximation (sTDA) with xTB. Returns singlet and triplet excitation energies (eV), wavelengths (nm), oscillator strengths, S1/T1 energies, and singlet-triplet gap. More accurate than HOMO-LUMO gap for emission prediction. Use for OLED design, fluorescence/phosphorescence screening, and photochemistry. Takes 10-30 seconds.",
-        "tier": ToolTier.FREE,
         "annotations": {
             "readOnlyHint": True,
             "destructiveHint": False
@@ -2082,7 +1866,6 @@ MCP_TOOLS = {
         "name": "predict_redox_potential",
         "title": "Electrolyte Redox Potential Screening",
         "description": "Predict oxidation and reduction potentials for battery electrolyte design. Uses a GFN2-xTB thermodynamic cycle (neutral → cation → anion optimization) with ALPB solvation. Returns adiabatic and vertical ionization potential (IP) and electron affinity (EA), electrode potentials vs reference electrode (SHE, Li/Li+, Ag/AgCl, SCE, Fc/Fc+), and stability classification against lithium-ion (0-4.2V), high-voltage Li-ion (0-5V), aqueous (0-1.23V), and sodium-ion windows. Takes 30-90 seconds per molecule. Screening-grade accuracy (±0.3-0.5V) — use for candidate ranking, not final selection.",
-        "tier": ToolTier.FREE,
         "annotations": {
             "readOnlyHint": True,
             "destructiveHint": False
@@ -2114,7 +1897,6 @@ MCP_TOOLS = {
         "name": "predict_reaction_thermodynamics",
         "title": "Reaction Thermodynamics (ΔG, ΔH, K_eq)",
         "description": "Predict whether a chemical reaction is thermodynamically feasible. Takes reactant and product SMILES, computes ΔE, ΔH, ΔG (Gibbs free energy), TΔS (entropy contribution), and equilibrium constant K_eq. Spontaneous if ΔG < 0. Uses GFN2-xTB with Hessian for zero-point energy and thermal corrections on each species. Confidence flag: high for organic reactions, low for transition metal catalysis (validate with DFT). No transition state search — thermodynamics only, not kinetics. Takes 60-180 seconds (Hessian per species).",
-        "tier": ToolTier.FREE,
         "annotations": {
             "readOnlyHint": True,
             "destructiveHint": False
@@ -2150,7 +1932,6 @@ MCP_TOOLS = {
         "name": "find_transition_state",
         "title": "Transition State Search (NEB)",
         "description": "Find the transition state and activation barrier between a reactant and product using Nudged Elastic Band (NEB) with GFN2-xTB. Returns activation energy (forward + reverse barriers), transition state geometry, and the minimum energy pathway. Requires pre-optimized reactant and product XYZ geometries (use run_qm_calculation with calculation='optimize' first). **Bimolecular reactions require a pre-built van der Waals complex** as the reactant — NEB cannot path between two separate molecules and will return non-convergent unphysical barriers (e.g., 500+ kcal/mol). For unimolecular isomerizations (e.g., HCN→HNC, conformational changes), feed the two minimum geometries directly. For bimolecular reactions (Diels-Alder, SN2, etc.), build a reactant complex with the two molecules in proximity and run optimization on the complex first. Always check the `converged` flag and `warnings` list — if `converged: false`, the barrier is unreliable. Takes 2-10 minutes depending on molecule size and number of images. Adds kinetics ('how fast?') to thermodynamics ('is it feasible?'). Use predict_reaction_thermodynamics first to confirm the reaction is thermodynamically favorable, then find_transition_state for the kinetic barrier.",
-        "tier": ToolTier.FREE,
         "annotations": {
             "readOnlyHint": True,
             "destructiveHint": False
@@ -2194,7 +1975,6 @@ MCP_TOOLS = {
         "name": "run_conformer_search",
         "title": "Conformer Search",
         "description": "Generate a conformer ensemble for a molecule using CREST (GFN2-xTB) or RDKit ETKDG. Returns ranked conformers with Boltzmann populations and relative energies. Essential before docking — ensures you dock the bioactive conformer, not just the lowest-energy one. IMPORTANT ASYNC BEHAVIOR: This returns a job_id immediately. CREST takes 5-15 minutes. You MUST tell the user the estimated time and ask them to say 'check job [job_id]' when ready. Do NOT auto-poll in a loop — you will hit tool call limits. Poll at most 2-3 times per conversation turn. Progress stays at 10% during computation — this is NORMAL, not a stall. Never report it as stuck or broken while status is 'running'.",
-        "tier": ToolTier.FREE,
         "annotations": {
             "readOnlyHint": True,
             "destructiveHint": False
@@ -2237,7 +2017,6 @@ MCP_TOOLS = {
         "name": "dock_with_strain",
         "title": "Strain-Corrected Docking Score",
         "description": "Calculate the internal strain energy of a docked ligand pose using xTB. Strain = E(docked_pose) - E(optimized). High strain (>5 kcal/mol) indicates the docking score may be an artifact — the ligand is forced into an unnatural conformation. Use after dock_molecules to filter false positives. Returns strain energy and interpretation.",
-        "tier": ToolTier.FREE,
         "annotations": {
             "readOnlyHint": True,
             "destructiveHint": False
@@ -2265,7 +2044,6 @@ MCP_TOOLS = {
         "name": "compute_energy",
         "title": "Compute Energy (Neural Potential)",
         "description": "Compute molecular energy and atomic forces using neural network potentials. ~100x faster than xTB. Models: ANI-2x (organic molecules: H/C/N/O/F/S/Cl, most drug-like compounds), MACE-MP-0 (universal, all elements). Use 'auto' to select the best model automatically. Returns energy in eV and kcal/mol, plus max/RMS force magnitudes. Useful for fast conformer ranking, strain estimation, and batch energetics screening.",
-        "tier": ToolTier.FREE,
         "annotations": {
             "readOnlyHint": True,
             "destructiveHint": False
@@ -2298,7 +2076,6 @@ MCP_TOOLS = {
         "name": "search_materials_project",
         "title": "Search Materials Project Database",
         "description": "Search the Materials Project database for known inorganic materials. Returns band gap, formation energy, energy above hull (stability), crystal structure, and material ID. Search by chemical formula (e.g., 'LiCoO2'), chemical system (e.g., 'Li-Co-O'), or material ID (e.g., 'mp-22526'). Useful for: checking if a cathode/anode material is known, looking up band gaps for semiconductors, finding thermodynamically stable compositions. Note: Materials Project covers inorganic/solid-state materials, NOT organic molecules — use search_similar or check_compliance for organic compound lookup.",
-        "tier": ToolTier.FREE,
         "annotations": {
             "readOnlyHint": True,
             "destructiveHint": False
@@ -2330,7 +2107,6 @@ MCP_TOOLS = {
         "name": "optimize_geometry_nnp",
         "title": "Geometry Optimization (Neural Potential)",
         "description": "Atomic geometry refinement via neural network potentials. For structure relaxation of atomic coordinates — not property-directed compound optimization (see lead_optimization or optimize_molecule for that). 1–2 orders of magnitude faster than xTB geometry optimization (system-dependent). Models: ANI-2x (organic, H/C/N/O/F/S/Cl), MACE-MP-0 (universal). Execution engine is selectable via `engine`: `ase` (ASE BFGS optimizer, default) or `alchemi` (routes to the NVIDIA ALCHEMI Toolkit's GPU-batched relaxation dynamics — the same MACE/AIMNet2 potential, executed on ALCHEMI's batched CUDA kernels — when novomcp-nnp is built with that backend). Returns relaxed XYZ, final energy, convergence status, step count. LIMITATION: neutral molecules only — charged species (charge≠0) and open-shell (uhf≠0) must use run_qm_calculation instead (xTB supports charge/spin, NNPs do not).",
-        "tier": ToolTier.FREE,
         "annotations": {
             "readOnlyHint": True,
             "destructiveHint": False
@@ -2377,7 +2153,6 @@ MCP_TOOLS = {
         "name": "batch_geometry_relaxation",
         "title": "Batch Geometry Relaxation (Neural Potential)",
         "description": "Relax a whole LIBRARY of molecules in one batched pass — many systems per GPU kernel call, not a per-molecule loop. This is the high-throughput primitive that single-molecule optimize_geometry_nnp is not: use it for the geometry-optimization phase of library screens (screen_oled_library, screen_electrolyte_library). Backed by the NVIDIA ALCHEMI Toolkit's batched relaxation dynamics (`engine='alchemi'`, default) running a MACE/AIMNet2 potential on batched CUDA kernels, or a sequential fallback (`engine='ase'`). Returns per-input relaxed XYZ, final energy, and convergence status, in input order; failed inputs are reported per-item without failing the batch. LIMITATION: neutral molecules only (charged/open-shell must use run_qm_calculation). GPU strongly recommended — this tool exists for throughput.",
-        "tier": ToolTier.FREE,
         "annotations": {
             "readOnlyHint": True,
             "destructiveHint": False
@@ -2419,7 +2194,6 @@ MCP_TOOLS = {
         "name": "target_discovery",
         "title": "Omics-Driven Target Discovery",
         "description": "Identify and rank drug targets for a disease using pre-computed multi-omics evidence (genetics, expression, tractability) blended with a perturbation evidence channel from public Perturb-seq (signature reversal). Queries 108K target-disease associations from Open Targets + TCGA expression data plus the omics.omics_perturbation table; per-target evidence_channels breakdown is returned for audit. Returns ranked targets with composite scores, suggested PDB structures for docking, and pathway context. Use this as Stage 1 (of the 11-stage discovery funnel) before search_literature to start with a genetically validated target.",
-        "tier": ToolTier.TEAM,
         "annotations": {
             "readOnlyHint": True,
             "destructiveHint": False
@@ -2465,11 +2239,6 @@ MCP_TOOLS = {
                        "recommendation (proceed / proceed_with_caution / reconsider) with specific "
                        "risk factors and strengths. Essential adversarial checkpoint: 'Is this target "
                        "worth pursuing, or will it fail for known reasons?' Use after target_discovery.",
-        # FREE, not the defunct PRO tier: normalize_tier() collapses pro→free, so
-        # the executor already treats this as free. Tagging it PRO only desynced
-        # tools/list (which doesn't normalize) — it hid the tool from free users
-        # who could nonetheless execute it. See router.list_tools tier gating.
-        "tier": ToolTier.FREE,
         "annotations": {
             "readOnlyHint": True,
             "destructiveHint": False,
@@ -2500,7 +2269,6 @@ MCP_TOOLS = {
         "name": "stratify_patients",
         "title": "Patient Stratification & Pharmacogenomics",
         "description": "Assess clinical viability of a drug candidate through pharmacogenomic profiling and resistance mutation analysis. Cross-references the candidate's CYP metabolism profile (from ADMET predictions) against population-level pharmacogene frequencies, and checks for known resistance mutations in the target gene. Returns population coverage estimates, PGx risk alleles, resistance variants, and clinical viability assessment. Use this as Stage 11 (of the 11-stage discovery funnel) after molecular dynamics validation. The target_gene is validated against the HGNC registry before any lookup — unknown symbols return a structured error with a suggestion (for aliases/previous symbols) or an HGNC search URL (for truly unknown genes). Valid HGNC genes outside the 56-pharmacogene panel return clinical_viability='not_applicable' instead of a silent empty response.",
-        "tier": ToolTier.TEAM,
         "annotations": {
             "readOnlyHint": True,
             "destructiveHint": False
@@ -2546,7 +2314,6 @@ MCP_TOOLS = {
         "name": "lead_optimization",
         "title": "Lead Optimization",
         "description": "Generate structurally diverse molecular variants via scaffold hopping (RDKit substructure replacement, 30+ ring pairs) or property-directed optimization. Returns enriched variants with SA scores, RDKit physicochemical properties, Tanimoto-to-seed similarity, and patent risk classification per variant. For high-similarity property optimization close to the seed, use optimize_molecule (MolMIM) instead — this tool produces broader chemical diversity. Use after ADMET screening to generate candidates for docking. Note: fused polycyclic scaffolds (acridine, carbazole, naphthalene, xanthene) may return 0 variants due to RDKit sanitization limitations — the response includes a diagnostic.",
-        "tier": ToolTier.TEAM,
         "annotations": {
             "readOnlyHint": False,
             "destructiveHint": False
@@ -2599,7 +2366,6 @@ MCP_TOOLS = {
         "name": "dock_molecules",
         "title": "Dock Molecules",
         "description": "Dock molecules against a protein target using AutoDock-GPU. Single-molecule (smiles_list with 1 entry): executes directly, no confirmation needed, returns docking results synchronously. Batch (2+ molecules): two-phase — first call returns cost estimate + confirmation_token; second call with token submits a batch job and returns job_id (poll get_job_status every 30s until completed). GPU COLD START: the first call after idle (>5 min) includes ~2-3 min GPU warm-up; subsequent calls within 5 min are fast. If called within a discovery funnel, target_discovery already triggered a background warmup — the GPU should be ready by Step 6.",
-        "tier": ToolTier.TEAM,
         "annotations": {
             "readOnlyHint": False,
             "destructiveHint": False
@@ -2663,7 +2429,6 @@ MCP_TOOLS = {
         "name": "audit_system",
         "title": "Audit System (Free)",
         "description": "Pre-flight check for molecular dynamics: classify a protein structure without running MD. Returns a structured report: membrane detection (OPM), metal sites with coordination and functional role (MetalPDB + Pfam), heme/Fe-S clusters, and a routing verdict (run_soluble or refused with a specific reason and suggested_branch). Use BEFORE run_molecular_dynamics to qualify targets — if would_route_to='refused', MD will refuse with the same reason and the submission will be wasted. Returns within ~5 seconds. Accepts either pdb_id (RCSB lookup) or pdb_content (direct upload).",
-        "tier": ToolTier.FREE,
         "annotations": {
             "readOnlyHint": True,
             "openWorldHint": True
@@ -2687,7 +2452,6 @@ MCP_TOOLS = {
         "name": "parameterize_metal",
         "title": "Parameterize Metal Site",
         "description": "ASYNC JOB: Two-phase metal parameterization via MCPB.py for metalloprotein MD simulation. Returns mcpb_ job_id immediately — poll get_job_status every 60s until completed. Phase 1 (no qm_log_content): extracts coordination fragment around the metal site, generates Gaussian/ORCA .com input files, returns a confirmation_token. The user runs Gaussian/ORCA on those .com files externally. Phase 2 (confirmation_token + QM logs): processes the QM output → extracts force constants (Seminario method) + RESP charges → produces AMBER .frcmod/.prep and GROMACS .top/.gro (registered as downloadable child files of the input log). **Two-log requirement (Gaussian):** the Hessian and the MK ESP charges come from two SEPARATE runs — run Phase 1's small_fc.com (freq → Hessian) and large_mk.com (Pop(MK) → ESP), then pass hessian_file_id + esp_file_id (upload each via generate_upload_url). A single combined log via qm_file_id/qm_log_content is accepted only for the rare case where one file holds both sections (e.g. a .fchk). **Workflow constraint:** the logs must come from running Gaussian on Phase 1's specific .com files — atom indexing must match. Pre-existing QM logs from custom cluster models will fail with atom-mapping errors. Always run Phase 1 first. Auto-process pattern: upload the Hessian log, then upload the ESP log with auto_process={tool:'parameterize_metal', args:{hessian_file_id:<id>, confirmation_token:<tok>}, inject_as:'esp_file_id'} to trigger Phase 2 on the second upload. Use audit_system first to identify the metal site and verify the resid before Phase 1. Limitation: processes one chain at a time — for multi-chain metals (bridging sites in oligomers), extract chains separately. CPU-only, Phase 1 ~1-2 min, Phase 2 ~2-5 min.",
-        "tier": ToolTier.ENTERPRISE,
         "annotations": {
             "readOnlyHint": False,
             "destructiveHint": False
@@ -2748,7 +2512,6 @@ MCP_TOOLS = {
         "name": "run_molecular_dynamics",
         "title": "Run Molecular Dynamics",
         "description": "Run GPU molecular dynamics simulation using GROMACS. Returns a job_id — use get_job_status to poll for results every 60s until completed. Estimated runtime is included in the response. Omit pdb_id for ligand-only. Results include RMSD, RMSF, radius of gyration. When a ligand is present and the system is soluble (not membrane), results ALSO include: MM-GBSA binding free energy (ΔG_bind) with per-residue decomposition, ligand RMSD, protein-ligand H-bond persistence (with quality threshold: >75% High Quality, <30% False Positive Risk), and pose clustering. Membrane systems skip MM-GBSA (standard GB/PB solver is incorrect with a lipid bilayer) but still get ligand dynamics. GPU COLD START: the first call after idle (>5 min) includes ~2-3 min GPU warm-up before the job actually starts; subsequent calls are fast. If called within a discovery funnel, target_discovery already triggered a background warmup — the GPU should be ready by Step 7.",
-        "tier": ToolTier.ENTERPRISE,
         "annotations": {
             "readOnlyHint": False,
             "destructiveHint": False
@@ -2799,7 +2562,6 @@ MCP_TOOLS = {
         "name": "generate_dynamics",
         "title": "Generate Conformational Dynamics",
         "description": "Generate AI-accelerated conformational ensemble from a protein structure using AlphaFlow/ESMFlow. Shows how a protein moves — loops swaying, domains shifting, binding pockets opening/closing. Returns a job_id — use get_job_status to poll for results every 60s. IMPORTANT: This is an async job. The AlphaFlow model is large and may take 1-2 minutes to warm up on first use after a cold start. If you get a 503 'Model not loaded' error, wait 2 minutes and retry — the model is still loading. Typical inference: 1-5 minutes depending on protein size. Results include multi-model PDB for trajectory animation, per-residue RMSF (flexibility), and PCA of conformational variation.",
-        "tier": ToolTier.ENTERPRISE,
         "annotations": {
             "readOnlyHint": False,
             "destructiveHint": False
@@ -2842,7 +2604,6 @@ MCP_TOOLS = {
         "name": "save_funnel_context",
         "title": "Save Funnel Context",
         "description": "Persist discovery pipeline state (target gene, seed molecule, optimization results, docking scores) before an async job starts. Called automatically by dock_molecules and run_molecular_dynamics before returning a job_id. Write-only — cannot retrieve state. Use get_funnel_context to read it back when resuming a pipeline in a new session.",
-        "tier": ToolTier.FREE,
         "annotations": {
             "readOnlyHint": False,
             "destructiveHint": False
@@ -2870,7 +2631,6 @@ MCP_TOOLS = {
         "name": "get_funnel_context",
         "title": "Get Funnel Context",
         "description": "Retrieve saved pipeline state for an async job. Read-only — cannot write state. Use when resuming a discovery funnel after a docking or MD job completes in a new session. Returns the full funnel state (target gene, seed, candidates, scores, prior step results) from the session that submitted the job. Use save_funnel_context to persist state.",
-        "tier": ToolTier.FREE,
         "annotations": {
             "readOnlyHint": True,
             "destructiveHint": False
@@ -3016,7 +2776,7 @@ def host_is_rest_api(host: Optional[str]) -> bool:
 
 def rest_tool_visible(tool_name: str, user_tier: str) -> bool:
     """Gate for the unified REST surface: all tools visible, but compute-only
-    tools require a paid tier. Per-tool ToolTier checks still apply on top."""
+    tools require a paid tier on a managed deployment (no-op locally)."""
     surface = MCP_TOOLS.get(tool_name, {}).get("surface", "core")
     if surface == "compute":
         return user_tier in PAID_TIERS
@@ -3115,8 +2875,8 @@ TOOL_LOCAL_REQUIREMENTS: Dict[str, list] = {
     "predict_admet": ["env:ADDIE_MODELS_URL"],
     "analyze_admet_trajectory": ["env:ADDIE_MODELS_URL"],
 
-    # Credit tracking + file intelligence — need the funnel-backend infra.
-    "get_credit_usage":    ["env:FUNNEL_BACKEND_URL"],
+    # File intelligence — needs the funnel-backend infra. (get_credit_usage
+    # is a no-dependency stub on the un-metered engine → always available.)
     "generate_upload_url": ["env:FUNNEL_BACKEND_URL"],
     "get_file_status":     ["env:FUNNEL_BACKEND_URL"],
     "list_files":          ["env:FUNNEL_BACKEND_URL"],
@@ -3338,15 +3098,14 @@ _inject_funnel_id_into_schemas()
 
 # Closed-source tool registrations (absent in the OSS distribution). When
 # ``mcp/tools_closed.py`` is on the import path, its ``register`` hook adds
-# its tools + credit costs + batch config + surface classification + funnel
-# eligibility to the tables above. The OSS release manifest excludes that
-# file, so the import silently no-ops there.
+# its tools + batch config + surface classification + funnel eligibility to
+# the tables above. The OSS release manifest excludes that file, so the
+# import silently no-ops there.
 try:
     from . import tools_closed as _tools_closed  # type: ignore
 
     _tools_closed.register(
         MCP_TOOLS,
-        TOOL_CREDITS,
         BATCH_TOOLS,
         COMPUTE_ONLY_TOOLS,
         FUNNEL_ELIGIBLE_TOOLS,
@@ -3385,8 +3144,8 @@ MCP_RESOURCES = {
     },
     "tier_features": {
         "uri": "novomcp://resources/tier_features",
-        "name": "Subscription Tiers & Features",
-        "description": "Features available at each subscription tier: Free Trial (all tools), Enterprise (all tools + data connectors).",
+        "name": "Engine Features",
+        "description": "The self-hosted engine exposes all tools un-metered; each unlocks once its backing service or data is configured.",
         "mimeType": "application/json",
         "annotations": {
             "audience": ["user"]
@@ -3424,17 +3183,9 @@ MCP_RESOURCE_DATA = {
         "total_predictions": 40
     },
     "tier_features": {
-        "free": {
-            "credits_included": 250,
-            "tools": "All tools except data connectors (push_to_destination, pull_from_source)",
-            "tool_count": 25,
-            "description": "30-day free trial with full platform access"
-        },
-        "enterprise": {
-            "credits_included": "Custom",
-            "tools": "All tools including data connectors",
-            "tool_count": 27,
-            "description": "Full platform access + data warehouse integration + custom SLAs"
+        "self_hosted": {
+            "tools": "All tools; each unlocks once its backing service/data is configured. Un-metered.",
+            "description": "Open, self-hosted engine — no tiers, no credits, no billing."
         }
     },
     "database_stats": {
@@ -3840,10 +3591,9 @@ class MCPToolExecutor:
     2. Novel molecules → in-process RDKit basic properties
     3. Context queries → optional configured compliance hook (runtime)
 
-    Credit tracking (v2.5):
-    - Each tool has a credit cost defined in TOOL_CREDITS
-    - Usage is recorded via managed backend API
-    - Credits are deducted from organization balance
+    Runs un-metered when self-hosted. A pluggable UsageMeter (NoopMeter by
+    default) receives a record of each successful call for analytics; no
+    credits, tiers, or balances are involved.
     """
 
     def __init__(self, service_urls: Dict[str, str], internal_api_key: str):
@@ -3861,8 +3611,8 @@ class MCPToolExecutor:
         )
 
         # Injected by `router.setup_mcp()` at startup. When None (early
-        # startup or tests that instantiate the executor directly), the
-        # fallback path in `_record_credit_usage` takes over.
+        # startup or tests that instantiate the executor directly), usage
+        # recording is skipped entirely.
         self.spine = None  # type: ignore[assignment]
         # Per-service API keys (fall back to internal key if not set)
         self.service_api_keys = {
@@ -3960,16 +3710,11 @@ class MCPToolExecutor:
         if not tool_def:
             return {"suggestion": f"Consider using '{tool_name}' (tool not found in registry)"}
 
-        credits = TOOL_CREDITS.get(tool_name, 0)
-        tier = tool_def["tier"].value
-
         return {
             "suggested_tool": {
                 "name": tool_name,
                 "title": tool_def.get("title", tool_name),
                 "description": tool_def.get("description", ""),
-                "tier": tier,
-                "credits": credits
             },
             "reason": reason,
             "version_info": {
@@ -4173,81 +3918,37 @@ class MCPToolExecutor:
         self,
         tool_name: str,
         arguments: Dict[str, Any],
-        user_tier: ToolTier,
         org_id: Optional[str] = None,
         user_id: Optional[str] = None,
         session_id: Optional[str] = None,
         user_email: Optional[str] = None,
-        credits_available: Optional[float] = None,
         surface: str = "",
         client_tag: str = "",
     ) -> ToolResult:
         """
-        Execute an MCP tool with credit tracking.
+        Execute an MCP tool.
+
+        The self-hosted engine runs un-metered — no tier gating, no credit
+        accounting. A pluggable UsageMeter (NoopMeter locally) still receives
+        a record of each successful call for analytics on managed deployments.
 
         Args:
             tool_name: Name of the tool to execute
             arguments: Tool arguments
-            user_tier: User's subscription tier
-            org_id: Organization ID for credit tracking
+            org_id: Organization ID (audit correlation)
             user_id: User ID (key_id) for audit
             session_id: MCP session ID for correlation
         """
         import time
-        import hashlib
 
         start_time = time.time()
 
         if tool_name not in MCP_TOOLS:
             return ToolResult(success=False, error=f"Unknown tool: {tool_name}")
 
-        tool_def = MCP_TOOLS[tool_name]
-        required_tier = tool_def["tier"]
-
-        # Normalize legacy tiers for comparison
-        normalized_user = normalize_tier(user_tier.value if isinstance(user_tier, ToolTier) else user_tier)
-        normalized_required = normalize_tier(required_tier.value if isinstance(required_tier, ToolTier) else required_tier)
-
-        tier_order = [ToolTier.FREE, ToolTier.CORE, ToolTier.PRO, ToolTier.TEAM, ToolTier.ENTERPRISE]
-        user_tier_enum = ToolTier(normalized_user)
-        required_tier_enum = ToolTier(normalized_required)
-        if tier_order.index(user_tier_enum) < tier_order.index(required_tier_enum):
-            return ToolResult(
-                success=False,
-                error=f"Tool '{tool_name}' requires {required_tier.value} tier or higher"
-            )
-
         handler = getattr(self, f"_execute_{tool_name}", None)
         if handler is None:
             return ToolResult(success=False, error=f"Tool '{tool_name}' not implemented")
-
-        # Get credit cost for this tool
-        credit_cost = TOOL_CREDITS.get(tool_name, 1)
-
-        # Pre-flight credit check: batch-aware estimate before running the handler.
-        # Uses cached MCPUser.credits_available (passed from router). Bounded staleness
-        # (~5 min max, refreshed on every tool call). The authoritative atomic check
-        # is _record_credit_usage post-execution — this is the optimization layer.
-        if credits_available is not None and credit_cost > 0:
-            estimated_cost = credit_cost
-            batch_param = BATCH_TOOLS.get(tool_name)
-            if batch_param:
-                batch_size = len(arguments.get(batch_param) or [])
-                if batch_size > 0:
-                    estimated_cost = credit_cost * batch_size
-            if credits_available < estimated_cost:
-                _pricing = os.getenv("NOVOMCP_PRICING_URL", "")
-                _tail = f" Purchase more at {_pricing}." if _pricing else ""
-                return ToolResult(
-                    success=False,
-                    error=(
-                        f"Insufficient credits: {credits_available:.0f} available, "
-                        f"{estimated_cost} needed for {tool_name}"
-                        f"{f' × {len(arguments.get(batch_param) or [])}' if batch_param and batch_size > 1 else ''}."
-                        f"{_tail}"
-                    ),
-                    usage={"tool": tool_name, "credits_needed": estimated_cost, "credits_available": credits_available},
-                )
 
         # Resolve a stable funnel_id for every authenticated call via user_id +
         # Redis. First call mints, subsequent calls within 30 min inherit.
@@ -4267,7 +3968,6 @@ class MCPToolExecutor:
             "user_email": user_email,
             "session_id": session_id,
             "funnel_id": effective_funnel_id,
-            "user_tier": user_tier.value,
             # surface tag (chrome-ext-v1, word-addin-v1, "" for Claude) so handlers
             # — particularly _execute_save_funnel_stage — can persist it into the
             # audit row, enabling per-surface analytics on funnel_audit_log.
@@ -4287,10 +3987,10 @@ class MCPToolExecutor:
                 result = await handler(arguments)
             execution_time_ms = int((time.time() - start_time) * 1000)
 
-            # Respect executor-provided dynamic credits (e.g. per-molecule docking)
-            effective_credits = result.usage.pop("_dynamic_credits", None)
-            if effective_credits is not None:
-                credit_cost = effective_credits
+            # Internal per-molecule accounting key set by some executors — drop
+            # it so it never surfaces onto result.usage. Un-metered engine: the
+            # value is ignored.
+            result.usage.pop("_dynamic_credits", None)
 
             result.usage["tool"] = tool_name
             # Surface the resolved funnel_id so clients (Chrome extension,
@@ -4300,48 +4000,21 @@ class MCPToolExecutor:
             if effective_funnel_id:
                 result.usage["funnel_id"] = effective_funnel_id
 
-            # Record usage if org_id provided (async, don't block on failure)
-            # Only charge credits for successful tool executions
-            #
-            # Visibility: surface WHY a tool call doesn't write to
-            # mcp_command_audit. Before this log existed, the silent skip on
-            # missing org_id caused 18 days of frozen dashboards (May 19 →
-            # Jun 6) — no warning anywhere because each guard term has a
-            # legitimate reason to be False. Logging at INFO so a single
-            # `kubectl logs | grep credit_skip` answers "why no audit row?"
-            if not (org_id and credit_cost > 0 and result.success):
-                logger.info(
-                    f"credit_skip tool={tool_name} "
-                    f"org_id={'set' if org_id else 'NONE'} "
-                    f"credit_cost={credit_cost} "
-                    f"success={result.success}"
-                )
-            if org_id and credit_cost > 0 and result.success:
+            # Record a usage event for downstream analytics via the injected
+            # meter. The local (self-hosted) meter is a NoopMeter — no credits,
+            # no balance, no network I/O, nothing surfaced back onto result.usage.
+            # A managed deployment can swap in a meter that does its own
+            # accounting behind this same call.
+            if self.spine is not None and org_id and result.success:
                 try:
-                    # Hash arguments for analytics (don't store raw data)
-                    args_hash = hashlib.sha256(str(arguments).encode()).hexdigest()[:64]
-
-                    # Record usage through the injected meter for downstream
-                    # analytics. The local (self-hosted) meter is a no-op, so no
-                    # balance is surfaced back onto the result; a managed sink can
-                    # do whatever accounting it needs behind this same call.
-                    await self._record_credit_usage(
-                        org_id=org_id,
-                        user_id=user_id or "unknown",
-                        tool_name=tool_name,
-                        tool_tier=required_tier.value,
-                        credit_cost=credit_cost,
-                        arguments_hash=args_hash,
-                        execution_time_ms=execution_time_ms,
-                        success=result.success,
-                        error_message=result.error[:500] if result.error else None,
-                        session_id=session_id,
-                        surface=surface,
+                    from .spine import User as _SpineUser
+                    await self.spine.meter.record(
+                        user=_SpineUser(user_id=user_id or "unknown", org_id=org_id),
+                        tool=tool_name,
+                        meta={"execution_time_ms": execution_time_ms, "surface": surface},
                     )
-
                 except Exception as e:
-                    # Don't fail the tool execution if credit tracking fails
-                    logger.warning(f"Credit tracking failed for {tool_name}: {e}")
+                    logger.debug(f"Usage record failed for {tool_name}: {e}")
 
             # Re-read funnel_id after handler returns so that handlers which
             # upgrade the Redis slot (e.g. future set_session_mode) are reflected.
@@ -4430,156 +4103,6 @@ class MCPToolExecutor:
                     logger.debug(f"Auto-log rejected: {result.error}")
         except Exception as e:
             logger.debug(f"Auto-log event failed: {e}")
-
-    async def _record_credit_usage(
-        self,
-        org_id: str,
-        user_id: str,
-        tool_name: str,
-        tool_tier: str,
-        credit_cost: float,
-        arguments_hash: Optional[str] = None,
-        execution_time_ms: Optional[int] = None,
-        success: bool = True,
-        error_message: Optional[str] = None,
-        session_id: Optional[str] = None,
-        surface: str = "",
-    ) -> Optional[Dict[str, Any]]:
-        """
-        Record tool usage and deduct credits.
-
-        Routes through the injected UsageMeter when the spine is set
-        (the standard path once `setup_mcp` has run). Returns a status
-        dict on success or None if metering failed — callers treat None
-        as "don't surface credit info."
-        """
-        if self.spine is not None:
-            from .spine import User as _SpineUser
-
-            meter_user = _SpineUser(
-                user_id=user_id,
-                tier=str(tool_tier),
-                org_id=org_id,
-            )
-            result = await self.spine.meter.record(
-                user=meter_user,
-                tool=tool_name,
-                cost_credits=int(credit_cost),
-                meta={
-                    "tool_tier": tool_tier,
-                    "arguments_hash": arguments_hash,
-                    "execution_time_ms": execution_time_ms,
-                    "success": success,
-                    "error_message": error_message,
-                    "session_id": session_id,
-                    "surface": surface,
-                },
-            )
-            if not result.success:
-                return None
-            return {
-                "credits_remaining": result.remaining_credits,
-                "credit_status": result.reason or "ok",
-            }
-
-        # Fallback path (used only before setup_mcp has run, or by tests
-        # that instantiate the executor directly).
-        try:
-            response = await self.client.post(
-                f"{self.dashboard_url}/mcp/record-usage",
-                json={
-                    "org_id": org_id,
-                    "user_id": user_id,
-                    "tool_name": tool_name,
-                    "tool_tier": tool_tier,
-                    "credit_cost": credit_cost,
-                    "arguments_hash": arguments_hash,
-                    "execution_time_ms": execution_time_ms,
-                    "success": success,
-                    "error_message": error_message,
-                    "session_id": session_id,
-                    "surface": surface,
-                },
-                headers={"X-API-Key": self.dashboard_api_key},
-                timeout=5.0
-            )
-
-            if response.status_code == 200:
-                return response.json()
-            else:
-                logger.warning(f"Credit recording returned {response.status_code}: {response.text[:200]}")
-                return None
-
-        except Exception as e:
-            logger.warning(f"Credit recording request failed: {e}")
-            return None
-
-    async def _get_org_usage(self, org_id: str) -> Optional[Dict[str, Any]]:
-        """
-        Get organization credit usage and balance from managed backend.
-
-        Returns shadow billing statement with:
-        - credits_issued: Total credits allocated
-        - credits_used: Total credits consumed
-        - credits_remaining: Current balance
-        - value_realized: Dollar value of usage (shadow)
-        - usage_by_tool: Breakdown by tool
-        - usage_by_day: Recent daily usage
-        """
-        # Local mode: managed backend unwired → skip the fetch entirely.
-        # The 'Usage fetch failed: URL missing http://' log noise was pointless.
-        if not self.dashboard_url:
-            logger.debug("Usage fetch skipped: no credit-ledger backend configured (local mode)")
-            return None
-
-        try:
-            response = await self.client.get(
-                f"{self.dashboard_url}/mcp/org/{org_id}/usage",
-                headers={"X-API-Key": self.dashboard_api_key},
-                timeout=10.0
-            )
-
-            if response.status_code == 200:
-                data = response.json()
-
-                # Format as shadow billing statement
-                credits_used = data.get("credits_used_total", 0)
-                credits_available = data.get("credits_available", 0)
-                max_credits = data.get("max_credits", 1000)
-
-                return {
-                    "org_id": org_id,
-                    "org_name": data.get("org_name", "Unknown"),
-
-                    # Credit balance
-                    "credits_issued": max_credits,
-                    "credits_used": credits_used,
-                    "credits_remaining": credits_available,
-
-                    # Shadow value (1 credit = $0.01, displayed as $1.00)
-                    "value_realized": f"${credits_used:.2f}",
-                    "value_remaining": f"${credits_available:.2f}",
-
-                    # Usage status
-                    "usage_percent": round((credits_used / max_credits * 100) if max_credits > 0 else 0, 1),
-                    "status": data.get("credit_status", "ok"),
-
-                    # Breakdown
-                    "usage_this_month": data.get("credits_used_this_month", 0),
-                    "tool_calls_this_month": data.get("tool_calls_this_month", 0),
-                    "usage_by_tool": data.get("usage_by_tool", []),
-
-                    # Message for Claude to communicate
-                    "summary": f"You have realized ${credits_used:.2f} in research value. "
-                               f"Remaining balance: ${credits_available:.2f} ({round(credits_available/max_credits*100) if max_credits > 0 else 0}% of allocation)."
-                }
-            else:
-                logger.warning(f"Usage fetch returned {response.status_code}")
-                return None
-
-        except Exception as e:
-            logger.warning(f"Usage fetch failed: {e}")
-            return None
 
     # =========================================================================
     # Helper Methods
@@ -5506,25 +5029,8 @@ class MCPToolExecutor:
         return metadata
 
     async def _execute_get_platform_info(self, args: Dict[str, Any], context: Dict[str, Any] = None) -> ToolResult:
-        """Get NovoMCP platform information including credit usage."""
+        """Get NovoMCP platform information."""
         info_type = args.get("info_type", "all")
-        org_id = args.get("org_id") or (context.get("org_id") if context else None)
-
-        # Define platform info
-        tier_features = {
-            "free": {
-                "credits_included": 250,
-                "tools": "All tools except data connectors (push_to_destination, pull_from_source)",
-                "tool_count": 25,
-                "description": "30-day free trial — full platform access"
-            },
-            "enterprise": {
-                "credits_included": "Custom",
-                "tools": "All tools including data connectors",
-                "tool_count": 27,
-                "description": "Full platform access + data warehouse integration + custom SLAs + dedicated support"
-            }
-        }
 
         database_stats = {
             "molecule_index": "attached when a molecule index service is configured",
@@ -5543,23 +5049,11 @@ class MCPToolExecutor:
             "total_predictions": 31
         }
 
-        # Fetch usage data if org_id available and usage requested
-        usage_data = None
-        if org_id and info_type in ["usage", "all"]:
-            usage_data = await self._get_org_usage(org_id)
-
         # Build response based on info_type
-        if info_type == "tiers":
-            data = {"subscription_tiers": tier_features}
-        elif info_type == "database":
+        if info_type == "database":
             data = {"database_statistics": database_stats}
         elif info_type == "admet":
             data = {"admet_capabilities": admet_capabilities}
-        elif info_type == "usage":
-            if usage_data:
-                data = {"credit_usage": usage_data}
-            else:
-                data = {"credit_usage": {"error": "Unable to fetch usage data. Organization ID required."}}
         elif info_type == "update":
             try:
                 from novomcp.core.updater import get_update_status
@@ -5577,148 +5071,38 @@ class MCPToolExecutor:
                 "platform": "NovoMCP",
                 "version": ENGINE_VERSION,
                 "tool_count": len(MCP_TOOLS),
-                "description": "Open computational chemistry engine for drug discovery and materials science. Ships with 13 always-available tools (RDKit properties, structural filters, ChEMBL/ClinicalTrials/bioRxiv search, autonomous discovery mode). Additional tools unlock as you configure ADMET, docking, MD, QM, and structure-prediction services.",
+                "description": "Open computational chemistry engine for drug discovery and materials science. Ships with 13 always-available tools (RDKit properties, structural filters, ChEMBL/ClinicalTrials/bioRxiv search, autonomous discovery mode). Additional tools unlock as you configure ADMET, docking, MD, QM, and structure-prediction services. Runs un-metered when self-hosted.",
                 "update_status": update_status,
-                "subscription_tiers": tier_features,
                 "database_statistics": database_stats,
                 "admet_capabilities": admet_capabilities,
                 "note": "If tools listed here are not visible, reconnect your MCP connection to refresh the tool list."
             }
-            if usage_data:
-                data["credit_usage"] = usage_data
 
         return ToolResult(
             success=True,
             data=data,
-            usage={"queries": 0, "tool": "get_platform_info"}  # No query cost for info
+            usage={"queries": 0, "tool": "get_platform_info"}
         )
 
     async def _execute_get_credit_usage(self, args: Dict[str, Any], context: Dict[str, Any] = None) -> ToolResult:
+        """Metering status.
+
+        The self-hosted engine runs un-metered — there is no credit balance,
+        tier, or billing period to report. Kept as a tool so the catalog is
+        stable across managed and self-hosted deployments; a managed
+        deployment swaps in its own implementation.
         """
-        Get credit usage for the authenticated user's organization.
-        Returns hybrid billing model: included credits, overage, and value realized.
-        1 credit = $1.00 USD
-        """
-        from datetime import datetime, timedelta
-
-        org_id = context.get("org_id") if context else None
-
-        if not org_id:
-            return ToolResult(
-                success=False,
-                error="Unable to determine your organization. Please ensure you're authenticated with a valid API key.",
-                usage={"queries": 0, "tool": "get_credit_usage"}
-            )
-
-        # Fetch credit data from managed backend
-        try:
-            response = await self.client.get(
-                f"{self.dashboard_url}/mcp/org/{org_id}/usage",
-                headers={"X-API-Key": self.dashboard_api_key},
-                timeout=10.0
-            )
-
-            if response.status_code == 200:
-                data = response.json()
-
-                # Basic credit data
-                credits_available = float(data.get("credits_available", 0))
-                max_credits = float(data.get("max_credits", 1000))
-                credits_used = float(data.get("credits_used_total", 0))
-                tier = data.get("tier", "free").lower()
-
-                # Get tier billing config
-                tier_config = TIER_BILLING.get(tier, TIER_BILLING["free"])
-                overage_rate = tier_config["overage_rate"]
-                overage_allowed = tier_config["overage_allowed"]
-
-                # For core (pay-as-you-go), credits_included = purchased balance (max_credits from DB)
-                # For other tiers, use the fixed monthly allocation from TIER_BILLING
-                if tier == "core":
-                    credits_included = max_credits
-                else:
-                    credits_included = tier_config["credits_included"]
-
-                # Calculate overage (credits used beyond included amount this period)
-                # Note: credits_used_total is cumulative; we use monthly usage for overage
-                credits_used_month = float(data.get("credits_used_this_month", credits_used))
-                overage_credits = max(0, credits_used_month - credits_included) if overage_allowed else 0
-                overage_cost = overage_credits * overage_rate
-
-                # Value realized (1 credit = $1)
-                value_realized = credits_used_month
-
-                # Billing period (current month)
-                now = datetime.utcnow()
-                period_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-                period_end = (period_start + timedelta(days=32)).replace(day=1) - timedelta(seconds=1)
-
-                # Status calculation
-                credits_ratio = credits_available / max_credits if max_credits > 0 else 0
-                if credits_available <= 0:
-                    status = "depleted"
-                    alert = "Credits depleted. " + ("Overage charges apply." if overage_allowed else "Upgrade to continue.")
-                elif credits_ratio <= 0.2:
-                    status = "low"
-                    alert = f"Credits running low ({credits_available:.0f} remaining)."
-                else:
-                    status = "ok"
-                    alert = None
-
-                # Build summary with value anchoring
-                summary = f"You have realized ${value_realized:.0f} in research value this period. "
-                if overage_credits > 0:
-                    summary += f"Overage: {overage_credits:.0f} credits (+${overage_cost:.2f}). "
-                summary += f"Balance: {credits_available:.0f} credits remaining."
-
-                return ToolResult(
-                    success=True,
-                    data={
-                        # Basic info
-                        "org_name": data.get("org_name", "Unknown"),
-                        "tier": tier,
-
-                        # Credit balance
-                        "credits_available": credits_available,
-                        "credits_used_total": credits_used,
-                        "max_credits": max_credits,
-                        "usage_percent": round((credits_used_month / credits_included * 100) if credits_included > 0 else 0, 1),
-                        "credits_remaining_percent": round(credits_ratio * 100, 1),
-
-                        # Hybrid billing model fields
-                        "credits_included": credits_included,
-                        "overage_rate": overage_rate,
-                        "overage_credits": overage_credits,
-                        "overage_cost": overage_cost,
-                        "value_realized": value_realized,
-
-                        # Billing period
-                        "period_start": period_start.isoformat(),
-                        "period_end": period_end.isoformat(),
-
-                        # Status
-                        "status": status,
-                        "alert": alert,
-                        "summary": summary,
-                    },
-                    usage={"queries": 0, "tool": "get_credit_usage"}
-                )
-            else:
-                error_detail = response.text[:500] if response.text else "No response body"
-                logger.warning(f"Credit usage fetch returned {response.status_code} for org {org_id}: {error_detail}")
-                return ToolResult(
-                    success=False,
-                    error=f"Unable to fetch credit data (status {response.status_code}). URL: {self.dashboard_url}/mcp/org/{org_id}/usage",
-                    usage={"queries": 0, "tool": "get_credit_usage"}
-                )
-
-        except Exception as e:
-            logger.error(f"Error fetching credit usage for org {org_id}: {e}")
-            return ToolResult(
-                success=False,
-                error=f"Error connecting to credit service: {str(e)[:200]}",
-                usage={"queries": 0, "tool": "get_credit_usage"}
-            )
+        return ToolResult(
+            success=True,
+            data={
+                "metering": "disabled",
+                "detail": (
+                    "This engine runs un-metered. Usage accounting is only "
+                    "present on a managed deployment."
+                ),
+            },
+            usage={"queries": 0, "tool": "get_credit_usage"},
+        )
 
     # =========================================================================
     # Pro Tier Tools
@@ -6414,9 +5798,8 @@ class MCPToolExecutor:
                     success=False,
                     error="auto_process.tool is required when auto_process is set",
                 )
-            if ap_tool not in TOOL_CREDITS:
-                # TOOL_CREDITS is the canonical name registry — every dispatch
-                # site resolves through it for credit cost lookup.
+            if ap_tool not in MCP_TOOLS:
+                # MCP_TOOLS is the canonical tool-name registry.
                 return ToolResult(
                     success=False,
                     error=(
@@ -9435,11 +8818,10 @@ class MCPToolExecutor:
 
     async def _execute_push_to_destination(self, arguments: Dict[str, Any], context: Dict[str, Any] = None) -> ToolResult:
         """Unified data export tool — dispatches to list/discover/preview/export handlers."""
-        user_tier = (context or {}).get("user_tier", "free")
-        if user_tier not in ("team", "enterprise"):
+        if not self.bridge_url:
             return ToolResult(
                 success=False,
-                error="Data connectors (push_to_destination / pull_from_source) are not yet available in OSS — they ship in a later release. See the roadmap at https://docs.novomcp.com/",
+                error="Data connectors (push_to_destination / pull_from_source) require a bridge service — set BRIDGE_URL to enable them. See the roadmap at https://docs.novomcp.com/",
             )
 
         action = arguments.get("action")
@@ -9545,7 +8927,6 @@ class MCPToolExecutor:
                 json={
                     "connection_id": connection_id,
                     "org_id": org_id,
-                    "user_tier": context.get("user_tier", "free"),
                     "target_filter": arguments.get("target_filter"),
                 },
                 headers={"X-Bridge-Key": self.bridge_key},
@@ -9794,7 +9175,6 @@ class MCPToolExecutor:
                     "org_id": org_id,
                     "user_id": context.get("user_id", ""),
                     "user_email": context.get("user_email", ""),
-                    "user_tier": context.get("user_tier", "free"),
                     "data": data,
                     "source_tool": source_tool,
                     "mapping_id": arguments.get("mapping_id"),
@@ -9856,11 +9236,10 @@ class MCPToolExecutor:
 
     async def _execute_pull_from_source(self, arguments: Dict[str, Any], context: Dict[str, Any] = None) -> ToolResult:
         """Unified pull-from-source tool — dispatches to preview/pull/estimate/execute handlers."""
-        user_tier = (context or {}).get("user_tier", "free")
-        if user_tier not in ("team", "enterprise"):
+        if not self.bridge_url:
             return ToolResult(
                 success=False,
-                error="Data connectors (push_to_destination / pull_from_source) are not yet available in OSS — they ship in a later release. See the roadmap at https://docs.novomcp.com/",
+                error="Data connectors (push_to_destination / pull_from_source) require a bridge service — set BRIDGE_URL to enable them. See the roadmap at https://docs.novomcp.com/",
             )
 
         action = arguments.get("action")
@@ -9896,8 +9275,6 @@ class MCPToolExecutor:
         if not connection_id or not table:
             return ToolResult(success=False, error="connection_id and table are required for preview")
 
-        user_tier = context.get("user_tier", "free")
-
         try:
             # 1. Discover schema (reuse existing bridge endpoint)
             schema_resp = await self.client.post(
@@ -9905,7 +9282,6 @@ class MCPToolExecutor:
                 json={
                     "connection_id": connection_id,
                     "org_id": org_id,
-                    "user_tier": user_tier,
                     "target_filter": table,
                 },
                 headers={"X-Bridge-Key": self.bridge_key},
@@ -9922,7 +9298,6 @@ class MCPToolExecutor:
                 json={
                     "connection_id": connection_id,
                     "org_id": org_id,
-                    "user_tier": user_tier,
                     "table": table,
                     "filters": self._serialize_filters(arguments.get("filters")),
                 },
@@ -9938,7 +9313,6 @@ class MCPToolExecutor:
                 json={
                     "connection_id": connection_id,
                     "org_id": org_id,
-                    "user_tier": user_tier,
                     "table": table,
                     "filters": self._serialize_filters(arguments.get("filters")),
                     "limit": 5,
@@ -9955,8 +9329,8 @@ class MCPToolExecutor:
             # 4. Auto-detect SMILES column
             detected_smiles = self._detect_smiles_column(columns)
 
-            # 5. Get tier limits
-            max_rows = PULL_ROW_LIMITS.get(user_tier, 50)
+            # 5. Row cap per pull
+            max_rows = PULL_ROW_LIMIT
 
             return ToolResult(
                 success=True,
@@ -9968,12 +9342,12 @@ class MCPToolExecutor:
                     "total_rows": total_rows,
                     "sample_rows": sample_rows,
                     "detected_smiles_column": detected_smiles,
-                    "tier_row_limit": max_rows,
+                    "row_limit": max_rows,
                     "schemas": schemas[:3],
                     "message": (
                         f"Table '{table}' has {total_rows} rows and {len(columns)} columns. "
                         f"SMILES column: {detected_smiles or 'not detected (specify smiles_column)'}. "
-                        f"Your tier ({user_tier}) allows up to {max_rows} rows per pull."
+                        f"Up to {max_rows} rows per pull."
                     ),
                 },
                 usage={"tool": "pull_preview"},
@@ -9995,8 +9369,7 @@ class MCPToolExecutor:
         if not connection_id or not table:
             return ToolResult(success=False, error="connection_id and table are required for pull")
 
-        user_tier = context.get("user_tier", "free")
-        max_rows = PULL_ROW_LIMITS.get(user_tier, 50)
+        max_rows = PULL_ROW_LIMIT
         requested_limit = min(arguments.get("limit", 100), max_rows)
 
         try:
@@ -10006,7 +9379,6 @@ class MCPToolExecutor:
                     "connection_id": connection_id,
                     "org_id": org_id,
                     "user_id": context.get("user_id", ""),
-                    "user_tier": user_tier,
                     "table": table,
                     "columns": arguments.get("columns"),
                     "filters": self._serialize_filters(arguments.get("filters")),
@@ -10071,8 +9443,7 @@ class MCPToolExecutor:
         if not processing_tools:
             return ToolResult(success=False, error="processing_tools is required (e.g., ['predict_admet', 'check_compliance'])")
 
-        user_tier = context.get("user_tier", "free")
-        max_rows = PULL_ROW_LIMITS.get(user_tier, 50)
+        max_rows = PULL_ROW_LIMIT
 
         try:
             # Count rows with filters
@@ -10081,7 +9452,6 @@ class MCPToolExecutor:
                 json={
                     "connection_id": connection_id,
                     "org_id": org_id,
-                    "user_tier": user_tier,
                     "table": table,
                     "filters": self._serialize_filters(arguments.get("filters")),
                 },
@@ -10095,12 +9465,7 @@ class MCPToolExecutor:
             total_rows = count_resp.json().get("row_count", 0)
             effective_rows = min(total_rows, max_rows)
 
-            # Calculate credit cost
-            pull_cost = TOOL_CREDITS.get("pull_from_source", 5)
-            per_row_cost = sum(TOOL_CREDITS.get(t, 0) for t in processing_tools)
-            processing_cost = effective_rows * per_row_cost
-            push_cost = 5 if arguments.get("destination_connection_id") else 0
-            total_cost = pull_cost + processing_cost + push_cost
+            will_push = bool(arguments.get("destination_connection_id"))
 
             # Generate confirmation token (HMAC-based, 10-min TTL)
             import hashlib
@@ -10111,7 +9476,6 @@ class MCPToolExecutor:
                 "table": table,
                 "rows": effective_rows,
                 "tools": processing_tools,
-                "cost": total_cost,
                 "ts": int(time.time()),
             }
             token_str = json.dumps(token_data, sort_keys=True)
@@ -10130,26 +9494,17 @@ class MCPToolExecutor:
                         "source_table": table,
                         "total_source_rows": total_rows,
                         "rows_to_process": effective_rows,
-                        "tier_row_limit": max_rows,
+                        "row_limit": max_rows,
                         "processing_tools": processing_tools,
                         "destination": arguments.get("destination_connection_id"),
                         "destination_table": arguments.get("destination_table"),
-                    },
-                    "credit_breakdown": {
-                        "pull_cost": pull_cost,
-                        "per_row_tool_cost": per_row_cost,
-                        "processing_cost": processing_cost,
-                        "push_cost": push_cost,
-                        "total_credits": total_cost,
                     },
                     "confirmation_token": confirmation_token,
                     "token_expires_in_seconds": 600,
                     "message": (
                         f"Pipeline will pull {effective_rows} rows from '{table}', "
-                        f"run {', '.join(processing_tools)} on each row "
-                        f"({per_row_cost} credits/row), "
-                        f"{'and push to destination ' if push_cost else ''}"
-                        f"for a total of {total_cost} credits. "
+                        f"run {', '.join(processing_tools)} on each row"
+                        f"{', and push to destination' if will_push else ''}. "
                         f"Use execute_pipeline with this confirmation_token to proceed."
                     ),
                 },
@@ -10193,8 +9548,6 @@ class MCPToolExecutor:
         table = token_data["table"]
         effective_rows = token_data["rows"]
         processing_tools = token_data["tools"]
-        total_cost = token_data["cost"]
-        user_tier = context.get("user_tier", "free")
 
         smiles_column = arguments.get("smiles_column")
         dest_connection_id = arguments.get("destination_connection_id")
@@ -10211,7 +9564,6 @@ class MCPToolExecutor:
                 json={
                     "connection_id": connection_id,
                     "org_id": org_id,
-                    "user_tier": user_tier,
                     "table": table,
                     "columns": arguments.get("columns"),
                     "filters": self._serialize_filters(arguments.get("filters")),
@@ -10344,7 +9696,6 @@ class MCPToolExecutor:
                             "org_id": org_id,
                             "user_id": context.get("user_id", ""),
                             "user_email": context.get("user_email", ""),
-                            "user_tier": user_tier,
                             "data": enriched_rows,
                             "source_tool": "pull_from_source",
                             "write_mode": "append",
@@ -10386,7 +9737,6 @@ class MCPToolExecutor:
                         "dest_connection_id": dest_connection_id,
                         "dest_table": dest_table,
                         "rows_pushed": rows_pushed,
-                        "total_credits": total_cost,
                         "status": "completed",
                         "molecule_audit_log": molecule_audit_log,
                         "audit_summary": audit_summary,
@@ -10406,7 +9756,6 @@ class MCPToolExecutor:
                 "rows_processed": rows_processed,
                 "processing_errors": processing_errors,
                 "processing_tools": processing_tools,
-                "credits_consumed": total_cost,
                 "audit_summary": audit_summary,
                 "molecule_audit_log": molecule_audit_log,
             }
@@ -10426,14 +9775,13 @@ class MCPToolExecutor:
                 f"processed {rows_processed} "
                 f"({audit_summary['included']} included, {audit_summary['excluded']} excluded, "
                 f"{processing_errors} errors). "
-                f"{'Pushed ' + str(rows_pushed) + ' rows to destination. ' if dest_connection_id else 'Data returned inline. '}"
-                f"Credits: {total_cost}."
+                f"{'Pushed ' + str(rows_pushed) + ' rows to destination.' if dest_connection_id else 'Data returned inline.'}"
             )
 
             return ToolResult(
                 success=True,
                 data=result_data,
-                usage={"tool": "pull_pipeline", "credits": total_cost, "rows": len(rows)},
+                usage={"tool": "pull_pipeline", "rows": len(rows)},
             )
 
         except Exception as e:

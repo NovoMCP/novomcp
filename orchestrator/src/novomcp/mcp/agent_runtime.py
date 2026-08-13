@@ -15,7 +15,7 @@ from __future__ import annotations
 import json
 from typing import Any, AsyncIterator, Optional
 
-from .tools import MCP_TOOLS, ToolTier, rest_tool_visible
+from .tools import MCP_TOOLS, rest_tool_visible
 
 DEFAULT_MAX_ROUNDS = 6
 AGENT_SURFACE = "studio-agent"
@@ -48,7 +48,6 @@ async def run_agent_loop(
     org_id: Optional[str],
     user_id: Optional[str],
     user_email: Optional[str],
-    credits_available: Optional[float],
     funnel_id: Optional[str] = None,
     max_rounds: int = DEFAULT_MAX_ROUNDS,
     surface: str = AGENT_SURFACE,
@@ -65,7 +64,8 @@ async def run_agent_loop(
     injection is the hard guarantee — server-side logging keys on the id we pass,
     not on the model choosing to echo it.
     """
-    tier_enum = ToolTier(user_tier)
+    # `user_tier` still gates which tools are advertised via rest_tool_visible
+    # in build_agent_tools; it is NOT used to meter or block execution.
 
     # Tools that accept a funnel_id (per their JSON schema) — only inject into these.
     funnel_aware: set[str] = {
@@ -110,11 +110,9 @@ async def run_agent_loop(
             result = await executor.execute(
                 tool_name=tu.name,
                 arguments=tu.input,
-                user_tier=tier_enum,
                 org_id=org_id,
                 user_id=user_id,
                 user_email=user_email,
-                credits_available=credits_available,
                 surface=surface,
             )
             payload: Any = result.data if result.success else {"error": result.error or "tool failed"}

@@ -12,7 +12,7 @@ import json
 
 import pytest
 
-from novomcp.mcp.tools import MCPToolExecutor, MCP_TOOLS, TOOL_CREDITS
+from novomcp.mcp.tools import MCPToolExecutor, MCP_TOOLS
 
 
 # ----- fakes -------------------------------------------------------------------------------------
@@ -74,7 +74,7 @@ def test_tool_is_registered():
     spec = MCP_TOOLS["analyze_admet_trajectory"]
     assert spec["inputSchema"]["required"] == ["smiles_series"]
     assert spec["inputSchema"]["properties"]["smiles_series"]["maxItems"] == 100
-    assert TOOL_CREDITS["analyze_admet_trajectory"] > 0
+    assert "analyze_admet_trajectory" in {t["name"] for t in MCP_TOOLS.values()}
 
 
 # ----- core behaviour ----------------------------------------------------------------------------
