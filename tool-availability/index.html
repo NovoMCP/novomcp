@@ -2173,7 +2173,7 @@
 
 
 <h1 id="tool-availability">Tool availability<a class="headerlink" href="#tool-availability" title="Permanent link">&para;</a></h1>
-<p>NovoMCP ships a 67-tool catalog. Which ones are actually usable depends on what you've wired up. The engine only exposes tools whose dependencies are met — no tool clutter, no "unavailable" errors on tools you can't run.</p>
+<p>NovoMCP ships a 68-tool catalog. Which ones are actually usable depends on what you've wired up. The engine only exposes tools whose dependencies are met — no tool clutter, no "unavailable" errors on tools you can't run.</p>
 <h2 id="the-three-states">The three states<a class="headerlink" href="#the-three-states" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -2306,13 +2306,13 @@
 <p>Requires: <code>MP_API_KEY</code> (free, sign up at <a href="https://materialsproject.org/">materialsproject.org</a>).</p>
 <p>Unlocks: <code>search_materials_project</code>.</p>
 <h2 id="debug-mode">Debug mode<a class="headerlink" href="#debug-mode" title="Permanent link">&para;</a></h2>
-<p>To see the full 67-tool catalog regardless of what's wired:</p>
+<p>To see the full 68-tool catalog regardless of what's wired:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">NOVOMCP_SHOW_HIDDEN_TOOLS</span><span class="o">=</span><span class="m">1</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>python<span class="w"> </span>main_https.py
 </span></code></pre></div>
 <p>Tools that would normally be hidden show up in <code>tools/list</code>. Calls to unwired tools return structured "service unavailable" errors. Useful when developing / debugging or when you want to see everything at once.</p>
 <h2 id="why-hidden-and-not-visible-with-errors">Why hidden and not visible-with-errors<a class="headerlink" href="#why-hidden-and-not-visible-with-errors" title="Permanent link">&para;</a></h2>
-<p>The alternative would be to always show the full 67 tools and return "service unavailable" when unwired ones are called. That's what NovoMCP used to do. It felt like a broken product.</p>
+<p>The alternative would be to always show the full 68 tools and return "service unavailable" when unwired ones are called. That's what NovoMCP used to do. It felt like a broken product.</p>
 <p>Hidden-until-wired means:
 - <strong>Users see a working demo, not a lot of gray options.</strong> First impressions matter.
 - <strong><code>tools/list</code> is the truth.</strong> Every tool in it works. LLM clients that pick tools autonomously (Claude, Cursor, Zed) never try something that will fail.
