@@ -1,8 +1,8 @@
 # Installing and updating NovoMCP
 
-## v1.0 installation paths
+## Installation paths
 
-At v1.0 launch we support two install paths. Both boot the engine on `http://localhost:8018`; pick the one that fits your setup.
+The engine supports two install paths. Both boot it on `http://localhost:8018`; pick the one that fits your setup.
 
 ### Path 1 — git clone (primary, works everywhere Python does)
 
@@ -28,31 +28,31 @@ This builds the engine image locally from `orchestrator/Dockerfile` on the first
 
 The engine will be reachable at `http://localhost:8018`. The local audit sink persists in a docker volume across restarts.
 
-## Coming in later releases
+## On the roadmap
 
-The v1.0 install paths above cover git-comfortable + docker-comfortable users. Two more paths ship in point releases:
+The two paths above cover git-comfortable and docker-comfortable users. There is also a published PyPI package, plus a few paths still on the roadmap:
 
-| Path | Ships in | Command (when available) |
+| Path | Status | Command |
 |---|---|---|
-| **PyPI package** | v1.0.1 (targeted week 1-2 post-launch) | `pip install novomcp` — thin wrapper that installs the engine + a `novomcp` entry point |
-| **Prebuilt Docker image (GHCR)** | v1.0.1 or v1.0.2 | `docker pull ghcr.io/novomcp/novomcp:latest` — skips the local build step; ~30 sec to running vs 2-3 min |
-| **`novo` CLI** (`npx novo` / `npm i -g novo`) | v1.4.5 | `novo dock ...`, `novo funnel run ...` — thin scriptable client, does NOT bundle GPU compute |
+| **PyPI package** | available | `pip install novomcp` — installs the engine with a `novomcp` entry point |
+| **Prebuilt Docker image (GHCR)** | planned, not yet shipped | `docker pull ghcr.io/novomcp/novomcp:latest` — skips the local build step; ~30 sec to running vs 2-3 min |
+| **`novo` CLI** (`npx novo` / `npm i -g novo`) | roadmap, targeted v1.4.5 | `novo dock ...`, `novo funnel run ...` — thin scriptable client, does NOT bundle GPU compute |
 | **Homebrew tap** | later, based on demand | `brew install novomcp` |
 
-**None of these are v1.0 blockers** — they're convenience releases layered on top of the git-clone and docker-compose paths that already work. The point release cadence lets each one launch with a proper story (blog post, marketing beat) rather than getting buried in the v1.0 launch noise.
+**None of these are required** — they're conveniences layered on top of the git-clone and docker-compose paths that already work today.
 
-If someone asks "will you dockerize it?" — the answer is yes, docker-compose ships at v1.0 (builds locally); the prebuilt GHCR image ships in v1.0.1 or v1.0.2.
+If someone asks "will you dockerize it?" — docker-compose already works (builds the engine locally); the prebuilt GHCR image is planned but not yet shipped.
 
-If someone asks "is there a PyPI package?" — the answer is yes, coming in v1.0.1; for now use `git clone`.
+If someone asks "is there a PyPI package?" — yes, `pip install novomcp` (git clone also works).
 
-If someone asks "is there a CLI?" — the answer is `novo` is on the roadmap for v1.4.5; for now the MCP interface (any MCP-compatible AI assistant) or the REST API are the two "call it programmatically" paths.
+If someone asks "is there a CLI?" — `novo` is on the roadmap (targeted v1.4.5); for now the MCP interface (any MCP-compatible AI assistant) or the REST API are the two "call it programmatically" paths.
 
 ## How updates work
 
 New versions ship weekly. Your install tells you when there's a new one — check the boot log for a line like:
 
 ```
-NovoMCP v1.0.0 running. v1.1.0 is available: https://github.com/NovoMCP/novomcp/releases/tag/v1.1.0
+NovoMCP v1.4.3 running. A newer release is available: https://github.com/NovoMCP/novomcp/releases/latest
 ```
 
 You can also ask the engine at any time via any MCP client:
@@ -83,13 +83,13 @@ docker compose build --no-cache engine   # rebuild from the updated source
 docker compose up -d
 ```
 
-### `pip install novomcp` (from PyPI, v1.0.1+ when available)
+### `pip install novomcp` (from PyPI)
 
 ```bash
 pip install --upgrade novomcp
 ```
 
-### Prebuilt Docker image (v1.0.1+ when available)
+### Prebuilt Docker image (when available)
 
 ```bash
 docker pull ghcr.io/novomcp/novomcp:latest
@@ -107,7 +107,7 @@ brew upgrade novomcp
 On the first boot after an upgrade, you'll see:
 
 ```
-NovoMCP upgraded from v1.0.0 → v1.1.0. Release notes: https://github.com/NovoMCP/novomcp/blob/main/docs/changelog.md
+NovoMCP upgraded from v1.4.2 → v1.4.3. Release notes: https://github.com/NovoMCP/novomcp/blob/main/docs/changelog.md
 ```
 
 Then follow the changelog link to read what changed.
@@ -131,10 +131,10 @@ git -C /path/to/novomcp checkout v1.1.0
 docker compose build --no-cache engine   # if you're on Docker Compose too
 docker compose up -d
 
-# pip install (v1.0.1+)
+# pip install
 pip install novomcp==1.1.0
 
-# prebuilt docker (v1.0.1+)
+# prebuilt docker (when available)
 docker pull ghcr.io/novomcp/novomcp:v1.1.0
 ```
 

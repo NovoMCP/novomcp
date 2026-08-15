@@ -1,6 +1,6 @@
 # Tool availability
 
-NovoMCP ships a 67-tool catalog. Which ones are actually usable depends on what you've wired up. The engine only exposes tools whose dependencies are met — no tool clutter, no "unavailable" errors on tools you can't run.
+NovoMCP ships a 68-tool catalog. Which ones are actually usable depends on what you've wired up. The engine only exposes tools whose dependencies are met — no tool clutter, no "unavailable" errors on tools you can't run.
 
 ## The three states
 
@@ -98,7 +98,7 @@ Unlocks: `search_materials_project`.
 
 ## Debug mode
 
-To see the full 67-tool catalog regardless of what's wired:
+To see the full 68-tool catalog regardless of what's wired:
 
 ```bash
 export NOVOMCP_SHOW_HIDDEN_TOOLS=1
@@ -109,7 +109,7 @@ Tools that would normally be hidden show up in `tools/list`. Calls to unwired to
 
 ## Why hidden and not visible-with-errors
 
-The alternative would be to always show the full 67 tools and return "service unavailable" when unwired ones are called. That's what NovoMCP used to do. It felt like a broken product.
+The alternative would be to always show the full 68 tools and return "service unavailable" when unwired ones are called. That's what NovoMCP used to do. It felt like a broken product.
 
 Hidden-until-wired means:
 - **Users see a working demo, not a lot of gray options.** First impressions matter.
