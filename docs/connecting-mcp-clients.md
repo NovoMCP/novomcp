@@ -122,7 +122,7 @@ In Claude Desktop:
 
 - Look for the **tools icon** (hammer or plug shape) near the message input
 - Or go to **Settings → Developer → MCP Servers**
-- `novomcp` should show as connected with 11 tools (the always-available set; the other 56 in the catalog appear as you wire backing services — see [tool-availability.md](tool-availability.md))
+- `novomcp` should show as connected with 11 tools (the always-available set; the other 57 in the catalog appear as you wire backing services — see [tool-availability.md](tool-availability.md))
 
 In the terminal running the engine, you should see an incoming request when Claude connects — that's the initialize handshake.
 
