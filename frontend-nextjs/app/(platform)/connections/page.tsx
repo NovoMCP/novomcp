@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import { Server, Plug, CheckCircle2, Circle, AlertTriangle, RefreshCw, Loader2 } from 'lucide-react';
 import { useCapabilities, type ServiceCapability } from '@/core/api/useCapabilities';
 import AiProviderCard from '@/components/settings/AiProviderCard';
+import ComplianceCard from '@/components/settings/ComplianceCard';
 
 // Connections — a read-only view of what this deployment has wired: the engine
 // and each optional compute service, with live health and the env var to set
@@ -147,6 +148,9 @@ export default function ConnectionsPage() {
 
       {/* AI provider (SecretStore-backed, write-only keys) */}
       <AiProviderCard />
+
+      {/* Compliance service consumer (SecretStore-backed, write-only key) */}
+      <ComplianceCard />
 
       {/* How-to-wire note — configuration is env-driven for now */}
       <div className="border border-[var(--border)] bg-[var(--bg-warm)] px-5 py-4 text-sm text-[var(--text-soft)]">
