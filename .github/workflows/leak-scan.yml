@@ -50,13 +50,22 @@ jobs:
           # Detection tooling (a secret scanner) legitimately contains
           # credential-shape regexes; exclude such files so they don't false-trip
           # the credential markers. Dedicated secret scanning owns that surface.
-          if hits=$(git grep -nIiE -f /tmp/markers.txt -- . ':(exclude)scripts/security_scan.py' 2>/dev/null); then
-            echo "::error::internal markers found in tracked files"
-            echo "$hits"
+          #
+          # Report FILENAMES ONLY (`-l`), never the matched line. On a public repo the
+          # Actions log is world-readable and outlives the branch, so echoing a matched
+          # line would publish the very content this gate exists to keep private. A path
+          # is enough to act on — whoever fixes it has the tree.
+          if files=$(git grep -lIiE -f /tmp/markers.txt -- . ':(exclude)scripts/security_scan.py' 2>/dev/null); then
+            echo "::error::internal markers found in tracked files (paths below; content withheld)"
+            echo "$files"
             fail=1
           fi
 
           echo "== incoming commit messages =="
+          # New branch / first push (before == all-zeros): there is no BEFORE ref to diff
+          # against, so only the tip commit is scanned (-1). This assumes branch-internal
+          # history was scanned on its own earlier pushes. Safe while `push` is gated to
+          # `main` and PRs scan base..head — revisit this if the trigger is ever widened.
           if [ "$EVENT" = "pull_request" ]; then
             range=( "$PR_BASE..$PR_HEAD" )
           elif printf '%s' "$PUSH_BEFORE" | grep -qE '^0*$'; then
@@ -64,9 +73,18 @@ jobs:
           else
             range=( "$PUSH_BEFORE..$PUSH_AFTER" )
           fi
-          if msgs=$(git log --format='%H %s%n%b' "${range[@]}" 2>/dev/null | grep -niE -f /tmp/markers.txt); then
-            echo "::error::internal markers found in commit messages"
-            echo "$msgs"
+          # Report offending commit SHAs ONLY — never the matched message text (same
+          # public-log reasoning as above). Scan each message with `grep -q`, which prints
+          # nothing; collect the SHAs that hit.
+          bad=""
+          for sha in $(git log --format='%H' "${range[@]}" 2>/dev/null); do
+            if git log -1 --format='%s%n%b' "$sha" | grep -qiE -f /tmp/markers.txt; then
+              bad="$bad $sha"
+            fi
+          done
+          if [ -n "$bad" ]; then
+            echo "::error::internal markers found in commit messages (SHAs below; text withheld)"
+            printf '%s\n' $bad
             fail=1
           fi
 
