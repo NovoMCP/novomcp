@@ -46,3 +46,55 @@ isomers at a given count collapse to that level and the representative is the fi
 one encountered in the corpus scan (not a deterministic pick). A deterministic
 selection (e.g. min CID per level) can be substituted if a byte-reproducible set is
 needed; it is not expected to change the rail-conditional.
+
+---
+
+## Validation result — rail separation is unresolved at the available sample size
+
+The narrative and the transferable lesson are in the engineering story
+[*Configuration can produce a confident wrong answer*](../../../../../docs/engineering-stories/configuration-is-part-of-the-measurement.md).
+This is the specific result, kept with the tool it validates.
+
+`FROZEN` can be hollow in one specific way: an ADMET probability pinned at 0 or 1
+cannot move, so "it did not move in the held-out tail" is guaranteed rather than
+informative. Under perfluorination this is a live concern, because exhaustively
+halogenated small molecules are exactly the input that saturates a probability.
+The pre-registered rail baseline exists to test it.
+
+Conditioning on non-rail frozen axes leaves the effect essentially intact but does
+not clear its null:
+
+| cell | n | Δ | null | perms ≥ obs |
+|---|---:|---:|---|---:|
+| all frozen | 250 | +0.320 | +0.092 ± 0.117 | 8/500 |
+| minus rail-pinned | 192 | +0.313 | +0.197 ± 0.094 | 46/500 |
+| minus rail + disconnected | 134 | +0.274 | +0.218 ± 0.117 | 162/500 |
+| minus rail + disc. + exhausted | 71 | +0.246 | +0.132 ± 0.137 | 100/500 |
+
+Read the effect column and the null column separately; they say different things.
+The effect barely moves across three strippings — +0.320 → +0.246, a 23% decline.
+Were `FROZEN` merely rail-detection, removing the rail axes would collapse it; it
+drops 2%. What changes is the noise floor: the step-order null more than doubles once
+rails are excluded (+0.092 → +0.197). Significance is lost because the null rises to
+meet a roughly fixed effect, not because the effect disappears.
+
+Two candidate explanations were tested and rejected. **Multi-fragment parents** —
+110 of 422 F-series are mixture or salt records scored as single compounds — cost
+some effect but do not account for it. **Chemical exhaustion** — 43% of series run
+until every hydrogen is substituted — is a non-factor: exhausted series give +0.259,
+non-exhausted +0.246.
+
+The corpus cannot answer the question. Reaching significance on the non-rail
+conditional needs roughly twice the series, and they do not exist: mining the full
+corpus for clean single-halogen-type series at n ≥ 10 yields 468, of which only ~46
+are the Cl/Br-on-a-ring halogenation a medicinal chemist would recognise. The
+sparsity that forced this study onto the perfluorination chemotype is the same wall
+that limits its power.
+
+So caveat 3 is a limitation of the data, not a weakness of the label. `FROZEN` is not
+reducible to rail-detection here — and it is also not demonstrably separable from it.
+Both readings are unsupported by this sample.
+
+> Co-authored with Dal Marsters ([@dmarsters](https://github.com/dmarsters)); the
+> analysis machinery (`corpus_stream_mine`, `corpus_merge_series`, `exp20`) lives in
+> the companion research repository and cross-links back here.
