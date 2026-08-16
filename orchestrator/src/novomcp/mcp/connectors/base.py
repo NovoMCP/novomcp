@@ -90,7 +90,7 @@ class BaseConnector(ABC):
 
         Args:
             config: Non-secret configuration (account, warehouse, spreadsheet_id, etc.)
-            credentials: Secret credentials from Azure Key Vault
+            credentials: Secret credentials from the configured secret store
         """
         self.config = config
         self.credentials = credentials

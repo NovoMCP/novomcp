@@ -36,7 +36,7 @@ def get_connector(
     Args:
         connector_type: One of snowflake, google_sheets, airtable, benchling, databricks
         config: Non-secret configuration dict
-        credentials: Secret credentials from Azure Key Vault
+        credentials: Secret credentials from the configured secret store
 
     Returns:
         Instantiated BaseConnector subclass

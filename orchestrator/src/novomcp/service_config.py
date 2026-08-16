@@ -151,7 +151,7 @@ class ServiceConfig:
                         "DB_MANAGER_URL",
                         "",
                     ),
-                    "api_key": os.getenv("DB_MANAGER_API_KEY") or os.getenv("DASHBOARD_AGGREGATOR_API_KEY"),
+                    "api_key": os.getenv("DB_MANAGER_API_KEY"),
                     "type": "https",
                 },
                 "molecular-worker": {
@@ -171,7 +171,7 @@ class ServiceConfig:
                         "DBSCHEMA_MANAGER_URL",
                         "",
                     ),
-                    "api_key": os.getenv("DBSCHEMA_MANAGER_API_KEY") or os.getenv("DASHBOARD_AGGREGATOR_API_KEY"),
+                    "api_key": os.getenv("DBSCHEMA_MANAGER_API_KEY"),
                     "type": "https",
                 },
                 "knowledge-graph": {
