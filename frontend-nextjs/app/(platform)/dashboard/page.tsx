@@ -11,7 +11,7 @@ import {
   Circle,
   Server,
   BookOpen,
-  Terminal,
+  FlaskConical,
   Package,
 } from 'lucide-react';
 
@@ -211,10 +211,11 @@ export default function DashboardPage() {
         </div>
         <div className="px-6 py-5 grid grid-cols-1 md:grid-cols-3 gap-4">
           <QuickAction
-            icon={<Terminal className="h-5 w-5" />}
-            title="Use from the terminal"
-            body="Call tools via curl or the JSON-RPC MCP surface."
-            href="https://github.com/NovoMCP/novomcp/blob/main/docs/quickstart.md"
+            icon={<FlaskConical className="h-5 w-5" />}
+            title="Profile a molecule"
+            body="Paste a SMILES, get computed properties in about a second."
+            href="/profile"
+            internal
           />
           <QuickAction
             icon={<Activity className="h-5 w-5" />}
@@ -283,20 +284,28 @@ function AuditRow({ entry }: { entry: any }) {
   );
 }
 
-function QuickAction({ icon, title, body, href }: { icon: React.ReactNode; title: string; body: string; href: string }) {
-  return (
-    <a
-      href={href}
-      target="_blank"
-      rel="noreferrer"
-      className="group block p-4 border border-[var(--border)] hover:border-[var(--accent)]/50 transition-colors"
-    >
+function QuickAction({ icon, title, body, href, internal }: { icon: React.ReactNode; title: string; body: string; href: string; internal?: boolean }) {
+  const className = 'group block p-4 border border-[var(--border)] hover:border-[var(--accent)]/50 transition-colors';
+  const inner = (
+    <>
       <div className="flex items-center justify-between mb-2">
         <span className="text-[var(--text-muted)] group-hover:text-[var(--accent)] transition-colors">{icon}</span>
         <ArrowRight className="h-4 w-4 text-[var(--text-muted)] opacity-0 group-hover:opacity-100 transition-opacity" />
       </div>
       <p className="text-sm font-medium text-[var(--text)] mb-1">{title}</p>
       <p className="text-xs text-[var(--text-muted)]">{body}</p>
+    </>
+  );
+  if (internal) {
+    return (
+      <Link href={href} className={className}>
+        {inner}
+      </Link>
+    );
+  }
+  return (
+    <a href={href} target="_blank" rel="noreferrer" className={className}>
+      {inner}
     </a>
   );
 }
