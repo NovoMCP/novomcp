@@ -46,6 +46,14 @@ from contextlib import asynccontextmanager
 try:
     from dotenv import load_dotenv
     load_dotenv(override=False)
+    # Also load the dashboard-managed credential store, if present. The web
+    # dashboard writes provider keys and service URLs to ~/.novo/credentials.env
+    # (override the location with NOVO_CREDENTIALS_PATH). Loaded with
+    # override=False, so a shell export or the project .env still wins.
+    from pathlib import Path as _Path
+    _creds = _Path(os.getenv("NOVO_CREDENTIALS_PATH") or (_Path.home() / ".novo" / "credentials.env"))
+    if _creds.is_file():
+        load_dotenv(_creds, override=False)
 except ImportError:
     pass
 
