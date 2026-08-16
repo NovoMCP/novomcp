@@ -155,7 +155,6 @@ class Settings(BaseSettings):
     
     # Downstream service API keys (loaded from env or .env)
     CAMPAIGN_MANAGER_API_KEY: Optional[str] = os.getenv("CAMPAIGN_MANAGER_API_KEY")
-    DASHBOARD_AGGREGATOR_API_KEY: Optional[str] = os.getenv("DASHBOARD_AGGREGATOR_API_KEY")
     
     # Per-service env var overrides. Set any of these to point the engine at
     # a specific deployed backend. Used by OSS installs where each optional

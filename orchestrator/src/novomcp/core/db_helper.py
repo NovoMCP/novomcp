@@ -92,7 +92,7 @@ DB_CONNECT_BACKOFF_BASE_MS = int(os.getenv("DB_CONNECT_BACKOFF_BASE_MS", "200"))
 # Legacy db-manager proxy (unused after Aurora pivot; kept for compat).
 # No production default; self-hosters set DB_MANAGER_URL if they use it.
 DB_MANAGER_URL = os.getenv("DB_MANAGER_URL", "")
-DB_MANAGER_API_KEY = os.getenv("DB_MANAGER_API_KEY") or os.getenv("DASHBOARD_AGGREGATOR_API_KEY", "")
+DB_MANAGER_API_KEY = os.getenv("DB_MANAGER_API_KEY")
 
 
 def async_execute(func):

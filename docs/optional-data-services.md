@@ -48,7 +48,6 @@ Two ways to wire it:
 
 ```bash
 export FUNNEL_BACKEND_URL=http://your-backend.example.com
-# Legacy alias: DASHBOARD_AGGREGATOR_URL
 ```
 
 **B — Implement a custom `AuditSink`** via the pluggable spine:

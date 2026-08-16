@@ -13,8 +13,8 @@ from typing import Dict, Optional
 
 logger = logging.getLogger(__name__)
 
-# Match the IAM scope of novomcp-bridge / managed backend
-SECRET_PREFIX = os.environ.get("BRIDGE_SECRET_PREFIX", "novomcp/bridge-conn/")
+# Secret-name prefix for the managed vault (supplied out-of-repo).
+SECRET_PREFIX = os.environ.get("CONNECTOR_SECRET_PREFIX", "novomcp/connectors/")
 AWS_REGION = os.environ.get("AWS_REGION", "us-east-1")
 
 

@@ -21,8 +21,8 @@ import httpx
 logger = logging.getLogger(__name__)
 
 # managed backend URL for key validation
-DASHBOARD_AGGREGATOR_URL = os.getenv(
-    "DASHBOARD_AGGREGATOR_URL",
+MANAGED_BACKEND_URL = os.getenv(
+    "MANAGED_BACKEND_URL",
     ""
 )
 
@@ -31,7 +31,7 @@ DASHBOARD_AGGREGATOR_URL = os.getenv(
 JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "")
 JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
 # Internal service key for the trusted call to managed backend /mcp/validate-jwt.
-DASHBOARD_AGGREGATOR_API_KEY = os.getenv("DASHBOARD_AGGREGATOR_API_KEY", "")
+MANAGED_BACKEND_API_KEY = os.getenv("MANAGED_BACKEND_API_KEY", "")
 
 
 class UserTier(str, Enum):

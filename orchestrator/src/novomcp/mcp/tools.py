@@ -3635,12 +3635,12 @@ class MCPToolExecutor:
         }
 
         # Funnel-persistence + credit-ledger backend URL.
-        # Preferred generic env var is FUNNEL_BACKEND_URL. Legacy
-        # DASHBOARD_AGGREGATOR_URL kept as fallback for existing hosted
-        # deploys. Users provide their own audit/credit service — the
-        # engine talks to it over HTTP; no specific service required.
-        self.dashboard_url = os.getenv("FUNNEL_BACKEND_URL") or os.getenv("DASHBOARD_AGGREGATOR_URL", "")
-        self.dashboard_api_key = os.getenv("FUNNEL_BACKEND_API_KEY") or os.getenv("DASHBOARD_AGGREGATOR_API_KEY", "")
+        # Users provide their own audit/credit persistence service via
+        # FUNNEL_BACKEND_URL — the engine talks to it over HTTP; no specific
+        # service required. Unset in local mode, where the funnel is audited
+        # via the local sink instead.
+        self.dashboard_url = os.getenv("FUNNEL_BACKEND_URL", "")
+        self.dashboard_api_key = os.getenv("FUNNEL_BACKEND_API_KEY", "")
         self.dashboard_admin_key = os.getenv("NOVOMCP_ADMIN_KEY", os.getenv("MCP_ADMIN_KEY", ""))
 
         # Bridge service for connector execution
@@ -6281,7 +6281,7 @@ class MCPToolExecutor:
             # audited via the local audit sink (~/.novo/audit.jsonl by default).
             return ToolResult(
                 success=False,
-                error="save_funnel_stage requires a funnel-persistence backend (set FUNNEL_BACKEND_URL, aliased from DASHBOARD_AGGREGATOR_URL for backwards compat). In local mode, raw tool calls are still audited via the local audit sink — see NOVO_AUDIT_PATH.",
+                error="save_funnel_stage requires a funnel-persistence backend (set FUNNEL_BACKEND_URL). In local mode, raw tool calls are still audited via the local audit sink — see NOVO_AUDIT_PATH.",
                 usage={"queries": 0, "tool": "save_funnel_stage"},
             )
 
@@ -6867,7 +6867,7 @@ class MCPToolExecutor:
         if not self.dashboard_url:
             return ToolResult(
                 success=False,
-                error="search_prior_runs requires a funnel-persistence backend (set FUNNEL_BACKEND_URL, aliased from DASHBOARD_AGGREGATOR_URL for backwards compat). Cross-run funnel memory is not wired in local mode.",
+                error="search_prior_runs requires a funnel-persistence backend (set FUNNEL_BACKEND_URL). Cross-run funnel memory is not wired in local mode.",
                 usage={"queries": 0, "tool": "search_prior_runs"},
             )
 
@@ -8911,7 +8911,7 @@ class MCPToolExecutor:
             return ToolResult(success=False, error=str(e))
 
     async def _execute_discover_schema(self, arguments: Dict[str, Any], context: Dict[str, Any] = None) -> ToolResult:
-        """Discover target schema for a connection (via novomcp-bridge)."""
+        """Discover target schema for a connection."""
         context = context or {}
         org_id = context.get("org_id")
         if not org_id:
@@ -8948,7 +8948,7 @@ class MCPToolExecutor:
             return ToolResult(success=False, error=f"{type(e).__name__}: {e}" if str(e) else type(e).__name__)
 
     async def _execute_preview_mapping(self, arguments: Dict[str, Any], context: Dict[str, Any] = None) -> ToolResult:
-        """Preview field mapping before export (via novomcp-bridge)."""
+        """Preview field mapping before export."""
         context = context or {}
         org_id = context.get("org_id")
         if not org_id:
@@ -9151,7 +9151,7 @@ class MCPToolExecutor:
         return enriched_rows[0] if is_single and len(enriched_rows) == 1 else enriched_rows
 
     async def _execute_export_results(self, arguments: Dict[str, Any], context: Dict[str, Any] = None) -> ToolResult:
-        """Export tool results to a configured destination (via novomcp-bridge)."""
+        """Export tool results to a configured destination."""
         context = context or {}
         org_id = context.get("org_id")
         if not org_id:
@@ -13607,7 +13607,7 @@ class MCPToolExecutor:
         if not self.dashboard_url:
             return ToolResult(
                 success=False,
-                error="save_funnel_context requires a funnel-persistence backend (set FUNNEL_BACKEND_URL, aliased from DASHBOARD_AGGREGATOR_URL for backwards compat). Async job persistence isn't wired in local mode.",
+                error="save_funnel_context requires a funnel-persistence backend (set FUNNEL_BACKEND_URL). Async job persistence isn't wired in local mode.",
                 usage={"queries": 0, "tool": "save_funnel_context"},
             )
 
