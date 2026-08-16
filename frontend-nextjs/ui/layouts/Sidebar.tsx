@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard,
   FlaskConical,
+  Plug,
   Settings,
   LogOut,
   Sun,
@@ -36,6 +37,7 @@ const REQUIRE_AUTH = process.env.NEXT_PUBLIC_REQUIRE_AUTH === 'true';
 const NAV_ITEMS: NavItem[] = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Profile', href: '/profile', icon: FlaskConical },
+  { name: 'Connections', href: '/connections', icon: Plug },
   { name: 'Settings', href: '/settings', icon: Settings },
 ];
 
