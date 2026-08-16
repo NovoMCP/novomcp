@@ -814,6 +814,82 @@ async def health():
         "services_available": len(SERVICE_REGISTRY)
     }
 
+
+@app.post("/local/connectors/execute")
+async def local_connector_execute(request: Request):
+    """Local-mode connector execution for self-host. Stateless: the caller supplies
+    connector_type + config + credentials and we instantiate the adapter to run one
+    action (test | schema | export). Connection storage lives with the dashboard
+    (~/.novo/connectors.json), not here. Disabled under a hosted spine, where the
+    managed connection service handles this instead."""
+    if os.getenv("NOVO_AUTH", "local").lower() == "hosted":
+        raise HTTPException(status_code=404, detail="Not available under a hosted spine")
+
+    body = await request.json()
+    connector_type = (body.get("connector_type") or "").lower()
+    config = body.get("config") or {}
+    credentials = body.get("credentials") or {}
+    action = (body.get("action") or "test").lower()
+
+    from novomcp.mcp.connectors import get_connector, CONNECTOR_REGISTRY, WriteMode
+    if connector_type not in CONNECTOR_REGISTRY:
+        return JSONResponse(
+            {"ok": False, "error": "unknown_connector",
+             "detail": f"Unknown connector '{connector_type}'. Available: {list(CONNECTOR_REGISTRY)}"},
+            status_code=400,
+        )
+
+    try:
+        connector = get_connector(connector_type, config, credentials)
+    except ImportError as e:
+        return JSONResponse(
+            {"ok": False, "error": "sdk_missing",
+             "detail": f"The {connector_type} client library isn't installed: {e}"},
+            status_code=400,
+        )
+    except (KeyError, ValueError) as e:
+        return JSONResponse({"ok": False, "error": "invalid_config", "detail": str(e)}, status_code=400)
+
+    async def _run():
+        if action == "test":
+            ok, err = await connector.test_connection()
+            return {"ok": bool(ok), "error": err}
+        if action == "schema":
+            schemas = await connector.discover_schema()
+            return {"ok": True, "schemas": [
+                {"name": s.name, "location": s.location,
+                 "columns": [c.name for c in (s.columns or [])]}
+                for s in (schemas or [])
+            ]}
+        if action == "export":
+            target = body.get("target")
+            data = body.get("data") or []
+            if not target:
+                return JSONResponse({"ok": False, "error": "target_required",
+                                     "detail": "export needs a target table name"}, status_code=400)
+            mode = WriteMode(body.get("mode", "append"))
+            result = await connector.write_data(target=target, data=data, mode=mode)
+            return {"ok": bool(result.success), "rows_written": result.rows_written,
+                    "rows_failed": result.rows_failed, "error": result.error}
+        return JSONResponse({"ok": False, "error": "unknown_action",
+                             "detail": "action must be test, schema, or export"}, status_code=400)
+
+    try:
+        # Bound the adapter call so a hanging/misconfigured endpoint can't wedge
+        # the request. Run it in a worker thread so a blocking SDK client (the
+        # warehouse drivers are synchronous) doesn't stall the event loop.
+        return await asyncio.wait_for(asyncio.to_thread(asyncio.run, _run()), timeout=45)
+    except asyncio.TimeoutError:
+        return JSONResponse({"ok": False, "error": "timeout",
+                             "detail": "The connector did not respond in time."}, status_code=504)
+    except Exception as e:
+        return JSONResponse({"ok": False, "error": "execution_error", "detail": str(e)}, status_code=502)
+    finally:
+        try:
+            await connector.close()
+        except Exception:
+            pass
+
 # Root endpoint - handles both browser visitors and API clients
 @app.get("/")
 async def root(request: Request):

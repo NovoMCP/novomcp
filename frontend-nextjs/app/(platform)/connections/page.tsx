@@ -6,6 +6,7 @@ import { useCapabilities, type ServiceCapability } from '@/core/api/useCapabilit
 import AiProviderCard from '@/components/settings/AiProviderCard';
 import ComplianceCard from '@/components/settings/ComplianceCard';
 import ObservabilityCard from '@/components/settings/ObservabilityCard';
+import ConnectorsCard from '@/components/settings/ConnectorsCard';
 
 // Connections — a read-only view of what this deployment has wired: the engine
 // and each optional compute service, with live health and the env var to set
@@ -155,6 +156,9 @@ export default function ConnectionsPage() {
 
       {/* Observability — OTLP tracing (agent/request plane, separate from compliance) */}
       <ObservabilityCard />
+
+      {/* Data connectors — self-host, local credential store */}
+      <ConnectorsCard />
 
       {/* How-to-wire note — configuration is env-driven for now */}
       <div className="border border-[var(--border)] bg-[var(--bg-warm)] px-5 py-4 text-sm text-[var(--text-soft)]">

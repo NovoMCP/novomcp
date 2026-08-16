@@ -26,24 +26,6 @@ CONNECTOR_REGISTRY: Dict[str, str] = {
     "databricks": "novomcp.mcp.connectors.databricks_connector.DatabricksConnector",
 }
 
-# Minimum tier required for each connector type
-CONNECTOR_TIER_REQUIREMENTS: Dict[str, str] = {
-    "google_sheets": "pro",
-    "airtable": "pro",
-    "snowflake": "team",
-    "databricks": "team",
-    "benchling": "team",
-}
-
-# Tier hierarchy for comparison
-TIER_HIERARCHY = {"free": 0, "pro": 1, "team": 2, "enterprise": 3}
-
-
-def check_tier_access(user_tier: str, connector_type: str) -> bool:
-    """Check if a user's tier grants access to a connector type."""
-    required = CONNECTOR_TIER_REQUIREMENTS.get(connector_type, "team")
-    return TIER_HIERARCHY.get(user_tier, 0) >= TIER_HIERARCHY.get(required, 2)
-
 
 def get_connector(
     connector_type: str, config: Dict[str, Any], credentials: Dict[str, Any]
@@ -87,7 +69,5 @@ __all__ = [
     "TargetSchema",
     "WriteMode",
     "CONNECTOR_REGISTRY",
-    "CONNECTOR_TIER_REQUIREMENTS",
-    "check_tier_access",
     "get_connector",
 ]
