@@ -2078,7 +2078,6 @@
 <p>Two ways to wire it:</p>
 <p><strong>A — Point at an HTTP audit/usage-ledger service</strong> (like our hosted <code>managed backend</code>):</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">FUNNEL_BACKEND_URL</span><span class="o">=</span>http://your-backend.example.com
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="c1"># Legacy alias: DASHBOARD_AGGREGATOR_URL</span>
 </span></code></pre></div>
 <p><strong>B — Implement a custom <code>AuditSink</code></strong> via the pluggable spine:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">NOVO_AUDIT</span><span class="o">=</span>custom
