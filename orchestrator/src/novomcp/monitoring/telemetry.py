@@ -40,11 +40,16 @@ class TelemetryConfig:
     # Service name
     SERVICE_NAME = os.getenv("OTEL_SERVICE_NAME", "novomcp")
 
-    # OTLP exporter endpoint (Jaeger, AWS X-Ray, etc.)
-    OTLP_ENDPOINT = os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://localhost:4317")
+    # OTLP exporter endpoint (a collector, or a backend that accepts OTLP).
+    # No default — unset means tracing stays off (see TRACING_ENABLED).
+    OTLP_ENDPOINT = os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
 
-    # Enable/disable tracing
-    TRACING_ENABLED = os.getenv("OTEL_TRACING_ENABLED", "true").lower() == "true"
+    # Enable/disable tracing. Defaults to on only when an endpoint is
+    # configured, so a fresh clone with no collector emits nothing and never
+    # spams export errors.
+    TRACING_ENABLED = os.getenv(
+        "OTEL_TRACING_ENABLED", "true" if OTLP_ENDPOINT else "false"
+    ).lower() == "true"
 
     # Sampling rate (0.0 to 1.0)
     SAMPLING_RATE = float(os.getenv("OTEL_SAMPLING_RATE", "1.0"))
@@ -83,9 +88,13 @@ def setup_telemetry():
 
         # Add OTLP exporter (for production - sends to collector)
         if TelemetryConfig.OTLP_ENDPOINT:
+            # TLS for https:// endpoints (SaaS backends); plaintext otherwise
+            # (a local collector). Auth headers come from
+            # OTEL_EXPORTER_OTLP_HEADERS, which the exporter reads from the env.
+            _insecure = not TelemetryConfig.OTLP_ENDPOINT.lower().startswith("https://")
             otlp_exporter = OTLPSpanExporter(
                 endpoint=TelemetryConfig.OTLP_ENDPOINT,
-                insecure=True  # Use TLS in production
+                insecure=_insecure,
             )
             provider.add_span_processor(BatchSpanProcessor(otlp_exporter))
             logger.info(f"OpenTelemetry: Exporting traces to {TelemetryConfig.OTLP_ENDPOINT}")

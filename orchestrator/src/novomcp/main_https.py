@@ -598,6 +598,20 @@ app = FastAPI(
     openapi_url=None,
 )
 
+# OpenTelemetry: initialize tracing and instrument the app when an OTLP endpoint
+# is configured (or tracing is explicitly enabled). Off by default, so a fresh
+# clone emits nothing and never spams export errors. Must run here at module load
+# (not in lifespan) so the tracing middleware is in the stack before requests are
+# served. Guarded so a telemetry failure can never break import/startup.
+try:
+    from novomcp.monitoring.telemetry import setup_telemetry
+    if setup_telemetry() is not None:
+        from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+        FastAPIInstrumentor().instrument_app(app)
+        logger.info("OpenTelemetry tracing enabled")
+except Exception as _otel_err:
+    logger.warning("OpenTelemetry setup skipped: %s", _otel_err)
+
 # Add CORS middleware — restrict to known frontends and the apps gateway
 CORS_ORIGINS = [
     origin for origin in [
