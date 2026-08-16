@@ -1,0 +1,96 @@
+# leak-scan — server-side leak gate.
+#
+# Scans tracked-file content and the incoming commit-message range for internal
+# markers, failing the check on any hit. This mirrors the local pre-push hook,
+# but runs in CI so nothing gets through by `git push --no-verify`.
+#
+# The marker list is read from the SCRUB_MARKERS secret — it is never committed,
+# because the list itself contains internal names and account identifiers.
+# Format: one grep -E (extended-regex) pattern per line. On a fork PR the secret
+# is absent, so the scan skips (a maintainer's own push/PR is still scanned).
+
+name: leak-scan
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  leak-scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run leak gate
+        env:
+          SCRUB_MARKERS: ${{ secrets.SCRUB_MARKERS }}
+          EVENT: ${{ github.event_name }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD: ${{ github.event.pull_request.head.sha }}
+          PUSH_BEFORE: ${{ github.event.before }}
+          PUSH_AFTER: ${{ github.sha }}
+        run: |
+          set -uo pipefail
+
+          # Markers from the org secret. Strip blank lines — an empty regex would
+          # match everything. The file is never printed.
+          printf '%s\n' "$SCRUB_MARKERS" | grep -vE '^[[:space:]]*$' > /tmp/markers.txt || true
+          if [ ! -s /tmp/markers.txt ]; then
+            echo "SCRUB_MARKERS not configured (e.g. fork PR) — skipping leak scan."
+            exit 0
+          fi
+
+          fail=0
+
+          echo "== tracked file content =="
+          # Detection tooling (a secret scanner) legitimately contains
+          # credential-shape regexes; exclude such files so they don't false-trip
+          # the credential markers. Dedicated secret scanning owns that surface.
+          #
+          # Report FILENAMES ONLY (`-l`), never the matched line. On a public repo the
+          # Actions log is world-readable and outlives the branch, so echoing a matched
+          # line would publish the very content this gate exists to keep private. A path
+          # is enough to act on — whoever fixes it has the tree.
+          if files=$(git grep -lIiE -f /tmp/markers.txt -- . ':(exclude)scripts/security_scan.py' 2>/dev/null); then
+            echo "::error::internal markers found in tracked files (paths below; content withheld)"
+            echo "$files"
+            fail=1
+          fi
+
+          echo "== incoming commit messages =="
+          # New branch / first push (before == all-zeros): there is no BEFORE ref to diff
+          # against, so only the tip commit is scanned (-1). This assumes branch-internal
+          # history was scanned on its own earlier pushes. Safe while `push` is gated to
+          # `main` and PRs scan base..head — revisit this if the trigger is ever widened.
+          if [ "$EVENT" = "pull_request" ]; then
+            range=( "$PR_BASE..$PR_HEAD" )
+          elif printf '%s' "$PUSH_BEFORE" | grep -qE '^0*$'; then
+            range=( -1 "$PUSH_AFTER" )        # new branch / first push: just the tip
+          else
+            range=( "$PUSH_BEFORE..$PUSH_AFTER" )
+          fi
+          # Report offending commit SHAs ONLY — never the matched message text (same
+          # public-log reasoning as above). Scan each message with `grep -q`, which prints
+          # nothing; collect the SHAs that hit.
+          bad=""
+          for sha in $(git log --format='%H' "${range[@]}" 2>/dev/null); do
+            if git log -1 --format='%s%n%b' "$sha" | grep -qiE -f /tmp/markers.txt; then
+              bad="$bad $sha"
+            fi
+          done
+          if [ -n "$bad" ]; then
+            echo "::error::internal markers found in commit messages (SHAs below; text withheld)"
+            printf '%s\n' $bad
+            fail=1
+          fi
+
+          if [ "$fail" -eq 0 ]; then
+            echo "leak-scan: clean — no internal markers"
+          else
+            echo "leak-scan: internal markers detected (see annotations above)."
+          fi
+          exit "$fail"
