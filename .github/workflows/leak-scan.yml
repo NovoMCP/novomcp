@@ -47,7 +47,10 @@ jobs:
           fail=0
 
           echo "== tracked file content =="
-          if hits=$(git grep -nIiE -f /tmp/markers.txt 2>/dev/null); then
+          # Detection tooling (a secret scanner) legitimately contains
+          # credential-shape regexes; exclude such files so they don't false-trip
+          # the credential markers. Dedicated secret scanning owns that surface.
+          if hits=$(git grep -nIiE -f /tmp/markers.txt -- . ':(exclude)scripts/security_scan.py' 2>/dev/null); then
             echo "::error::internal markers found in tracked files"
             echo "$hits"
             fail=1
