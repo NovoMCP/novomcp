@@ -35,6 +35,7 @@ import asyncio
 import json
 import logging
 import os
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from typing import Dict, Any, List, Optional
 from contextlib import asynccontextmanager
@@ -815,6 +816,14 @@ async def health():
     }
 
 
+# Dedicated, bounded thread pool for the synchronous warehouse connector SDKs.
+# A wedged connector thread (e.g. a firewalled Snowflake/Databricks host whose
+# driver keeps blocking past our 45s deadline) is confined here and can never
+# starve the process-wide default asyncio.to_thread pool the rest of the engine
+# relies on.
+_CONNECTOR_POOL = ThreadPoolExecutor(max_workers=4, thread_name_prefix="connector")
+
+
 @app.post("/local/connectors/execute")
 async def local_connector_execute(request: Request):
     """Local-mode connector execution for self-host. Stateless: the caller supplies
@@ -876,9 +885,18 @@ async def local_connector_execute(request: Request):
 
     try:
         # Bound the adapter call so a hanging/misconfigured endpoint can't wedge
-        # the request. Run it in a worker thread so a blocking SDK client (the
-        # warehouse drivers are synchronous) doesn't stall the event loop.
-        return await asyncio.wait_for(asyncio.to_thread(asyncio.run, _run()), timeout=45)
+        # the request. Run it in the dedicated connector pool so a blocking SDK
+        # client (the warehouse drivers are synchronous) doesn't stall the event
+        # loop — and, because the pool is separate and capped, a thread that hangs
+        # past the deadline can only exhaust the connector pool, never the shared
+        # default asyncio.to_thread pool the rest of the engine uses. wait_for
+        # still gives the caller a 504 at 45s; the SDK-level timeouts in each
+        # adapter ensure the worker thread itself self-terminates well before then.
+        loop = asyncio.get_running_loop()
+        return await asyncio.wait_for(
+            loop.run_in_executor(_CONNECTOR_POOL, lambda: asyncio.run(_run())),
+            timeout=45,
+        )
     except asyncio.TimeoutError:
         return JSONResponse({"ok": False, "error": "timeout",
                              "detail": "The connector did not respond in time."}, status_code=504)

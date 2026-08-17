@@ -73,6 +73,10 @@ class DatabricksConnector(BaseConnector):
             access_token=self.credentials["access_token"],
             catalog=self.config.get("catalog"),
             schema=self.config.get("schema"),
+            # Bound socket connect/send/recv so an unreachable or firewalled
+            # workspace can't block the (synchronous) driver past the caller's
+            # 45s deadline; the worker thread self-terminates instead of hanging.
+            _socket_timeout=30,
         )
         return self._conn
 
@@ -96,13 +100,17 @@ class DatabricksConnector(BaseConnector):
             catalog = validate_sql_identifier(self.config.get("catalog", "main"), "catalog")
             schema = validate_sql_identifier(self.config.get("schema", "default"), "schema")
 
+            # catalog is an identifier (can't be bound) and is validated above;
+            # schema is a value, so bind it with a parameter like the Snowflake
+            # adapter does rather than interpolating it as a literal.
             cur.execute(
                 f"""
                 SELECT TABLE_NAME, COLUMN_NAME, DATA_TYPE, IS_NULLABLE
                 FROM {catalog}.INFORMATION_SCHEMA.COLUMNS
-                WHERE TABLE_SCHEMA = '{schema}'
+                WHERE TABLE_SCHEMA = %s
                 ORDER BY TABLE_NAME, ORDINAL_POSITION
-                """
+                """,
+                [schema],
             )
 
             tables: Dict[str, List[SchemaColumn]] = {}
