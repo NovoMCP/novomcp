@@ -20,3 +20,9 @@ Seven posts drawn from a single molecular dynamics engineering effort in the sum
 6. [False-alarm resolution as institutional memory](false-alarm-memory.md)
 
 Each is a draft pending review. The series arc post, synthesizing the meta-rule the seven instances share, is not yet written; it belongs at the end of the series after readers have absorbed the individual patterns.
+
+## Drafts (validation series)
+
+Drawn from validating a trajectory diagnostic in the summer of 2026. Same meta-rule, one layer beneath the result — in the measurement setup nobody thought to review.
+
+- [Configuration can produce a confident wrong answer](configuration-is-part-of-the-measurement.md) — co-authored with Dal Marsters
