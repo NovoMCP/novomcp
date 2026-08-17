@@ -67,7 +67,7 @@ The raw/standardised gap surfaced only because two independent implementations w
 
 `FROZEN` validated. On the production raw-input path the effect is **+0.153 SD** beyond a step-order null that no permutation in 500 reached (**z = 17.0**), on 54,312 real homologous series — larger than the standardised figure first published, not smaller. The one question the study could not settle is whether `FROZEN` is separable from trivial rail-detection: a probability pinned at 0 or 1 cannot move, so "it did not move" is guaranteed rather than informative. That is a limitation of the data, not a weakness of the label — the corpus does not contain enough of the right series to reach significance on the conditional.
 
-The full analysis — tables, nulls, and the two rejected explanations — lives with the validation record next to the tool ([`analysis/frozen_study/`](../../orchestrator/src/novomcp/analysis/frozen_study/)). The analysis machinery (`corpus_stream_mine`, `corpus_merge_series`, `exp20`) lives in the companion research repository. The two cross-link.
+The full analysis — tables, nulls, and the two rejected explanations — lives with the validation record next to the tool ([`analysis/frozen_study/`](../../orchestrator/src/novomcp/analysis/frozen_study/)). The analysis machinery (`corpus_stream_mine`, `corpus_merge_series`, `exp20`) lives in the [companion research repository](https://github.com/dmarsters/frozen-validation) — anonymous S3 corpus access, no credentials, `trajectory_diagnostic` deliberately not vendored so the validation can't drift from the tool it validates. The two cross-link.
 
 ---
 

@@ -112,4 +112,5 @@ why the result is trustworthy.
 
 > Co-authored with Dal Marsters ([@dmarsters](https://github.com/dmarsters)); the
 > analysis machinery (`corpus_stream_mine`, `corpus_merge_series`, `exp20`) lives in
-> the companion research repository and cross-links back here.
+> the [companion research repository](https://github.com/dmarsters/frozen-validation),
+> which cross-links back here.
