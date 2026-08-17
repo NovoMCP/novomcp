@@ -21,17 +21,17 @@ from pathlib import Path
 # text files. Zero matches expected across the entire repo. Add new secret
 # formats here as they appear.
 PATTERNS: list[tuple[str, str]] = [
-    (r"AKIA[0-9A-Z]{16}",
+    (r"AKIA[0-9A-Z]{16}",  # scrub-allow
      "AWS access key ID leaked"),
-    (r"\bnmcp_[A-Za-z0-9]{20,}",
+    (r"\bnmcp_[A-Za-z0-9]{20,}",  # scrub-allow
      "NovoMCP core API key leaked"),
-    (r"\bncmcp_[A-Za-z0-9]{20,}",
+    (r"\bncmcp_[A-Za-z0-9]{20,}",  # scrub-allow
      "NovoMCP compute API key leaked"),
-    (r"sk-[a-zA-Z0-9]{40,}",
+    (r"sk-[a-zA-Z0-9]{40,}",  # scrub-allow
      "OpenAI API key leaked"),
-    (r"ghp_[A-Za-z0-9]{36}",
+    (r"ghp_[A-Za-z0-9]{36}",  # scrub-allow
      "GitHub personal-access token leaked"),
-    (r"xoxb-[0-9]+-[0-9]+-[a-zA-Z0-9]+",
+    (r"xoxb-[0-9]+-[0-9]+-[a-zA-Z0-9]+",  # scrub-allow
      "Slack bot token leaked"),
 ]
 
