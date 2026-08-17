@@ -76,12 +76,18 @@ MIN_STEPS = 3
 class Thresholds:
     """Every classification cutoff, surfaced as a parameter with a defaulted rationale so nobody
     has to reverse-engineer a magic number. Defaults are tuned for probabilities in [0, 1]; for
-    endpoints in other units (e.g. logS in log mol/L, clearance in mL/min/kg) pass a Thresholds
-    with `flat_abs` scaled to that axis — the rank/normalized cutoffs are unit-free and carry over."""
+    endpoints in other units (e.g. logS in log mol/L, clearance in mL/min/kg) supply per-axis
+    `flat_abs` via analyze_optimization_trajectory's `flat_abs_by_axis` — the rank/normalized cutoffs
+    are unit-free and carry over. (A single `Thresholds.flat_abs` applies one absolute cutoff to
+    every axis; see the `flat_abs` field note and issue #58.)"""
 
     flat_abs: float = 0.10
     # An axis is FLAT if its raw value range across the series is below this. 0.10 on a [0,1]
     # probability is within typical ADMET model noise, so a smaller swing is "did not move".
+    # This is a single ABSOLUTE cutoff in the axis's own units: on a mixed-scale endpoint set it
+    # does different work per axis (0.10 is ~0.1 SD on logS but ~0.9 SD on a low-variance
+    # probability). To make the flat gate mean the same thing across axes, pass per-axis values via
+    # analyze_optimization_trajectory's `flat_abs_by_axis` (e.g. k·corpus-SD). See issue #58.
 
     mono_rho: float = 0.70
     # |Spearman rank correlation| at or above this counts the axis as monotone (CLIMBING/DESCENDING).
@@ -113,12 +119,16 @@ class Thresholds:
 DEFAULT = Thresholds()
 
 
-def classify_axis(v, positions, thresholds=DEFAULT):
+def classify_axis(v, positions, thresholds=DEFAULT, flat_abs=None):
     """Classify one property axis's behavior along the series.
 
     v          : raw values per step (length n_steps).
     positions  : x per step (real quantities — logP, #Cl — if the series is unevenly spaced).
     thresholds : a `Thresholds` instance (see its field docs for every cutoff's rationale).
+    flat_abs   : optional per-call override of the "did it move" floor (thresholds.flat_abs), in
+                 THIS axis's own units (e.g. k·corpus-SD) so the flat gate means the same thing
+                 across endpoints of different scale; None uses thresholds.flat_abs. See
+                 analyze_optimization_trajectory's `flat_abs_by_axis` and issue #58.
     Returns {"class", "raw_range", "monotonicity", "early_range", "late_range", "late_move",
     "cliff_step"}. FROZEN is decided by `late_range` (both halves measured as ranges);
     `late_move` is the legacy endpoint delta, reported for back-compatibility only.
@@ -127,7 +137,8 @@ def classify_axis(v, positions, thresholds=DEFAULT):
     v = np.asarray(v, dtype=float)
     n = len(v)
     raw_range = float(v.max() - v.min())
-    if raw_range < t.flat_abs:
+    gate = t.flat_abs if flat_abs is None else float(flat_abs)
+    if raw_range < gate:
         return {"class": "flat", "raw_range": round(raw_range, 3), "monotonicity": 0.0,
                 "early_range": 0.0, "late_move": 0.0, "late_range": 0.0,
                 "cliff_step": None}
@@ -173,16 +184,23 @@ def classify_axis(v, positions, thresholds=DEFAULT):
             "cliff_step": cliff_step if cls == "cliff" else None}
 
 
-def analyze_optimization_trajectory(values, axis_names, positions=None, thresholds=DEFAULT):
+def analyze_optimization_trajectory(values, axis_names, positions=None, thresholds=DEFAULT,
+                                    flat_abs_by_axis=None):
     """
     values      : [n_steps, n_axes] — a property vector measured along an ordered series.
     axis_names  : length n_axes; labels the columns (the fixed endpoint set — see ENDPOINT CONTRACT).
     positions   : optional x per step (default 0..n-1); pass real quantities (logP, #Cl) if the
                   series is not evenly spaced.
     thresholds  : a `Thresholds` instance.
-    Returns {"n_steps", "axes": {name: classification}, "summary": {class: [names]}, "thresholds": {...}}.
-    Raises ValueError on a ragged shape, fewer than MIN_STEPS steps, a name/column mismatch, or any
-    non-finite entry (see ENDPOINT CONTRACT — resolve missing values with align_series first).
+    flat_abs_by_axis : optional {axis_name: flat_abs} — a per-axis "did it move" floor in each
+                  axis's own units (e.g. k·corpus-SD), so the flat gate is comparable across
+                  endpoints of different scale. An axis absent from the map (or the whole map being
+                  None) falls back to `thresholds.flat_abs`. See issue #58.
+    Returns {"n_steps", "axes": {name: classification}, "summary": {class: [names]}, "thresholds":
+    {...}, "flat_abs_by_axis": {...} | None}.
+    Raises ValueError on a ragged shape, fewer than MIN_STEPS steps, a name/column mismatch, any
+    non-finite entry, or a non-positive `flat_abs_by_axis` value (see ENDPOINT CONTRACT — resolve
+    missing values with align_series first).
     """
     values = np.asarray(values, dtype=float)
     if values.ndim != 2:
@@ -204,12 +222,20 @@ def analyze_optimization_trajectory(values, axis_names, positions=None, threshol
         if not np.isfinite(positions).all():
             raise ValueError("positions contains NaN/inf")
 
+    if flat_abs_by_axis is not None:
+        bad = {k: v for k, v in flat_abs_by_axis.items()
+               if not (isinstance(v, (int, float)) and not isinstance(v, bool) and v > 0)}
+        if bad:
+            raise ValueError(f"flat_abs_by_axis values must be positive numbers, got {bad}")
+
     axes, summary = {}, {}
     for j, name in enumerate(axis_names):
-        c = classify_axis(values[:, j], positions, thresholds)
+        fa = flat_abs_by_axis.get(name) if flat_abs_by_axis else None
+        c = classify_axis(values[:, j], positions, thresholds, flat_abs=fa)
         axes[name] = c
         summary.setdefault(c["class"], []).append(name)
-    return {"n_steps": n_steps, "axes": axes, "summary": summary, "thresholds": asdict(thresholds)}
+    return {"n_steps": n_steps, "axes": axes, "summary": summary, "thresholds": asdict(thresholds),
+            "flat_abs_by_axis": (dict(flat_abs_by_axis) if flat_abs_by_axis else None)}
 
 
 def align_series(step_records, *, require="all"):

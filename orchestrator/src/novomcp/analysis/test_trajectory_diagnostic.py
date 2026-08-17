@@ -184,6 +184,36 @@ def test_flat_abs_threshold_flips_herg():
     assert at_sensitive["axes"]["herg_blocker_probability"]["class"] == "climbing"
 
 
+def test_flat_abs_by_axis_gates_one_axis_only():
+    """Per-axis flat_abs gates each column independently. hERG reads FLAT at the default 0.10;
+    lowering the floor for ONLY hERG flips it to CLIMBING while every other axis is untouched —
+    the fix for a single absolute cutoff doing different work per endpoint (issue #58)."""
+    vals = np.array(FIXTURES["homologation"]["values"])
+    base = analyze_optimization_trajectory(vals, AXES)  # all axes at default 0.10
+    assert base["axes"]["herg_blocker_probability"]["class"] == "flat"
+    res = analyze_optimization_trajectory(vals, AXES, flat_abs_by_axis={"herg_blocker_probability": 0.05})
+    assert res["axes"]["herg_blocker_probability"]["class"] == "climbing"
+    for ax in AXES:
+        if ax != "herg_blocker_probability":
+            assert res["axes"][ax]["class"] == base["axes"][ax]["class"], ax
+    assert res["flat_abs_by_axis"] == {"herg_blocker_probability": 0.05}
+
+
+def test_flat_abs_by_axis_none_is_noop():
+    """flat_abs_by_axis=None (the default) reproduces the single-Thresholds behavior exactly."""
+    vals = np.array(FIXTURES["homologation"]["values"])
+    a = analyze_optimization_trajectory(vals, AXES)
+    b = analyze_optimization_trajectory(vals, AXES, flat_abs_by_axis=None)
+    assert a["summary"] == b["summary"]
+    assert a["flat_abs_by_axis"] is None
+
+
+def test_flat_abs_by_axis_rejects_nonpositive():
+    vals = np.array(FIXTURES["homologation"]["values"])
+    with pytest.raises(ValueError, match="positive"):
+        analyze_optimization_trajectory(vals, AXES, flat_abs_by_axis={"herg_blocker_probability": 0.0})
+
+
 def test_thresholds_reject_nonpositive():
     with pytest.raises(ValueError):
         Thresholds(mono_rho=-0.1)
