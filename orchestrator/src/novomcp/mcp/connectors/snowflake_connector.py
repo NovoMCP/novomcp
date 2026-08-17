@@ -87,6 +87,11 @@ class SnowflakeConnector(BaseConnector):
             "schema": self.config.get("schema"),
             "warehouse": self.config.get("warehouse"),
             "role": self.config.get("role"),
+            # Bound how long the (synchronous) driver may block on an unreachable
+            # or firewalled host so the worker thread self-terminates well within
+            # the caller's 45s deadline instead of hanging for the driver default.
+            "login_timeout": 10,
+            "network_timeout": 30,
         }
 
         # Support password or key-pair auth
