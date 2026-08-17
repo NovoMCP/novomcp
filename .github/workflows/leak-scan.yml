@@ -6,6 +6,9 @@
 #
 # The marker list is read from the SCRUB_MARKERS secret — it is never committed,
 # because the list itself contains internal names and account identifiers.
+# KEEP IN SYNC with the local pre-push hook's inline marker array (scrub-gate.sh):
+# they are two independent copies, so a marker added to one but not the other
+# creates a blind spot. When you change either list, update both.
 # Format: one grep -E (extended-regex) pattern per line. On a fork PR the secret
 # is absent, so the scan skips (a maintainer's own push/PR is still scanned).
 
@@ -58,6 +61,20 @@ jobs:
           if files=$(git grep -lIiE -f /tmp/markers.txt -- . ':(exclude)scripts/security_scan.py' 2>/dev/null); then
             echo "::error::internal markers found in tracked files (paths below; content withheld)"
             echo "$files"
+            fail=1
+          fi
+
+          echo "== self-scanner file (non-exempt lines) =="
+          # scripts/security_scan.py is excluded from the scan above because its own
+          # credential-shape regexes match the credential markers. Scan it here too,
+          # but fail only on markers NOT on a line tagged `# scrub-allow`, so a hidden
+          # internal marker in that file can't ride the whole-file exclusion. The
+          # legitimate credential-regex definitions carry the tag; anything else is a
+          # real hit. Report file:line only (content withheld, same reasoning as above).
+          selfhits=$(git grep -nIiE -f /tmp/markers.txt -- scripts/security_scan.py 2>/dev/null | grep -v 'scrub-allow' | cut -d: -f1-2 || true)
+          if [ -n "$selfhits" ]; then
+            echo "::error::internal marker on a non-exempt line of scripts/security_scan.py (file:line below; content withheld)"
+            echo "$selfhits"
             fail=1
           fi
 
