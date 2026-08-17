@@ -145,6 +145,21 @@ async def test_per_axis_flat_gate_applied_by_default():
 
 
 @pytest.mark.asyncio
+async def test_aqsol_capital_L_key_resolves_to_per_axis_gate():
+    # addie emits aqsol as `aqueous_solubility_log_mol_L` (capital L) and the trajectory path passes
+    # it through unmodified, so the SD table must key it the same way — otherwise the flagship barred
+    # axis silently falls back to the absolute 0.10 gate (issue #58). A monotone range of 0.25 is
+    # below the per-axis gate (0.5*0.87247 = 0.436) -> flat, but ABOVE the absolute 0.10 -> would read
+    # climbing if the key missed. So `flat` + payload membership pins that the per-axis gate fired.
+    def aqsol(i, n):
+        return {"aqueous_solubility_log_mol_L": round(-2.30 + (0.25 / (n - 1)) * i, 4)}
+    ex = _executor(_fake_addie(shapes=aqsol))
+    r = await ex._execute_analyze_admet_trajectory({"smiles_series": SERIES})
+    assert r.data["axes"]["aqueous_solubility_log_mol_L"]["class"] == "flat"
+    assert "aqueous_solubility_log_mol_L" in r.data["flat_gate"]["per_axis_gated"]
+
+
+@pytest.mark.asyncio
 async def test_dropped_endpoint_reported_not_fatal():
     # frozen_probability absent at step 3 -> dropped from the whole trajectory and named; the rest
     # still analyze (the fixed-endpoint contract from align_series).

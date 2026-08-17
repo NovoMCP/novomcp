@@ -11,13 +11,17 @@ you, for each property axis, whether ALONG THIS modification it is:
                CH2-homologous series from the open corpus, axes labelled FROZEN on a 60% prefix
                moved measurably less over the held-out tail than climbing/descending/complex ones
                — +0.1352 SD beyond a step-order null that no permutation in 500 reached (z≈14.6),
-               on the production path: a per-axis flat gate (flat_abs = 0.5·corpus-SD per endpoint,
-               issue #58), raw input, 60% prefix, gate and effect both in 122M corpus-SD units.
-               Earlier, larger figures were gate-dependent restatements of the same effect: +0.153
-               SD (z=17.0) under a single absolute flat_abs, +0.108 SD under standardised input —
-               neither the path a caller now runs. Quote the excess-over-null (+0.1352), not the
-               unadjusted contrast (+0.2438): the null is not zero, because FROZEN preferentially
-               selects low-variance axes. See issues #36 and #58.
+               on the production path: a per-axis flat gate (flat_abs = 0.5·corpus-SD, issue #58),
+               raw input, 60% prefix, gate and effect both in 122M corpus-SD units. The figure is a
+               function of three configuration axes — input, gate, SD basis — not one:
+                 +0.108  (z=12.4)  standardised input
+                 +0.153  (z=17.0)  raw input, absolute gate, 8-shard SD basis
+                 +0.1491 (z=16.02) raw input, absolute gate, unified 122M SD basis
+                 +0.1352 (z≈14.6)  raw input, per-axis gate, 122M — the path a caller now runs.
+               The gate costs ~-0.014, the basis change ~-0.004; attributing both to the gate would
+               be the error the number's own caveat warns against. Quote the excess-over-null
+               (+0.1352), not the unadjusted contrast (+0.2438): the null is not zero, because FROZEN
+               preferentially selects low-variance axes. See issues #36 and #58.
   CLIMBING   — monotone up with the modification: you are actively DRIVING it.
   DESCENDING — monotone down.
   CLIFF      — a single-step threshold jump: a discontinuity to watch.

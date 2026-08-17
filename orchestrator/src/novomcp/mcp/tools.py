@@ -208,8 +208,11 @@ _BRIDGE_LIVE_TOXICITY_KEYS = ("clinical_toxicity", "cardiotoxicity_dict", "hepat
 # so "did it move" means the same thing — 0.5 corpus-SD — on every endpoint, instead of one
 # absolute 0.10 that gated logS at ~0.1 SD but cyp2d6 at ~0.9 SD. FROZEN_K_GATE = 0.5 was chosen
 # on non-outcome grounds (neither the powered nor the sensitive re-validation dataset could pin it
-# on effect size; see #58). SDs measured on the full 122M corpus. Endpoints absent from this table
-# fall back to Thresholds.flat_abs (0.10 absolute) — extend it as more corpus SDs are measured.
+# on effect size; see #58). SDs are measured on the full 122M corpus; the KEYS are addie's live
+# prediction spellings (which the trajectory path passes through unmodified — a few, e.g. aqsol and
+# vdss, carry a capital-L the corpus column does not). Endpoints absent from this table fall back to
+# Thresholds.flat_abs (0.10 absolute); the result payload's `flat_gate` field logs which axes were
+# per-axis-gated vs fell back, so the coverage split is explicit rather than silent.
 FROZEN_K_GATE = 0.5
 _ADMET_AXIS_SD_122M = {
     "ames_mutagenicity_probability": 0.17941, "hepatotoxicity_probability": 0.25600,
@@ -217,9 +220,16 @@ _ADMET_AXIS_SD_122M = {
     "cardiotoxicity_10d_probability": 0.38815, "cyp3a4_inhibitor_probability": 0.17434,
     "cyp2d6_inhibitor_probability": 0.11260, "cyp2c9_inhibitor_probability": 0.13308,
     "bbb_penetration_probability": 0.21898, "bioavailability_probability": 0.12268,
-    "aqueous_solubility_log_mol_l": 0.87247, "overall_toxicity_score": 0.15713,
-    "clearance_hepatocyte": 18.72369, "ld50_log_mol_kg": 0.49987,
-    "respiratory_toxicity_probability": 0.38839,
+    "overall_toxicity_score": 0.15713, "respiratory_toxicity_probability": 0.38839,
+    # non-probability endpoints — where the absolute 0.10 gate was worst mis-scaled (it gated
+    # half_life_hr at 0.002 SD, clearance at ~0.005 SD — structurally barred from ever being flat).
+    # Keyed by addie's OUTPUT spelling (capital-L on aqsol/vdss); SD value from the lowercase corpus
+    # column. Covers every non-probability endpoint addie emits; `binding_affinity_score` is a
+    # docking output, not an addie ADMET head, so it is intentionally absent.
+    "aqueous_solubility_log_mol_L": 0.87247, "clearance_hepatocyte": 18.72369,
+    "clearance_microsome": 20.28042, "ld50_log_mol_kg": 0.49987,
+    "half_life_hr": 42.73020, "vdss_L_kg": 5.50266, "ppbr_percent": 12.72850,
+    "caco2_permeability": 0.37392, "lipophilicity_log_ratio": 1.80519,
 }
 _FROZEN_FLAT_ABS_BY_AXIS = {a: round(FROZEN_K_GATE * sd, 5) for a, sd in _ADMET_AXIS_SD_122M.items()}
 
@@ -1373,7 +1383,7 @@ MCP_TOOLS = {
     "analyze_admet_trajectory": {
         "name": "analyze_admet_trajectory",
         "title": "Analyze ADMET Trajectory",
-        "description": "Read an ADMET *series*, not a single molecule. Given an ORDERED list of SMILES that walk one optimization direction (a homologous series, a synthetic route, analogs from one repeating modification), scores every molecule with addie-models and classifies how each ADMET endpoint MOVES along the series: frozen (moved then plateaued — a dead-end you cannot tune further this way), climbing / descending (you are actively driving it), cliff (a single-step discontinuity), flat (this modification is irrelevant to it), or complex (non-monotone). Answers the campaign-level question a per-molecule prediction cannot: which liabilities are dead-ends, which you are worsening, and which you can ignore along this modification. ORDER MATTERS — pass the molecules in modification order. Needs 3–100 molecules. CALIBRATION: the labels are trend reads (Spearman rank correlation + threshold cutoffs). `cliff` is validated against a documented Ames cliff (4-aminobiphenyl fires `cliff` at the alert step). `frozen` is validated as PREDICTIVE on 54,312 real homologous series: axes it labels on a prefix move +0.1352 SD less over the held-out tail than others, beyond a step-order null no permutation in 500 reached (issues #36, #58; production path: per-axis flat gate = 0.5·corpus-SD per endpoint, in 122M corpus-SD units) — quote that excess, not the raw contrast, since the null is not zero. climbing/descending/flat are directional and robust; cliff is honestly conservative — a real cliff can read as `climbing` when the model's baseline for the non-alert analogs is already elevated (the bound is the model, not the labeler), so verify against the underlying series.",
+        "description": "Read an ADMET *series*, not a single molecule. Given an ORDERED list of SMILES that walk one optimization direction (a homologous series, a synthetic route, analogs from one repeating modification), scores every molecule with addie-models and classifies how each ADMET endpoint MOVES along the series: frozen (moved then plateaued — a dead-end you cannot tune further this way), climbing / descending (you are actively driving it), cliff (a single-step discontinuity), flat (this modification is irrelevant to it), or complex (non-monotone). Answers the campaign-level question a per-molecule prediction cannot: which liabilities are dead-ends, which you are worsening, and which you can ignore along this modification. ORDER MATTERS — pass the molecules in modification order. Needs 3–100 molecules. CALIBRATION: the labels are trend reads (Spearman rank correlation + threshold cutoffs). `cliff` is validated against a documented Ames cliff (4-aminobiphenyl fires `cliff` at the alert step). `frozen` is validated as PREDICTIVE on 54,312 real homologous series: axes it labels on a prefix move +0.1352 SD less over the held-out tail than others, beyond a step-order null no permutation in 500 reached (issues #36, #58; production path: per-axis flat gate = 0.5·corpus-SD, in 122M corpus-SD units). The per-axis gate covers the endpoints with a measured corpus SD (the probability panel plus aqsol/clearance/ld50/…); any other endpoint keeps the absolute 0.10 default, and the result's `flat_gate` field lists which axes got which. Quote that excess, not the raw contrast, since the null is not zero. climbing/descending/flat are directional and robust; cliff is honestly conservative — a real cliff can read as `climbing` when the model's baseline for the non-alert analogs is already elevated (the bound is the model, not the labeler), so verify against the underlying series.",
         "annotations": {
             "readOnlyHint": True,
             "destructiveHint": False
@@ -8335,6 +8345,15 @@ class MCPToolExecutor:
 
         result["dropped_endpoints"] = dropped
         result["n_molecules"] = len(series)
+        # Make the flat-gate coverage explicit: which axes got the per-axis gate vs fell back to the
+        # absolute default. Silent fallback on a mis-scaled endpoint is exactly the #58 failure mode.
+        if flat_abs_by_axis:
+            per_axis = [a for a in axis_names if a in flat_abs_by_axis]
+            fallback = [a for a in axis_names if a not in flat_abs_by_axis]
+            result["flat_gate"] = {"mode": "per_axis", "k_gate": FROZEN_K_GATE,
+                                   "per_axis_gated": per_axis, "absolute_fallback": fallback}
+        else:
+            result["flat_gate"] = {"mode": "absolute", "flat_abs": thresholds.flat_abs}
         # Candor: the classifications are heuristic trend reads. Validated against a
         # documented Ames cliff (issue #11); the known limitation is model baseline.
         result["calibration"] = (

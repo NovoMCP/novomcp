@@ -128,9 +128,13 @@ homologation primary. The per-axis gate unbars them (aqsol 0.000 → ~0.03–0.0
 0.000 → 0.015) and pulls `cyp2d6` off its ceiling. Same artifact, two independent rosters and
 chemotypes — that, not the effect size, is the case for the change, and it holds at any k_gate.
 
-**Why k_gate = 0.5, on non-outcome grounds.** Neither dataset's effect size could pin it: the
-underpowered secondary binds on noise (z ~2 across the viable range), the powered primary
-saturates (0/500 at every k_gate). So k_gate is chosen deliberately, not from the effect —
+**Why k_gate = 0.5, on non-outcome grounds.** Neither dataset's effect size could pin it. Every
+curve is smooth and monotone in k_gate on both arms (second differences the same order as the
+steps), so there is no bound to find — "smallest k_gate that preserves the effect" only reports
+where the sweep stopped. The permutation-count statistic doesn't help: it is censored at 1/500,
+so the primary reads 0/500 at every k_gate even though its graded z ran 10.28 → 15.83 across the
+sweep (read the graded statistic, not the count — the same lesson that bit the band-truncation
+frame). So k_gate is chosen deliberately, not from the effect —
 0.5 is the secondary's best population match (268 vs 257 frozen), effectively tied on the
 primary (baseline 34,678 between 0.5's 33,983 and 0.4's 35,370), unbars the barred axes more
 than 0.4, and returns the median probability axis to ~0.10 so axes the absolute gate already
