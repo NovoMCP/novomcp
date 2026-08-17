@@ -192,7 +192,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       };
       
       // Now get user details through NovoMCP proxy
-      const userResponse = await fetch(`${API_BASE}/proxy/managed backend/user/profile`, {
+      const userResponse = await fetch(`${API_BASE}/proxy/managed-backend/user/profile`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
