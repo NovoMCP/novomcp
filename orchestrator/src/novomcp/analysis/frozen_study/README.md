@@ -95,6 +95,21 @@ So caveat 3 is a limitation of the data, not a weakness of the label. `FROZEN` i
 reducible to rail-detection here — and it is also not demonstrably separable from it.
 Both readings are unsupported by this sample.
 
+### Objections raised and resolved
+
+Two objections were raised during review and resolved against the data. They are
+recorded here rather than smoothed out, because a rejected explanation is part of
+why the result is trustworthy.
+
+- **CF₂-homologation.** That these series measure chain elongation (CF₂
+  homologation) rather than perfluorination of a fixed skeleton. Falsified by the
+  export itself: `parent_smiles` is constant across all 468 series, so carbon count
+  cannot grow within a series — every step adds one halogen to the same skeleton.
+- **Chemical exhaustion.** That series running out of substitutable hydrogens (43%
+  do) drive the effect, the plateau being the ladder ending rather than the property
+  saturating. Rejected by the data: exhausted series give +0.259, non-exhausted
+  +0.246 — indistinguishable.
+
 > Co-authored with Dal Marsters ([@dmarsters](https://github.com/dmarsters)); the
 > analysis machinery (`corpus_stream_mine`, `corpus_merge_series`, `exp20`) lives in
 > the companion research repository and cross-links back here.

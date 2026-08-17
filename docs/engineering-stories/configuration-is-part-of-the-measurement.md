@@ -21,7 +21,7 @@ That is not the part worth recording. Three of the study's findings were not abo
 
 The corpus is partitioned by molecular weight. Homologation adds about 14 Da per step, so a long series walks across band boundaries, and a series that begins near a band edge runs off it and is cut short. The part that gets cut is the end of the series — the held-out tail the study measures.
 
-Analysed band by band, the primary reads **+0.016**, confidence interval spanning zero: indistinguishable from a detector that fires whenever the prefix happens to be quiet. Pooled across bands — same series, same code, same thresholds — it reads **z = 12.4**. Opposite conclusions. The only thing that changed was the filing system under the data.
+Analysed band by band, the primary — read in its pre-registered B2 (moved-then-plateaued) frame — reads **+0.016**, confidence interval spanning zero: indistinguishable from a detector that fires whenever the prefix happens to be quiet. (The primary *contrast* band by band is +0.083, CI excluding zero; it is the pre-registered reporting frame that reverses, not the contrast — itself a small instance of the same lesson.) Pooled across bands — same series, same code, same thresholds — it reads **z = 12.4**. Opposite conclusions from one filing decision.
 
 ### An input convention
 
@@ -57,7 +57,7 @@ If you ship a diagnostic that reads a series, that surface is the part to review
 
 Two of the three surfaced from process, not insight.
 
-The pre-registration required **pooling across weight bands before the answer was known**. Written after the band-by-band nulls were seen, "analyse per band" would have looked like the conservative choice, and it would have buried the effect. Fixing the aggregation before the result is what kept the truncation from winning.
+The pre-registration ([#36](https://github.com/NovoMCP/novomcp/issues/36), posted publicly before any result was in) required **pooling across weight bands before the answer was known**. Written after the band-by-band nulls were seen, "analyse per band" would have looked like the conservative choice, and it would have buried the effect. Fixing the aggregation before the result is what kept the truncation from winning.
 
 The raw/standardised gap surfaced only because two independent implementations were **reconciled against a written spec** rather than compared for agreement. That distinction is the transferable part, and the one line here worth defending under any edit: two implementations agreeing tells you very little. Ours agreed on direction throughout — both said `FROZEN` axes move less — while differing twofold on the population being measured. Agreement on the headline hid a disagreement about what was being counted. It was the written spec — an external artifact neither implementation could quietly conform to the other — that made the gap visible. This is the same discipline as [spec is the source of truth](spec-source-of-truth.md), applied to a result instead of a threshold.
 
