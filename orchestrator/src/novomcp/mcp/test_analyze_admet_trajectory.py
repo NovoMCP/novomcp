@@ -129,6 +129,22 @@ async def test_threshold_override_changes_classification():
 
 
 @pytest.mark.asyncio
+async def test_per_axis_flat_gate_applied_by_default():
+    # cyp2d6 is in the per-axis SD table (SD 0.1126 -> gate 0.5*0.1126 = 0.056). A monotone rise of
+    # ~0.08 clears the per-axis gate (climbing) but is below the absolute 0.10 default. Proves the
+    # executor wires flat_abs_by_axis by default (issue #58), and that an explicit flat_abs override
+    # opts back out to the absolute gate.
+    def cyp(i, n):
+        return {"cyp2d6_inhibitor_probability": round(0.10 + (0.08 / (n - 1)) * i, 4)}  # range 0.08
+    ex = _executor(_fake_addie(shapes=cyp))
+    default = await ex._execute_analyze_admet_trajectory({"smiles_series": SERIES})
+    assert default.data["axes"]["cyp2d6_inhibitor_probability"]["class"] == "climbing"
+    override = await ex._execute_analyze_admet_trajectory(
+        {"smiles_series": SERIES, "thresholds": {"flat_abs": 0.10}})
+    assert override.data["axes"]["cyp2d6_inhibitor_probability"]["class"] == "flat"
+
+
+@pytest.mark.asyncio
 async def test_dropped_endpoint_reported_not_fatal():
     # frozen_probability absent at step 3 -> dropped from the whole trajectory and named; the rest
     # still analyze (the fixed-endpoint contract from align_series).

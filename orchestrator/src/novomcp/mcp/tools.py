@@ -203,6 +203,27 @@ _BRIDGE_LIVE_CATEGORIES = ("nuclear_receptors", "stress_response")
 _BRIDGE_LIVE_TOXICITY_KEYS = ("clinical_toxicity", "cardiotoxicity_dict", "hepatotoxicity")
 
 
+# --- Per-axis FROZEN flat gate (issue #58) -----------------------------------
+# analyze_admet_trajectory's flat gate is `flat_abs[axis] = FROZEN_K_GATE * corpus_SD[axis]`,
+# so "did it move" means the same thing — 0.5 corpus-SD — on every endpoint, instead of one
+# absolute 0.10 that gated logS at ~0.1 SD but cyp2d6 at ~0.9 SD. FROZEN_K_GATE = 0.5 was chosen
+# on non-outcome grounds (neither the powered nor the sensitive re-validation dataset could pin it
+# on effect size; see #58). SDs measured on the full 122M corpus. Endpoints absent from this table
+# fall back to Thresholds.flat_abs (0.10 absolute) — extend it as more corpus SDs are measured.
+FROZEN_K_GATE = 0.5
+_ADMET_AXIS_SD_122M = {
+    "ames_mutagenicity_probability": 0.17941, "hepatotoxicity_probability": 0.25600,
+    "carcinogenicity_probability": 0.45979, "herg_blocker_probability": 0.26830,
+    "cardiotoxicity_10d_probability": 0.38815, "cyp3a4_inhibitor_probability": 0.17434,
+    "cyp2d6_inhibitor_probability": 0.11260, "cyp2c9_inhibitor_probability": 0.13308,
+    "bbb_penetration_probability": 0.21898, "bioavailability_probability": 0.12268,
+    "aqueous_solubility_log_mol_l": 0.87247, "overall_toxicity_score": 0.15713,
+    "clearance_hepatocyte": 18.72369, "ld50_log_mol_kg": 0.49987,
+    "respiratory_toxicity_probability": 0.38839,
+}
+_FROZEN_FLAT_ABS_BY_AXIS = {a: round(FROZEN_K_GATE * sd, 5) for a, sd in _ADMET_AXIS_SD_122M.items()}
+
+
 def _strip_bridge_from_corpus(admet: Dict[str, Any]) -> Dict[str, Any]:
     """Remove the bridge heads from a corpus-derived admet so we never surface stale
     values for known molecules (they get overlaid live)."""
@@ -1352,7 +1373,7 @@ MCP_TOOLS = {
     "analyze_admet_trajectory": {
         "name": "analyze_admet_trajectory",
         "title": "Analyze ADMET Trajectory",
-        "description": "Read an ADMET *series*, not a single molecule. Given an ORDERED list of SMILES that walk one optimization direction (a homologous series, a synthetic route, analogs from one repeating modification), scores every molecule with addie-models and classifies how each ADMET endpoint MOVES along the series: frozen (moved then plateaued — a dead-end you cannot tune further this way), climbing / descending (you are actively driving it), cliff (a single-step discontinuity), flat (this modification is irrelevant to it), or complex (non-monotone). Answers the campaign-level question a per-molecule prediction cannot: which liabilities are dead-ends, which you are worsening, and which you can ignore along this modification. ORDER MATTERS — pass the molecules in modification order. Needs 3–100 molecules. CALIBRATION: the labels are trend reads (Spearman rank correlation + threshold cutoffs). `cliff` is validated against a documented Ames cliff (4-aminobiphenyl fires `cliff` at the alert step). `frozen` is validated as PREDICTIVE on 54,312 real homologous series: axes it labels on a prefix move +0.153 SD less over the held-out tail than others, beyond a step-order null no permutation in 500 reached (issue #36; measured on the production raw-input path) — quote that excess, not the raw contrast, since the null is not zero. climbing/descending/flat are directional and robust; cliff is honestly conservative — a real cliff can read as `climbing` when the model's baseline for the non-alert analogs is already elevated (the bound is the model, not the labeler), so verify against the underlying series.",
+        "description": "Read an ADMET *series*, not a single molecule. Given an ORDERED list of SMILES that walk one optimization direction (a homologous series, a synthetic route, analogs from one repeating modification), scores every molecule with addie-models and classifies how each ADMET endpoint MOVES along the series: frozen (moved then plateaued — a dead-end you cannot tune further this way), climbing / descending (you are actively driving it), cliff (a single-step discontinuity), flat (this modification is irrelevant to it), or complex (non-monotone). Answers the campaign-level question a per-molecule prediction cannot: which liabilities are dead-ends, which you are worsening, and which you can ignore along this modification. ORDER MATTERS — pass the molecules in modification order. Needs 3–100 molecules. CALIBRATION: the labels are trend reads (Spearman rank correlation + threshold cutoffs). `cliff` is validated against a documented Ames cliff (4-aminobiphenyl fires `cliff` at the alert step). `frozen` is validated as PREDICTIVE on 54,312 real homologous series: axes it labels on a prefix move +0.1352 SD less over the held-out tail than others, beyond a step-order null no permutation in 500 reached (issues #36, #58; production path: per-axis flat gate = 0.5·corpus-SD per endpoint, in 122M corpus-SD units) — quote that excess, not the raw contrast, since the null is not zero. climbing/descending/flat are directional and robust; cliff is honestly conservative — a real cliff can read as `climbing` when the model's baseline for the non-alert analogs is already elevated (the bound is the model, not the labeler), so verify against the underlying series.",
         "annotations": {
             "readOnlyHint": True,
             "destructiveHint": False
@@ -8299,8 +8320,12 @@ class MCPToolExecutor:
             )
             values, axis_names, dropped = align_series(step_records)
             thresholds = Thresholds(**threshold_overrides) if threshold_overrides else Thresholds()
+            # Per-axis flat gate (issue #58) by default. If the caller explicitly set flat_abs, they
+            # asked for a specific absolute gate — honor it and skip per-axis.
+            flat_abs_by_axis = None if "flat_abs" in threshold_overrides else _FROZEN_FLAT_ABS_BY_AXIS
             result = analyze_optimization_trajectory(
                 values, axis_names, positions=positions, thresholds=thresholds,
+                flat_abs_by_axis=flat_abs_by_axis,
             )
         except ImportError as e:
             # scipy is an optional dependency of the analysis module (see analysis/requirements.txt)
@@ -8314,10 +8339,10 @@ class MCPToolExecutor:
         # documented Ames cliff (issue #11); the known limitation is model baseline.
         result["calibration"] = (
             "cliff validated against a documented Ames cliff (4-aminobiphenyl); frozen "
-            "validated as predictive on 54,312 real homologous series (+0.153 SD less "
+            "validated as predictive on 54,312 real homologous series (+0.1352 SD less "
             "held-out-tail movement than other labels, beyond a step-order null no permutation "
-            "in 500 reached; issue #36; production raw-input path) — that excess is the effect "
-            "size, not the raw contrast, "
+            "in 500 reached; issues #36, #58; per-axis flat gate = 0.5*corpus-SD, 122M-SD units) "
+            "— that excess is the effect size, not the raw contrast, "
             "because the null is not zero. climbing/descending/flat are directional "
             "(Spearman-robust); cliff remains honestly conservative — a real cliff can read as "
             "'climbing' when the model's baseline for the non-alert analogs is already elevated "

@@ -110,7 +110,52 @@ why the result is trustworthy.
   saturating. Rejected by the data: exhausted series give +0.259, non-exhausted
   +0.246 — indistinguishable.
 
+---
+
+## Per-axis flat gate — resolution of the gate ([#58](https://github.com/NovoMCP/novomcp/issues/58))
+
+The single absolute `flat_abs = 0.10` gated each endpoint by a different number of SDs
+(0.0053 SD on `clearance_hepatocyte`, ~0.9 SD on `cyp2d6`). It is replaced by a per-axis
+gate, `flat_abs[axis] = k_gate · corpus_SD[axis]` with **k_gate = 0.5**, so "did it move"
+means 0.5 corpus-SD on every axis. SDs are measured on the full 122M corpus; gate and effect
+size are both denominated in those units.
+
+**Why per-axis (the barred-axes result, replicated on both chemotypes).** Under the absolute
+gate, wide-SD endpoints were *structurally barred from ever being flat* — flat rate exactly
+0.000 for `aqueous_solubility_log_mol_l` on the halogenation secondary, and for
+`clearance_hepatocyte`, `aqueous_solubility_log_mol_l` and `ld50_log_mol_kg` on the
+homologation primary. The per-axis gate unbars them (aqsol 0.000 → ~0.03–0.08; clearance
+0.000 → 0.015) and pulls `cyp2d6` off its ceiling. Same artifact, two independent rosters and
+chemotypes — that, not the effect size, is the case for the change, and it holds at any k_gate.
+
+**Why k_gate = 0.5, on non-outcome grounds.** Neither dataset's effect size could pin it: the
+underpowered secondary binds on noise (z ~2 across the viable range), the powered primary
+saturates (0/500 at every k_gate). So k_gate is chosen deliberately, not from the effect —
+0.5 is the secondary's best population match (268 vs 257 frozen), effectively tied on the
+primary (baseline 34,678 between 0.5's 33,983 and 0.4's 35,370), unbars the barred axes more
+than 0.4, and returns the median probability axis to ~0.10 so axes the absolute gate already
+handled keep their behavior. The rejected alternative — minimising per-axis flat-rate spread —
+is a dead end (it is confounded by the flat level, and equal flat rates are not even desirable:
+axes *should* respond differently to a modification).
+
+**B2 retired.** The pre-registered flat-prefix baseline (B2) thresholded pre-window range at a
+fixed 0.25 SD; the per-axis gate at k_gate ≥ 0.25 is strictly stricter and removes the
+always-flat stratum before FROZEN is considered, so B2 becomes a no-op (identical n, Δ, z to
+the unstratified rows). The same gate earlier *governed whether B2 could function at all*; its
+function has now moved into the gate. B2 is stood down deliberately and recorded here — not
+dropped silently — as a pre-registered frame and the guard that caught the band-truncated dry
+run.
+
+**Restated figure.** The headline moves with the configuration (the study's own lesson):
++0.153 SD (single absolute gate) → **+0.1352 SD, z ≈ 14.6** (per-axis, k_gate 0.5), still
+0/500. Carried with its configuration named on every surface.
+
+**Footnote — corpus vs sample units.** Gating on the 122M SD equalises the gate in *corpus*
+units. In the primary's 8-shard subset, per-axis dispersion runs 0.74–1.03 of the corpus SD,
+so in that sample's own units the effective gate still varies ~1.4× — down from 192× under the
+absolute gate. "Equalised by construction" is exact only in corpus units.
+
 > Co-authored with Dal Marsters ([@dmarsters](https://github.com/dmarsters)); the
-> analysis machinery (`corpus_stream_mine`, `corpus_merge_series`, `exp20`) lives in
+> analysis machinery (`corpus_stream_mine`, `corpus_merge_series`, `exp20`, `exp20d`) lives in
 > the [companion research repository](https://github.com/dmarsters/frozen-validation),
 > which cross-links back here.
