@@ -8,6 +8,19 @@ import { readConnections, addConnection, type Connection } from '@/core/secrets/
 
 const SUPPORTED = ['snowflake', 'databricks'];
 
+// Defense-in-depth: the primary secret bucket is `credentials` (masked below by
+// returning only key names). But a caller might place a token/password in the
+// free-form `config` map by mistake. Mask any config value whose key looks
+// secret so a GET never round-trips a cleartext secret from the config bucket.
+const SECRET_KEY_RE = /pass|secret|token|key|cred|auth/i;
+function redactConfig(config: Record<string, string> | undefined): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const [k, v] of Object.entries(config || {})) {
+    out[k] = SECRET_KEY_RE.test(k) ? '••••••' : v;
+  }
+  return out;
+}
+
 export async function GET() {
   const list = await readConnections();
   return NextResponse.json({
@@ -15,7 +28,7 @@ export async function GET() {
       id: c.id,
       type: c.type,
       displayName: c.displayName,
-      config: c.config,
+      config: redactConfig(c.config),
       credentialKeys: Object.keys(c.credentials || {}),
       createdAt: c.createdAt,
     })),

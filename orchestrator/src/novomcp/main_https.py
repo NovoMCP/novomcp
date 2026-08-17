@@ -1456,7 +1456,10 @@ def main():
     """
     uvicorn.run(
         app,
-        host="0.0.0.0",
+        # Default 0.0.0.0 so a Docker/compose container is reachable via its
+        # published port. On a bare-metal self-host, set NOVOMCP_HOST=127.0.0.1
+        # to bind loopback-only so nothing on the LAN can reach the engine.
+        host=os.getenv("NOVOMCP_HOST", "0.0.0.0"),
         port=PORT,
         log_level=os.getenv("LOG_LEVEL", "info").lower()
     )

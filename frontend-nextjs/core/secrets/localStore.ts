@@ -59,7 +59,9 @@ export async function updateCredentials(updates: Record<string, string | null>):
     if (v === null || v === '') delete current[k];
     else current[k] = v;
   }
-  await fs.mkdir(path.dirname(CREDENTIALS_PATH), { recursive: true });
+  const dir = path.dirname(CREDENTIALS_PATH);
+  await fs.mkdir(dir, { recursive: true, mode: 0o700 });
+  await fs.chmod(dir, 0o700).catch(() => {});  // mkdir mode is umask-masked; force 0700.
   await fs.writeFile(CREDENTIALS_PATH, serializeEnv(current), { mode: 0o600 });
   // writeFile mode is masked by umask; force 0600 explicitly.
   await fs.chmod(CREDENTIALS_PATH, 0o600).catch(() => {});

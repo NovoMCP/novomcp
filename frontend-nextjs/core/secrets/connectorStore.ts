@@ -31,7 +31,9 @@ export async function readConnections(): Promise<Connection[]> {
 }
 
 async function writeConnections(list: Connection[]): Promise<void> {
-  await fs.mkdir(path.dirname(CONNECTORS_PATH), { recursive: true });
+  const dir = path.dirname(CONNECTORS_PATH);
+  await fs.mkdir(dir, { recursive: true, mode: 0o700 });
+  await fs.chmod(dir, 0o700).catch(() => {});  // mkdir mode is umask-masked; force 0700.
   await fs.writeFile(CONNECTORS_PATH, JSON.stringify(list, null, 2), { mode: 0o600 });
   await fs.chmod(CONNECTORS_PATH, 0o600).catch(() => {});
 }
