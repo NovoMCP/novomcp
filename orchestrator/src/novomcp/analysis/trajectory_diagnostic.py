@@ -10,13 +10,18 @@ you, for each property axis, whether ALONG THIS modification it is:
                continuing this modification (a dead-end liability). VALIDATED: on 54,312 real
                CH2-homologous series from the open corpus, axes labelled FROZEN on a 60% prefix
                moved measurably less over the held-out tail than climbing/descending/complex ones
-               — +0.153 SD beyond a step-order null that no permutation in 500 reached (z=17.0).
-               Measured on the production (raw-input) path this module actually runs; an earlier
-               figure (+0.108 SD, z=12.4) was computed on standardised input — a path no caller
-               performs — and understated the effect. The effect survives a flat-prefix baseline,
-               so it is not merely "the prefix barely moved". Quote the excess-over-null (+0.153),
-               not the unadjusted contrast (+0.254): the null is not zero, because FROZEN
-               preferentially selects low-variance axes. See issue #36.
+               — +0.1352 SD beyond a step-order null that no permutation in 500 reached (z≈14.6),
+               on the production path: a per-axis flat gate (flat_abs = 0.5·corpus-SD, issue #58),
+               raw input, 60% prefix, gate and effect both in 122M corpus-SD units. The figure is a
+               function of three configuration axes — input, gate, SD basis — not one:
+                 +0.108  (z=12.4)  standardised input
+                 +0.153  (z=17.0)  raw input, absolute gate, 8-shard SD basis
+                 +0.1491 (z=16.02) raw input, absolute gate, unified 122M SD basis
+                 +0.1352 (z≈14.6)  raw input, per-axis gate, 122M — the path a caller now runs.
+               The gate costs ~-0.014, the basis change ~-0.004; attributing both to the gate would
+               be the error the number's own caveat warns against. Quote the excess-over-null
+               (+0.1352), not the unadjusted contrast (+0.2438): the null is not zero, because FROZEN
+               preferentially selects low-variance axes. See issues #36 and #58.
   CLIMBING   — monotone up with the modification: you are actively DRIVING it.
   DESCENDING — monotone down.
   CLIFF      — a single-step threshold jump: a discontinuity to watch.
