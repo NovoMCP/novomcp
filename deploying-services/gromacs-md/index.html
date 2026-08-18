@@ -2029,7 +2029,7 @@
 </span></code></pre></div>
 <h2 id="verify">Verify<a class="headerlink" href="#verify" title="Permanent link">&para;</a></h2>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>curl<span class="w"> </span>-s<span class="w"> </span>http://localhost:8021/health
-</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="c1"># {&quot;status&quot;:&quot;healthy&quot;,&quot;gpu_available&quot;:true,&quot;gromacs_version&quot;:&quot;2023.5&quot;}</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="c1"># {"status":"healthy","gpu_available":true,"gromacs_version":"2023.5"}</span>
 </span></code></pre></div>
 <h2 id="tools-that-light-up">Tools that light up<a class="headerlink" href="#tools-that-light-up" title="Permanent link">&para;</a></h2>
 <ul>
@@ -2039,9 +2039,9 @@
 <h2 id="async-pattern">Async pattern<a class="headerlink" href="#async-pattern" title="Permanent link">&para;</a></h2>
 <p>MD jobs are long-running (minutes to hours). The engine returns a <code>job_id</code> immediately; poll status:
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>curl<span class="w"> </span>-s<span class="w"> </span>http://localhost:8018/mcp/tools/get_job_status<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">  </span>-H<span class="w"> </span><span class="s1">&#39;Authorization: Bearer x&#39;</span><span class="w"> </span><span class="se">\</span>
-</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="w">  </span>-H<span class="w"> </span><span class="s1">&#39;Content-Type: application/json&#39;</span><span class="w"> </span><span class="se">\</span>
-</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{&quot;arguments&quot;:{&quot;job_id&quot;:&quot;&lt;the-id-you-got-back&gt;&quot;}}&#39;</span>
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">  </span>-H<span class="w"> </span><span class="s1">'Authorization: Bearer x'</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="w">  </span>-H<span class="w"> </span><span class="s1">'Content-Type: application/json'</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="w">  </span>-d<span class="w"> </span><span class="s1">'{"arguments":{"job_id":"&lt;the-id-you-got-back&gt;"}}'</span>
 </span></code></pre></div></p>
 <p>Or set <code>email</code> in the original call to get notified on completion (requires Resend API key via env; see below).</p>
 <h2 id="env-vars">Env vars<a class="headerlink" href="#env-vars" title="Permanent link">&para;</a></h2>

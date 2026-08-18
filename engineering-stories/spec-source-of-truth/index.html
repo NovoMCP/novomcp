@@ -1978,8 +1978,8 @@
 <p>So the spec is authoritative. The code reads from the spec.</p>
 <p>At import time, the harness parses the markdown file, extracts the tables of criteria, and loads the values into memory. The parser is small, maybe 60 lines. It reads a specific header ("## Predeclared criteria"), finds the tables beneath, and reads the rows into a dictionary keyed by row ID.</p>
 <p>The rest of the harness references thresholds by row ID:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="k">if</span> <span class="n">metric</span> <span class="o">&gt;</span> <span class="n">spec</span><span class="o">.</span><span class="n">get_threshold</span><span class="p">(</span><span class="s2">&quot;B4&quot;</span><span class="p">):</span>
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="n">row_result</span> <span class="o">=</span> <span class="s2">&quot;FAIL&quot;</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="k">if</span> <span class="n">metric</span> <span class="o">&gt;</span> <span class="n">spec</span><span class="o">.</span><span class="n">get_threshold</span><span class="p">(</span><span class="s2">"B4"</span><span class="p">):</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="n">row_result</span> <span class="o">=</span> <span class="s2">"FAIL"</span>
 </span></code></pre></div>
 <p>Not by hardcoded constants. Every threshold, every gate structure, every pass/fail boundary lives in the spec. The code contains the <em>logic</em>, which metric to compute, when to apply which threshold, how to aggregate results, and reads the <em>values</em> from the spec at runtime.</p>
 <hr />
