@@ -154,6 +154,14 @@ run.
 +0.153 SD (single absolute gate) → **+0.1352 SD, z ≈ 14.6** (per-axis, k_gate 0.5), still
 0/500. Carried with its configuration named on every surface.
 
+**Coverage vs validation.** The production SD table gates every non-probability endpoint addie
+emits, but only the two re-validation rosters were tested; six non-probability endpoints
+(clearance_microsome, half_life_hr, vdss, ppbr_percent, caco2, lipophilicity) are gated on the
+same 0.5·SD principle without individual validation, and they take the largest behaviour swing.
+Note too that `flat` under the per-axis gate is *statistical noticeability* (< ~0.5 corpus-SD),
+which the tool glosses as decision-relevance; on these wide-scale endpoints a large absolute
+change can still read `flat`. The `flat_gate` result field names which axes were per-axis-gated.
+
 **Footnote — corpus vs sample units.** Gating on the 122M SD equalises the gate in *corpus*
 units. In the primary's 8-shard subset, per-axis dispersion runs 0.74–1.03 of the corpus SD,
 so in that sample's own units the effective gate still varies ~1.4× — down from 192× under the
