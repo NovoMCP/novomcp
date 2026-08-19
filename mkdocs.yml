@@ -111,6 +111,7 @@ nav:
       - Predeclared gates: engineering-stories/predeclared-gates.md
       - Spec as source of truth: engineering-stories/spec-source-of-truth.md
       - Verification doesn't propagate: engineering-stories/verification-doesnt-propagate.md
+      - Configuration can produce a confident wrong answer: engineering-stories/configuration-is-part-of-the-measurement.md
   - API reference: api-reference.md
   - Connecting MCP clients: connecting-mcp-clients.md
   - Optional data services: optional-data-services.md
