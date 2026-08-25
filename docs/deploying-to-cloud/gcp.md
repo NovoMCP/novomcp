@@ -38,9 +38,12 @@ gcloud compute instances create novomcp-engine \
   --metadata-from-file=startup-script=/tmp/startup.sh \
   --tags=novomcp-engine
 
-# Allow inbound to port 8018
-gcloud compute firewall-rules create novomcp-engine-8018 \
-  --allow=tcp:8018 --target-tags=novomcp-engine
+# Allow inbound to the web dashboard (3000). The engine (8018) is reached only
+# by the dashboard over the private compose network, so it needs no public rule
+# — and shouldn't get one: NOVO_AUTH=local means an open 8018 is an
+# unauthenticated engine (see the cloud overview's auth warning).
+gcloud compute firewall-rules create novomcp-web-3000 \
+  --allow=tcp:3000 --target-tags=novomcp-engine
 ```
 
 Wait a few minutes, then get the external IP:
@@ -50,7 +53,7 @@ gcloud compute instances describe novomcp-engine --zone="$ZONE" \
   --format='get(networkInterfaces[0].accessConfigs[0].natIP)'
 ```
 
-Hit `http://<external-ip>:8018/health`.
+Open the dashboard at `http://<external-ip>:3000`.
 
 ### Adding a GPU service
 

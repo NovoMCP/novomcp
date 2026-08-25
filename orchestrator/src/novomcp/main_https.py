@@ -75,6 +75,8 @@ except ImportError:
         return None
 from novomcp.service_config import get_service_config
 from novomcp.config import settings
+from novomcp.version import __version__ as _engine_version
+from novomcp.mcp.tools import MCP_TOOLS as _MCP_TOOLS
 
 # Import routers
 from novomcp.routers.proxy import router as proxy_router
@@ -810,9 +812,14 @@ async def health():
     return {
         "status": "healthy",
         "service": SERVICE_NAME,
+        "version": _engine_version,
         "timestamp": datetime.utcnow().isoformat(),
         "redis": "connected" if REDIS_ENABLED else "disabled",
-        "services_available": len(SERVICE_REGISTRY)
+        "services_available": len(SERVICE_REGISTRY),
+        # Full tool catalog size — surfaces (e.g. the dashboard) render
+        # "<locally-available> of <tools_total>" so a bare local install reads
+        # as capability-gated rather than a shortfall.
+        "tools_total": len(_MCP_TOOLS),
     }
 
 

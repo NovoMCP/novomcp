@@ -61,6 +61,30 @@ curl -X POST http://localhost:8018/mcp/tools/get_molecule_profile \
 
 You get a full molecular profile for aspirin: properties, ADMET predictions, and structural alerts computed against the locally wrapped services (RDKit for properties in local mode; ADMET falls through to the addie-models service when that's wired).
 
+### Web dashboard
+
+The engine is headless — a REST/MCP backend. The **web dashboard** (Next.js) is the visual surface: molecule profiles, engine/service status, and the config screens for keys, compliance, observability, and data connectors. Two ways to run it:
+
+**One command (recommended)** — Docker Compose brings up the engine *and* the dashboard together, wired to each other. You don't have to think about start order:
+
+```bash
+docker compose up
+```
+
+Then open **http://localhost:3000**.
+
+**Manual (no Docker)** — the engine and the dashboard are two separate processes. Start order doesn't matter: the dashboard degrades gracefully when the engine is down and has a **Recheck** button, so you can start either first. In one terminal run the engine ([above](#quickstart)); in another:
+
+```bash
+cd frontend-nextjs
+npm install
+npm run dev
+```
+
+Then open **http://localhost:3000**. The dashboard's server-side routes proxy to the engine at `NOVOMCP_ENGINE_URL` (default `http://localhost:8018`); set that env var if your engine runs elsewhere.
+
+> **Tools available: "N of 68"** — a bare local install has **11 of 68** tools working immediately (profiles, property calc, ChEMBL/clinical-trials/bioRxiv search, library screening, MD pre-flight). The rest are capability-gated: each unlocks as you wire its optional service (ADMET, docking, MD, QM, NNP, omics, molecule index…). The dashboard shows the live count and which env var unlocks each capability.
+
 ## Configuration
 
 The engine's spine is configurable via environment variables:

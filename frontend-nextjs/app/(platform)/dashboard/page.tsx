@@ -27,8 +27,10 @@ import {
 interface HealthResp {
   engine_url: string;
   engine_reachable: boolean;
-  health: { status?: string; timestamp?: string; services_available?: number } | null;
+  health: { status?: string; timestamp?: string; services_available?: number; version?: string; tools_total?: number } | null;
+  version: string | null;
   tools_visible: number | null;
+  tools_total: number | null;
   tool_names: string[];
   rest_paths: number | null;
   update_status: { current_version?: string; latest_version?: string; is_newer?: boolean; release_url?: string } | null;
@@ -125,7 +127,14 @@ export default function DashboardPage() {
               )
             }
           />
-          <Stat label="Tools available" value={health?.tools_visible ?? '—'} />
+          <Stat
+            label="Tools available"
+            value={
+              health?.tools_visible != null
+                ? `${health.tools_visible} of ${health.tools_total ?? 68}`
+                : '—'
+            }
+          />
           <Stat label="REST endpoints" value={health?.rest_paths ?? '—'} />
           <Stat label="Engine URL" value={<span className="text-xs font-mono truncate">{health?.engine_url ?? '—'}</span>} />
         </div>

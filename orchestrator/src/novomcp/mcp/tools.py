@@ -2906,8 +2906,13 @@ TOOL_LOCAL_REQUIREMENTS: Dict[str, list] = {
     "predict_admet": ["env:ADDIE_MODELS_URL"],
     "analyze_admet_trajectory": ["env:ADDIE_MODELS_URL"],
 
-    # File intelligence — needs the funnel-backend infra. (get_credit_usage
-    # is a no-dependency stub on the un-metered engine → always available.)
+    # Credit usage — a metering readout with no meaning on the un-metered OSS
+    # engine (NoopMeter). Hidden locally so a billing-free install doesn't show
+    # a phantom "credit usage" tool; surfaces only when a managed billing
+    # backend is wired. Still counted in the 68-tool catalog (it stays defined).
+    "get_credit_usage": ["env:MANAGED_BACKEND_URL"],
+
+    # File intelligence — needs the funnel-backend infra.
     "generate_upload_url": ["env:FUNNEL_BACKEND_URL"],
     "get_file_status":     ["env:FUNNEL_BACKEND_URL"],
     "list_files":          ["env:FUNNEL_BACKEND_URL"],
