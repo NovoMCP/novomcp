@@ -752,6 +752,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#everything-at-once-docker-compose-engine-dashboard" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Everything at once — Docker Compose (engine + dashboard)
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -826,6 +837,17 @@
         
       </ul>
     </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-web-dashboard" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The web dashboard
+      
+    </span>
+  </a>
   
 </li>
       
@@ -2021,6 +2043,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#everything-at-once-docker-compose-engine-dashboard" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Everything at once — Docker Compose (engine + dashboard)
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -2095,6 +2128,17 @@
         
       </ul>
     </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-web-dashboard" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The web dashboard
+      
+    </span>
+  </a>
   
 </li>
       
@@ -2207,43 +2251,79 @@
 <li><strong>Audit</strong>: local file (<code>FileAuditSink</code>, appends JSON-lines to <code>~/.novo/audit.jsonl</code>)</li>
 </ul>
 <p>If you accidentally create the venv with Python 3.9, <code>python main_https.py</code> fails fast with an actionable message telling you which install command to run.</p>
+<h3 id="everything-at-once-docker-compose-engine-dashboard">Everything at once — Docker Compose (engine + dashboard)<a class="headerlink" href="#everything-at-once-docker-compose-engine-dashboard" title="Permanent link">&para;</a></h3>
+<p>If you have Docker, one command builds and runs <strong>both</strong> the engine and the <a href="#the-web-dashboard">web dashboard</a>, wired to each other on a private network:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/NovoMCP/novomcp.git
+</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="nb">cd</span><span class="w"> </span>novomcp
+</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>docker<span class="w"> </span>compose<span class="w"> </span>up
+</span></code></pre></div>
+<ul>
+<li>Engine → <code>http://localhost:8018</code></li>
+<li>Dashboard → <code>http://localhost:3000</code></li>
+</ul>
+<p><code>docker compose up</code> starts both and streams both logs; <code>Ctrl-C</code> (or <code>docker compose down</code>) stops both. No start-order to worry about. Compose is also the <a href="../deploying-to-cloud/">single-VM cloud recipe</a> — the same file scales from your laptop to one box in the cloud.</p>
 <h2 id="first-requests">First requests<a class="headerlink" href="#first-requests" title="Permanent link">&para;</a></h2>
 <p>In another shell:</p>
 <h3 id="health-check">Health check<a class="headerlink" href="#health-check" title="Permanent link">&para;</a></h3>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>curl<span class="w"> </span>-s<span class="w"> </span>http://localhost:8018/health<span class="w"> </span><span class="p">|</span><span class="w"> </span>python3<span class="w"> </span>-m<span class="w"> </span>json.tool
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>curl<span class="w"> </span>-s<span class="w"> </span>http://localhost:8018/health<span class="w"> </span><span class="p">|</span><span class="w"> </span>python3<span class="w"> </span>-m<span class="w"> </span>json.tool
 </span></code></pre></div>
 <p>Expected: <code>{"status": "healthy", ...}</code>.</p>
 <h3 id="list-tools">List tools<a class="headerlink" href="#list-tools" title="Permanent link">&para;</a></h3>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>curl<span class="w"> </span>-s<span class="w"> </span>http://localhost:8018/mcp/tools<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="w">  </span>-H<span class="w"> </span><span class="s1">'Authorization: Bearer x'</span><span class="w"> </span><span class="se">\</span>
-</span><span id="__span-9-3"><a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="w">  </span><span class="p">|</span><span class="w"> </span>python3<span class="w"> </span>-m<span class="w"> </span>json.tool
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>curl<span class="w"> </span>-s<span class="w"> </span>http://localhost:8018/mcp/tools<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="w">  </span>-H<span class="w"> </span><span class="s1">'Authorization: Bearer x'</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-10-3"><a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="w">  </span><span class="p">|</span><span class="w"> </span>python3<span class="w"> </span>-m<span class="w"> </span>json.tool
 </span></code></pre></div>
 <p><code>LocalAuthGate</code> accepts any bearer token — <code>x</code> works fine. Returns the 11 always-available tools; the other 57 in the catalog appear as you wire their backing services (see <a href="../tool-availability/">tool-availability.md</a>).</p>
 <h3 id="get-a-molecule-profile-aspirin">Get a molecule profile (aspirin)<a class="headerlink" href="#get-a-molecule-profile-aspirin" title="Permanent link">&para;</a></h3>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>curl<span class="w"> </span>-s<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://localhost:8018/mcp/tools/get_molecule_profile<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="w">  </span>-H<span class="w"> </span><span class="s1">'Authorization: Bearer x'</span><span class="w"> </span><span class="se">\</span>
-</span><span id="__span-10-3"><a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="w">  </span>-H<span class="w"> </span><span class="s1">'Content-Type: application/json'</span><span class="w"> </span><span class="se">\</span>
-</span><span id="__span-10-4"><a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a><span class="w">  </span>-d<span class="w"> </span><span class="s1">'{"arguments": {"smiles": "CC(=O)Oc1ccccc1C(=O)O"}}'</span><span class="w"> </span><span class="se">\</span>
-</span><span id="__span-10-5"><a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a><span class="w">  </span><span class="p">|</span><span class="w"> </span>python3<span class="w"> </span>-m<span class="w"> </span>json.tool
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>curl<span class="w"> </span>-s<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://localhost:8018/mcp/tools/get_molecule_profile<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-11-2"><a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="w">  </span>-H<span class="w"> </span><span class="s1">'Authorization: Bearer x'</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-11-3"><a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a><span class="w">  </span>-H<span class="w"> </span><span class="s1">'Content-Type: application/json'</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-11-4"><a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a><span class="w">  </span>-d<span class="w"> </span><span class="s1">'{"arguments": {"smiles": "CC(=O)Oc1ccccc1C(=O)O"}}'</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-11-5"><a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a><span class="w">  </span><span class="p">|</span><span class="w"> </span>python3<span class="w"> </span>-m<span class="w"> </span>json.tool
 </span></code></pre></div>
 <p>Returns properties (MW, logP, TPSA, QED, Lipinski) computed on-the-fly via RDKit. <code>admet_available</code> will be <code>false</code> because the ADMET service (<code>addie-models</code>) isn't wired locally — that's expected. See <a href="../deploying-services/">Deploying services</a> to enable ADMET.</p>
 <h3 id="mcp-json-rpc-handshake">MCP JSON-RPC handshake<a class="headerlink" href="#mcp-json-rpc-handshake" title="Permanent link">&para;</a></h3>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>curl<span class="w"> </span>-s<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://localhost:8018/mcp/<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-11-2"><a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="w">  </span>-H<span class="w"> </span><span class="s1">'Authorization: Bearer x'</span><span class="w"> </span><span class="se">\</span>
-</span><span id="__span-11-3"><a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a><span class="w">  </span>-H<span class="w"> </span><span class="s1">'Content-Type: application/json'</span><span class="w"> </span><span class="se">\</span>
-</span><span id="__span-11-4"><a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a><span class="w">  </span>-d<span class="w"> </span><span class="s1">'{</span>
-</span><span id="__span-11-5"><a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a><span class="s1">    "jsonrpc": "2.0",</span>
-</span><span id="__span-11-6"><a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a><span class="s1">    "id": 1,</span>
-</span><span id="__span-11-7"><a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a><span class="s1">    "method": "initialize",</span>
-</span><span id="__span-11-8"><a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a><span class="s1">    "params": {"protocolVersion": "2024-11-05", "capabilities": {}}</span>
-</span><span id="__span-11-9"><a id="__codelineno-11-9" name="__codelineno-11-9" href="#__codelineno-11-9"></a><span class="s1">  }'</span><span class="w"> </span><span class="se">\</span>
-</span><span id="__span-11-10"><a id="__codelineno-11-10" name="__codelineno-11-10" href="#__codelineno-11-10"></a><span class="w">  </span><span class="p">|</span><span class="w"> </span>python3<span class="w"> </span>-m<span class="w"> </span>json.tool
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>curl<span class="w"> </span>-s<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://localhost:8018/mcp/<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-12-2"><a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a><span class="w">  </span>-H<span class="w"> </span><span class="s1">'Authorization: Bearer x'</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-12-3"><a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a><span class="w">  </span>-H<span class="w"> </span><span class="s1">'Content-Type: application/json'</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-12-4"><a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a><span class="w">  </span>-d<span class="w"> </span><span class="s1">'{</span>
+</span><span id="__span-12-5"><a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a><span class="s1">    "jsonrpc": "2.0",</span>
+</span><span id="__span-12-6"><a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a><span class="s1">    "id": 1,</span>
+</span><span id="__span-12-7"><a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a><span class="s1">    "method": "initialize",</span>
+</span><span id="__span-12-8"><a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a><span class="s1">    "params": {"protocolVersion": "2024-11-05", "capabilities": {}}</span>
+</span><span id="__span-12-9"><a id="__codelineno-12-9" name="__codelineno-12-9" href="#__codelineno-12-9"></a><span class="s1">  }'</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-12-10"><a id="__codelineno-12-10" name="__codelineno-12-10" href="#__codelineno-12-10"></a><span class="w">  </span><span class="p">|</span><span class="w"> </span>python3<span class="w"> </span>-m<span class="w"> </span>json.tool
 </span></code></pre></div>
 <p>Returns server info, capabilities, and the funnel-id instructions blurb. This is the endpoint MCP-compatible clients (Claude Desktop, Cursor, Zed) connect to.</p>
 <h3 id="audit-sink">Audit sink<a class="headerlink" href="#audit-sink" title="Permanent link">&para;</a></h3>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>tail<span class="w"> </span>-3<span class="w"> </span>~/.novo/audit.jsonl
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-13-1"><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>tail<span class="w"> </span>-3<span class="w"> </span>~/.novo/audit.jsonl
 </span></code></pre></div>
 <p>Every tool call is logged as a JSON-lines row. Structure: <code>event</code>, <code>timestamp</code>, <code>payload</code> (tool, funnel_id, success, duration, surface).</p>
+<h2 id="the-web-dashboard">The web dashboard<a class="headerlink" href="#the-web-dashboard" title="Permanent link">&para;</a></h2>
+<p>The engine is headless — a REST/MCP backend. The <strong>web dashboard</strong> (Next.js) is the visual surface: molecule profiles, live engine/service status, and the config screens for LLM keys, compliance, observability, and data connectors.</p>
+<p>The engine and the dashboard are <strong>two separate processes</strong>. The dashboard's server-side routes proxy to the engine at <code>NOVOMCP_ENGINE_URL</code> (default <code>http://localhost:8018</code>); the browser only ever talks to the dashboard.</p>
+<div class="admonition note">
+<p class="admonition-title">Start order doesn't matter</p>
+<p>The dashboard degrades gracefully when the engine is down — every panel shows what's missing and offers a <strong>Recheck</strong> button — so you can start either first and connect them in any order.</p>
+</div>
+<div class="tabbed-set tabbed-alternate" data-tabs="2:2"><input checked="checked" id="__tabbed_2_1" name="__tabbed_2" type="radio" /><input id="__tabbed_2_2" name="__tabbed_2" type="radio" /><div class="tabbed-labels"><label for="__tabbed_2_1">Docker (both at once)</label><label for="__tabbed_2_2">Manual (no Docker)</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-14-1"><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>docker<span class="w"> </span>compose<span class="w"> </span>up
+</span></code></pre></div>
+<p>Brings up the engine <strong>and</strong> the dashboard together (see <a href="#everything-at-once-docker-compose-engine-dashboard">above</a>). Open <strong>http://localhost:3000</strong>.</p>
+</div>
+<div class="tabbed-block">
+<p>Two terminals. In the first, run the engine (<a href="#install-and-run">Install and run</a>). In the second:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-15-1"><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="nb">cd</span><span class="w"> </span>frontend-nextjs
+</span><span id="__span-15-2"><a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>npm<span class="w"> </span>install
+</span><span id="__span-15-3"><a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a>npm<span class="w"> </span>run<span class="w"> </span>dev
+</span></code></pre></div>
+<p>Open <strong>http://localhost:3000</strong>. Set <code>NOVOMCP_ENGINE_URL</code> if your engine runs somewhere other than <code>http://localhost:8018</code>.</p>
+</div>
+</div>
+</div>
+<p>Once connected, the dashboard shows <strong>Tools available: 11 of 68</strong> — the 11 that work with nothing wired, out of the full catalog. That count climbs as you <a href="../deploying-services/">deploy services</a>; the dashboard lists which env var unlocks each capability. See <a href="../tool-availability/">Tool availability</a> for the full map.</p>
 <h2 id="what-next">What next<a class="headerlink" href="#what-next" title="Permanent link">&para;</a></h2>
 <ul>
 <li><strong><a href="../configuring-llm/">Configure an LLM provider</a></strong> — enable intent recognition, orchestration planning, and semantic tool search</li>

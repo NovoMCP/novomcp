@@ -2190,10 +2190,13 @@
 </span><span id="__span-0-27"><a id="__codelineno-0-27" name="__codelineno-0-27" href="#__codelineno-0-27"></a><span class="w">  </span>--custom-data<span class="w"> </span>/tmp/cloud-init.yml<span class="w"> </span><span class="se">\</span>
 </span><span id="__span-0-28"><a id="__codelineno-0-28" name="__codelineno-0-28" href="#__codelineno-0-28"></a><span class="w">  </span>--public-ip-sku<span class="w"> </span>Standard
 </span><span id="__span-0-29"><a id="__codelineno-0-29" name="__codelineno-0-29" href="#__codelineno-0-29"></a>
-</span><span id="__span-0-30"><a id="__codelineno-0-30" name="__codelineno-0-30" href="#__codelineno-0-30"></a><span class="c1"># Open port 8018</span>
-</span><span id="__span-0-31"><a id="__codelineno-0-31" name="__codelineno-0-31" href="#__codelineno-0-31"></a>az<span class="w"> </span>vm<span class="w"> </span>open-port<span class="w"> </span>--resource-group<span class="w"> </span><span class="s2">"</span><span class="nv">$RG</span><span class="s2">"</span><span class="w"> </span>--name<span class="w"> </span>novomcp-engine<span class="w"> </span>--port<span class="w"> </span><span class="m">8018</span>
+</span><span id="__span-0-30"><a id="__codelineno-0-30" name="__codelineno-0-30" href="#__codelineno-0-30"></a><span class="c1"># Open the web dashboard (3000). The engine (8018) is reached only by the</span>
+</span><span id="__span-0-31"><a id="__codelineno-0-31" name="__codelineno-0-31" href="#__codelineno-0-31"></a><span class="c1"># dashboard over the private compose network, so it needs no public rule — and</span>
+</span><span id="__span-0-32"><a id="__codelineno-0-32" name="__codelineno-0-32" href="#__codelineno-0-32"></a><span class="c1"># shouldn't get one: NOVO_AUTH=local means an open 8018 is an unauthenticated</span>
+</span><span id="__span-0-33"><a id="__codelineno-0-33" name="__codelineno-0-33" href="#__codelineno-0-33"></a><span class="c1"># engine (see the cloud overview's auth warning).</span>
+</span><span id="__span-0-34"><a id="__codelineno-0-34" name="__codelineno-0-34" href="#__codelineno-0-34"></a>az<span class="w"> </span>vm<span class="w"> </span>open-port<span class="w"> </span>--resource-group<span class="w"> </span><span class="s2">"</span><span class="nv">$RG</span><span class="s2">"</span><span class="w"> </span>--name<span class="w"> </span>novomcp-engine<span class="w"> </span>--port<span class="w"> </span><span class="m">3000</span>
 </span></code></pre></div>
-<p>Get the public IP and hit <code>http://&lt;ip&gt;:8018/health</code>.</p>
+<p>Get the public IP and open the dashboard at <code>http://&lt;ip&gt;:3000</code>.</p>
 <h3 id="adding-a-gpu-service">Adding a GPU service<a class="headerlink" href="#adding-a-gpu-service" title="Permanent link">&para;</a></h3>
 <p>Recreate with a T4 (<code>Standard_NC4as_T4_v3</code>) or A100 (<code>Standard_NC24ads_A100_v4</code>) size. Use the Ubuntu HPC image for pre-installed NVIDIA drivers:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>az<span class="w"> </span>vm<span class="w"> </span>create<span class="w"> </span><span class="se">\</span>

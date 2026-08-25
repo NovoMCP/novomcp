@@ -1201,6 +1201,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#the-stack-is-two-services-plus-optional-compute" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The stack is two services (plus optional compute)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#which-cloud" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1871,6 +1882,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#the-stack-is-two-services-plus-optional-compute" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The stack is two services (plus optional compute)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#which-cloud" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1940,8 +1962,24 @@
 
 
 <h1 id="deploying-to-the-cloud">Deploying to the cloud<a class="headerlink" href="#deploying-to-the-cloud" title="Permanent link">&para;</a></h1>
-<p>Three reference deployments for a full NovoMCP stack on AWS, GCP, and Azure. Each is opinionated but minimal: single VM or small cluster, the engine + a handful of compute services, HTTPS, no managed database (audit logs stay on disk unless you swap in Postgres or DynamoDB).</p>
+<p>Three reference deployments for a full NovoMCP stack on AWS, GCP, and Azure. Each is opinionated but minimal: single VM or small cluster, the engine + the web dashboard + a handful of compute services, HTTPS, no managed database (audit logs stay on disk unless you swap in Postgres or DynamoDB).</p>
 <p>These are reference recipes, not supported products. Copy, adapt, and own the resulting deployment.</p>
+<h2 id="the-stack-is-two-services-plus-optional-compute">The stack is two services (plus optional compute)<a class="headerlink" href="#the-stack-is-two-services-plus-optional-compute" title="Permanent link">&para;</a></h2>
+<p>Every recipe deploys at least two things, wired together:</p>
+<ul>
+<li><strong>Engine</strong> (<code>orchestrator/</code>, port 8018) — the headless REST/MCP backend. Keep it <strong>internal</strong>; only the dashboard needs to reach it. Expose its API publicly only if you deliberately want programmatic REST/MCP access.</li>
+<li><strong>Web dashboard</strong> (<code>frontend-nextjs/</code>, port 3000) — the browser-facing UI. Set <code>NOVOMCP_ENGINE_URL</code> to the engine's internal address. This is the only service most deployments expose publicly.</li>
+</ul>
+<p>Optional compute services (docking, MD, QM, NNP, …) are more separate services, added by env var when you need them — see <a href="../deploying-services/">Deploying services</a>.</p>
+<div class="admonition warning">
+<p class="admonition-title">Local mode has no authentication — don't expose the engine publicly as-is</p>
+<p>The engine defaults to <code>NOVO_AUTH=local</code>: <strong>every request resolves to a <code>local</code> user with unlimited access.</strong> That's correct for a laptop, but on a reachable cloud host it means anyone who can hit port 8018 can run tools. Before exposing anything publicly:</p>
+<ul>
+<li><strong>Keep the engine private</strong> (security group / firewall / internal-only load balancer) and put auth on the dashboard, <strong>or</strong></li>
+<li><strong>Bring your own auth</strong> via the pluggable spine — <code>NOVO_AUTH=custom</code> loads your own <code>AuthGate</code> (API keys / JWT / your IdP). See <a href="../architecture/">Architecture → the spine</a>.</li>
+</ul>
+<p><code>NOVO_AUTH=hosted</code> expects <strong>our</strong> managed backend and is not part of self-hosting — use <code>local</code> behind a boundary, or <code>custom</code>.</p>
+</div>
 <h2 id="which-cloud">Which cloud?<a class="headerlink" href="#which-cloud" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -1994,6 +2032,7 @@
 <h2 id="what-none-of-these-deploy-for-you">What none of these deploy for you<a class="headerlink" href="#what-none-of-these-deploy-for-you" title="Permanent link">&para;</a></h2>
 <ul>
 <li><strong>Managed database</strong>. Audit logs use the local file sink by default. If you want durable audit for compliance, add RDS Postgres (AWS), Cloud SQL (GCP), or Azure Database for PostgreSQL and set <code>AURORA_HOST</code> (env var name is legacy; any Postgres works).</li>
+<li><strong>Persistent config</strong>. The engine keeps local config in plaintext files under <code>~/.novo/</code> (<code>credentials.env</code> at <code>0600</code>, <code>connectors.json</code>, <code>audit.jsonl</code>). Mount a persistent volume at that path, or these reset on every redeploy. The single-VM <code>docker compose</code> recipe already maps a named volume for it.</li>
 <li><strong>Custom domain + TLS</strong>. Each recipe uses the load balancer's default DNS name. Add Route 53 / Cloud DNS / Azure DNS + ACM/Certificate Manager as needed.</li>
 <li><strong>Compute-service auto-scaling policy</strong>. The K8s recipes ship scale-from-zero for GPU nodes but assume you'll tune the pod-autoscaler thresholds for your traffic.</li>
 <li><strong>Backup + disaster recovery</strong>. Standard cloud best practices apply; not covered here.</li>
