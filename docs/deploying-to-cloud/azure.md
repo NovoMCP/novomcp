@@ -42,11 +42,14 @@ az vm create \
   --custom-data /tmp/cloud-init.yml \
   --public-ip-sku Standard
 
-# Open port 8018
-az vm open-port --resource-group "$RG" --name novomcp-engine --port 8018
+# Open the web dashboard (3000). The engine (8018) is reached only by the
+# dashboard over the private compose network, so it needs no public rule — and
+# shouldn't get one: NOVO_AUTH=local means an open 8018 is an unauthenticated
+# engine (see the cloud overview's auth warning).
+az vm open-port --resource-group "$RG" --name novomcp-engine --port 3000
 ```
 
-Get the public IP and hit `http://<ip>:8018/health`.
+Get the public IP and open the dashboard at `http://<ip>:3000`.
 
 ### Adding a GPU service
 

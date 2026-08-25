@@ -27,14 +27,21 @@ aws ec2 create-key-pair --region "$REGION" --key-name novomcp-key \
   --query 'KeyMaterial' --output text > ~/.ssh/novomcp-key.pem
 chmod 400 ~/.ssh/novomcp-key.pem
 
-# 3. Create a security group allowing SSH + engine port
+# 3. Create a security group. Open SSH + the web dashboard (3000). The engine
+#    (8018) is reached only by the dashboard over the private compose network,
+#    so it needs NO public rule — and shouldn't get one: NOVO_AUTH=local means
+#    an open 8018 is an unauthenticated engine (see the cloud overview's auth
+#    warning). Scope 8018 to your own IP only if you want direct REST/MCP access.
 SG_ID=$(aws ec2 create-security-group --region "$REGION" \
-  --group-name novomcp-sg --description "NovoMCP engine" \
+  --group-name novomcp-sg --description "NovoMCP" \
   --query 'GroupId' --output text)
 aws ec2 authorize-security-group-ingress --region "$REGION" --group-id "$SG_ID" \
   --protocol tcp --port 22 --cidr 0.0.0.0/0
 aws ec2 authorize-security-group-ingress --region "$REGION" --group-id "$SG_ID" \
-  --protocol tcp --port 8018 --cidr 0.0.0.0/0
+  --protocol tcp --port 3000 --cidr 0.0.0.0/0
+# Optional, debugging only — use YOUR IP, never 0.0.0.0/0, since the engine is unauthenticated:
+# aws ec2 authorize-security-group-ingress --region "$REGION" --group-id "$SG_ID" \
+#   --protocol tcp --port 8018 --cidr <your-ip>/32
 
 # 4. User-data script: install docker + clone repo + docker compose up
 cat > /tmp/user-data.sh <<'EOF'
@@ -65,7 +72,7 @@ aws ec2 run-instances --region "$REGION" \
   --tag-specifications 'ResourceType=instance,Tags=[{Key=Name,Value=novomcp-engine}]'
 ```
 
-Wait a few minutes for user-data to finish, then find your instance's public IP and hit `http://<public-ip>:8018/health`.
+Wait a few minutes for user-data to finish, then find your instance's public IP and open the dashboard at `http://<public-ip>:3000`. (If you opened 8018 to your own IP, `http://<public-ip>:8018/health` hits the engine directly.)
 
 ### Adding a GPU service
 

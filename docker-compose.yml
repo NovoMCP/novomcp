@@ -45,6 +45,26 @@ services:
       # REDIS_URL: redis://redis:6379/0
     restart: unless-stopped
 
+  # Web dashboard (Next.js). The browser talks to this on :3000; its server-side
+  # BFF routes reach the engine over the compose network at http://engine:8018,
+  # so you never think about start order — `docker compose up` brings both up.
+  web:
+    build:
+      context: ./frontend-nextjs
+      dockerfile: Dockerfile
+    image: novomcp/web:latest
+    container_name: novomcp-web
+    ports:
+      - "3000:3000"
+    environment:
+      # Server-side only (not a NEXT_PUBLIC_ var) — resolved at request time,
+      # so it points at the engine service by its compose DNS name.
+      NOVOMCP_ENGINE_URL: http://engine:8018
+      NOVO_AUTH: local
+    depends_on:
+      - engine
+    restart: unless-stopped
+
   # Persistent OAuth store, optional. Uncomment REDIS_URL above too.
   # redis:
   #   image: redis:7-alpine

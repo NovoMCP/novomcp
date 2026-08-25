@@ -38,7 +38,11 @@ export async function GET() {
     engine_url: NOVOMCP_ENGINE_URL,
     engine_reachable: health !== null,
     health,
+    version: health?.version ?? null,
     tools_visible: tools?.tools?.length ?? null,
+    // Full catalog size from the engine (falls back to null if an older engine
+    // doesn't report it). The dashboard renders "<visible> of <total>".
+    tools_total: health?.tools_total ?? null,
     tool_names: (tools?.tools ?? []).map((t: any) => t.name),
     rest_paths: openapi?.paths ? Object.keys(openapi.paths).length : null,
     update_status: platform?.result?.update_status ?? null,

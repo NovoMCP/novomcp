@@ -99,6 +99,21 @@ The engine boots with:
 
 If you accidentally create the venv with Python 3.9, `python main_https.py` fails fast with an actionable message telling you which install command to run.
 
+### Everything at once — Docker Compose (engine + dashboard)
+
+If you have Docker, one command builds and runs **both** the engine and the [web dashboard](#the-web-dashboard), wired to each other on a private network:
+
+```bash
+git clone https://github.com/NovoMCP/novomcp.git
+cd novomcp
+docker compose up
+```
+
+- Engine → `http://localhost:8018`
+- Dashboard → `http://localhost:3000`
+
+`docker compose up` starts both and streams both logs; `Ctrl-C` (or `docker compose down`) stops both. No start-order to worry about. Compose is also the [single-VM cloud recipe](deploying-to-cloud/README.md) — the same file scales from your laptop to one box in the cloud.
+
 ## First requests
 
 In another shell:
@@ -157,6 +172,37 @@ tail -3 ~/.novo/audit.jsonl
 ```
 
 Every tool call is logged as a JSON-lines row. Structure: `event`, `timestamp`, `payload` (tool, funnel_id, success, duration, surface).
+
+## The web dashboard
+
+The engine is headless — a REST/MCP backend. The **web dashboard** (Next.js) is the visual surface: molecule profiles, live engine/service status, and the config screens for LLM keys, compliance, observability, and data connectors.
+
+The engine and the dashboard are **two separate processes**. The dashboard's server-side routes proxy to the engine at `NOVOMCP_ENGINE_URL` (default `http://localhost:8018`); the browser only ever talks to the dashboard.
+
+!!! note "Start order doesn't matter"
+    The dashboard degrades gracefully when the engine is down — every panel shows what's missing and offers a **Recheck** button — so you can start either first and connect them in any order.
+
+=== "Docker (both at once)"
+
+    ```bash
+    docker compose up
+    ```
+
+    Brings up the engine **and** the dashboard together (see [above](#everything-at-once-docker-compose-engine-dashboard)). Open **http://localhost:3000**.
+
+=== "Manual (no Docker)"
+
+    Two terminals. In the first, run the engine ([Install and run](#install-and-run)). In the second:
+
+    ```bash
+    cd frontend-nextjs
+    npm install
+    npm run dev
+    ```
+
+    Open **http://localhost:3000**. Set `NOVOMCP_ENGINE_URL` if your engine runs somewhere other than `http://localhost:8018`.
+
+Once connected, the dashboard shows **Tools available: 11 of 68** — the 11 that work with nothing wired, out of the full catalog. That count climbs as you [deploy services](deploying-services/README.md); the dashboard lists which env var unlocks each capability. See [Tool availability](tool-availability.md) for the full map.
 
 ## What next
 
