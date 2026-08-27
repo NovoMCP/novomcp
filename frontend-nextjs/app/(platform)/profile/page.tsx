@@ -254,7 +254,7 @@ function NotWired({ text, env, wired }: { text: string; env: string; wired: bool
         <>
           Set <code className="font-mono text-[var(--text-soft)]">{env}</code> to enable it — see{' '}
           <a
-            href="https://github.com/NovoMCP/novomcp/tree/main/docs/deploying-services"
+            href="https://docs.novomcp.com/deploying-services/"
             target="_blank"
             rel="noreferrer"
             className="text-[var(--accent)] hover:underline"

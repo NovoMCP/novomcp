@@ -167,7 +167,7 @@ export default function ConnectionsPage() {
           <code className="font-mono">.env</code> or the engine&apos;s environment) and press Recheck. Editing credentials
           in-app is coming in a later release. See{' '}
           <a
-            href="https://github.com/NovoMCP/novomcp/tree/main/docs/deploying-services"
+            href="https://docs.novomcp.com/deploying-services/"
             target="_blank"
             rel="noreferrer"
             className="text-[var(--accent)] hover:underline"

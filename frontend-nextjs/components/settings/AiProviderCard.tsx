@@ -214,7 +214,7 @@ export default function AiProviderCard() {
             </button>
           )}
           <a
-            href="https://github.com/NovoMCP/novomcp/blob/main/docs/configuring-llm.md"
+            href="https://docs.novomcp.com/configuring-llm/"
             target="_blank"
             rel="noreferrer"
             className="ml-auto text-xs text-[var(--text-muted)] hover:text-[var(--accent)] transition-colors"
