@@ -156,14 +156,6 @@ export default function DashboardPage() {
                 Optional services
               </h2>
             </div>
-            <a
-              href="https://github.com/NovoMCP/novomcp/blob/main/docs/product-roadmap.md"
-              target="_blank"
-              rel="noreferrer"
-              className="text-xs text-[var(--text-muted)] hover:text-[var(--accent)] transition-colors"
-            >
-              roadmap ↗
-            </a>
           </div>
           <div className="divide-y divide-[var(--border)] max-h-96 overflow-y-auto">
             {enabledProviders.map(([key]) => (
@@ -230,13 +222,13 @@ export default function DashboardPage() {
             icon={<Activity className="h-5 w-5" />}
             title="Connect any MCP client"
             body="Works with any MCP-compatible AI assistant — Claude Desktop, Cursor, Codex, Zed, Cline, and others."
-            href="https://github.com/NovoMCP/novomcp/blob/main/docs/connecting-mcp-clients.md"
+            href="https://docs.novomcp.com/connecting-mcp-clients/"
           />
           <QuickAction
             icon={<BookOpen className="h-5 w-5" />}
             title="Deploy more services"
             body="Add ADMET, docking, MD, QM to unlock more tools."
-            href="https://github.com/NovoMCP/novomcp/tree/main/docs/deploying-services"
+            href="https://docs.novomcp.com/deploying-services/"
           />
         </div>
       </div>

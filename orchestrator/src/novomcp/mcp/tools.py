@@ -2819,7 +2819,7 @@ def rest_tool_visible(tool_name: str, user_tier: str) -> bool:
 # =============================================================================
 # Tools whose dependencies aren't wired locally are hidden from tools/list —
 # users only see what actually works. As we ship data + service walkthroughs
-# in future releases (per product-roadmap.md), tools re-appear automatically
+# in future releases, tools re-appear automatically
 # when their required env vars / files / services show up.
 #
 # Set `NOVOMCP_SHOW_HIDDEN_TOOLS=1` to override the filter and see everything
