@@ -35,7 +35,7 @@ The engine treats molecule indexing and compliance as capabilities, not vendors.
 
 ## Coming with future releases
 
-Everything else is on the [product roadmap](https://github.com/NovoMCP/novomcp/blob/main/docs/product-roadmap.md) — carved out cleanly, coming in weekly releases, each unlocking a slice of the catalog. Here's the map:
+Everything else is carved out cleanly, coming in weekly releases, each unlocking a slice of the catalog. Here's the map:
 
 ### Omics tools — v1.1.x (SQLite bundle)
 
@@ -121,4 +121,3 @@ Hidden-until-wired means:
 - [Quickstart](quickstart.md) — get the 11 default tools running
 - [Deploying services](deploying-services/README.md) — wire up compute services to unlock more tools
 - [Optional data services](optional-data-services.md) — data + auxiliary services
-- [Product roadmap](https://github.com/NovoMCP/novomcp/blob/main/docs/product-roadmap.md) *(private)* — timing on which tools ship in which release

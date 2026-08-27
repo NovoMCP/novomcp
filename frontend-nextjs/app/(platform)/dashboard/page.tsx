@@ -156,14 +156,6 @@ export default function DashboardPage() {
                 Optional services
               </h2>
             </div>
-            <a
-              href="https://github.com/NovoMCP/novomcp/blob/main/docs/product-roadmap.md"
-              target="_blank"
-              rel="noreferrer"
-              className="text-xs text-[var(--text-muted)] hover:text-[var(--accent)] transition-colors"
-            >
-              roadmap ↗
-            </a>
           </div>
           <div className="divide-y divide-[var(--border)] max-h-96 overflow-y-auto">
             {enabledProviders.map(([key]) => (

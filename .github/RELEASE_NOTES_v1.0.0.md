@@ -98,7 +98,6 @@ By design, curated enriched datasets and Novo AG autonomous heuristics live sepa
 - [Deploying to a cloud](docs/deploying-to-cloud/)
 - [Configuring an LLM](docs/configuring-llm.md)
 - [Engineering stories](docs/engineering-stories/) — postmortems and design notes on specific technical bets
-- [Product roadmap](docs/product-roadmap.md) — coming weekly
 
 ## What's next
 
