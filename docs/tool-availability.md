@@ -26,67 +26,61 @@ No API keys, no databases, no compute services. Every one works on a laptop with
 
 ### What's NOT in v1 (but ships in the codebase, hidden)
 
-- `search_similar`, `filter_molecules`, and the tree-guided retrieval tools (`explore_chemical_space`, `drill_into_cluster`, `vector_search`, `compare_candidates`) — need a molecule index. Hidden until `NOVOMCP_MOLECULE_INDEX_URL` is set. **Roadmap: v1.1.5 similarity data connector** ships a reference index server that reads a local parquet slice of the same corpus that unblocks omics — no paid service required.
+- `search_similar`, `filter_molecules`, and the tree-guided retrieval tools (`explore_chemical_space`, `drill_into_cluster`, `vector_search`, `compare_candidates`) — need a molecule index. Hidden until `NOVOMCP_MOLECULE_INDEX_URL` is set; point it at a self-hosted parquet index of your own.
 - `check_compliance` — a generic, unbranded compliance hook. Hidden until `NOVOMCP_COMPLIANCE_URL` is set; the engine bundles no ruleset of its own.
 
 ### A note on env-var naming
 
 The engine treats molecule indexing and compliance as capabilities, not vendors. Any self-hosted parquet index or your own service works — the engine only ever sees the generic `NOVOMCP_*` env var. Point it at whichever backend you have.
 
-## Coming with future releases
+## Unlocking the rest of the catalog
 
-Everything else is carved out cleanly, coming in weekly releases, each unlocking a slice of the catalog. Here's the map:
+Every other tool is already in the codebase — hidden until you wire the service that backs it. Set the env var, and the tool appears in `tools/list` on the next handshake. Here's the map:
 
-### Omics tools — v1.1.x (SQLite bundle)
+### Omics tools
 
 Requires: `NOVOMCP_DB_HOST` pointing at a Postgres with the omics schema loaded.
 
 Unlocks: `target_discovery`, `stratify_patients`, `validate_target`.
 
-Roadmap: ship `data/omics.sqlite.gz` + `scripts/load_omics.py`. One-command load into your Postgres.
+### Literature search
 
-### Literature search — v1.2.x (PubMed fallback)
-
-Requires today: `PINECONE_API_KEY` + a curated Pinecone index.
-
-Roadmap: fallback to public PubMed E-utilities so OSS users get real literature search without Pinecone.
+Requires: `PINECONE_API_KEY` + a curated Pinecone index.
 
 Unlocks: `search_literature`, `search_patents`.
 
-### Compute services — v1.3.x through v1.6.x
+### Compute services
 
 Each service is a Docker image (`ghcr.io/novomcp/<service>:latest`). Point the engine at wherever it's running:
 
-| Env var | Unlocks | Roadmap |
-|---|---|---|
-| `AUTODOCK_GPU_URL` | `dock_molecules`, `dock_with_strain` | v1.3.x — Modal walkthrough |
-| `GROMACS_MD_URL` | `run_molecular_dynamics`, `generate_dynamics` | v1.4.x — Runpod walkthrough |
-| `OPENFOLD3_URL` | `predict_structure`, `get_protein_structure`, `get_structure_result` | v1.5.x |
-| `NOVOMCP_QM_URL` | 8 quantum-mechanical tools (xTB / CREST / MCPB.py) | v1.6.x |
-| `NOVOMCP_NNP_URL` | `compute_energy`, `optimize_geometry_nnp` (AIMNet2 / MACE / ANI-2x) | v1.6.x |
-| `NOVOMCP_PROPERTIES_URL` | `predict_pka`, `predict_solubility`, `predict_bde` | v1.6.x |
-| `NOVOMCP_NEB_URL` | `find_transition_state` | v1.6.x |
-| `ADDIE_MODELS_URL` | `predict_admet` (31 ADMET predictions) | v1.3.x (bundled with docking walkthrough) |
-| `LEAD_OPTIMIZATION_URL` | `lead_optimization` | v1.6.x |
-| `MOLMIM_OPTIMIZER_URL` | `optimize_molecule` | v2.x — replacing MolMIM with an OSS generator |
+| Env var | Unlocks |
+|---|---|
+| `AUTODOCK_GPU_URL` | `dock_molecules`, `dock_with_strain` |
+| `GROMACS_MD_URL` | `run_molecular_dynamics`, `generate_dynamics` |
+| `OPENFOLD3_URL` | `predict_structure`, `get_protein_structure`, `get_structure_result` |
+| `NOVOMCP_QM_URL` | 8 quantum-mechanical tools (xTB / CREST / MCPB.py) |
+| `NOVOMCP_NNP_URL` | `compute_energy`, `optimize_geometry_nnp` (AIMNet2 / MACE / ANI-2x) |
+| `NOVOMCP_PROPERTIES_URL` | `predict_pka`, `predict_solubility`, `predict_bde` |
+| `NOVOMCP_NEB_URL` | `find_transition_state` |
+| `ADDIE_MODELS_URL` | `predict_admet` (31 ADMET predictions) |
+| `LEAD_OPTIMIZATION_URL` | `lead_optimization` |
+| `MOLMIM_OPTIMIZER_URL` | `optimize_molecule` |
 
-### Funnel-persistence tools — v1.8.x
+### Funnel-persistence tools
 
 Requires: `FUNNEL_BACKEND_URL` pointing at an audit/usage-ledger service.
 
 Unlocks: `save_funnel_stage`, `save_funnel_context`, `save_funnel_memory`, `search_prior_runs`, `list_funnels`, `get_funnel_audit`, `get_funnel_context`, `get_pipeline_audit`, `get_credit_usage`, `generate_upload_url`, `get_file_status`, `list_files`, `list_jobs`, `get_job_status`, `cancel_job`.
 
-Roadmap: reference implementation of the backend + docs on plugging in your own via the pluggable spine (`NOVO_AUDIT=custom`).
+Wire your own backend via the pluggable spine (`NOVO_AUDIT=custom`).
 
-### Compliance hook — v2.0.0
+### Compliance hook
 
 Requires: `NOVOMCP_COMPLIANCE_URL` pointing at any compliance service.
 
 Unlocks: `check_compliance` — a generic, unbranded hook that forwards the molecule + context to your configured service.
 
-Roadmap: reference implementations + docs on wiring your own compliance backend.
-
-### Enterprise data connectors — post-v2.0
+### Enterprise data connectors
 
 Hidden from OSS entirely. `push_to_destination`, `pull_from_source` (Snowflake, Databricks, BigQuery, Supabase) are hosted-only tools; no OSS user should see them in `tools/list`.
 
