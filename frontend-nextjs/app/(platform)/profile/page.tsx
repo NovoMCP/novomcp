@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, type ReactNode } from 'react';
-import { FlaskConical, Beaker, ShieldCheck, AlertCircle, Loader2 } from 'lucide-react';
+import Link from 'next/link';
+import { FlaskConical, Beaker, ShieldCheck, AlertCircle, Loader2, ArrowRight } from 'lucide-react';
 import { useCapabilities } from '@/core/api/useCapabilities';
 
 // Molecule profile — the first in-app science surface. Paste a SMILES, get the
@@ -203,11 +204,7 @@ export default function ProfilePage() {
                 ))}
               </div>
             ) : (
-              <NotWired
-                text="ADMET predictions need the ADMET service."
-                env={caps?.services?.admet?.env ?? 'ADDIE_MODELS_URL'}
-                wired={admetWired}
-              />
+              <NotWired text="ADMET predictions need the ADMET service." wired={admetWired} />
             )}
           </Card>
 
@@ -220,7 +217,6 @@ export default function ProfilePage() {
             ) : (
               <NotWired
                 text="Regulatory screening and structural alerts need a compliance service."
-                env={caps?.compliance?.env ?? 'NOVOMCP_COMPLIANCE_URL'}
                 wired={false}
               />
             )}
@@ -246,24 +242,19 @@ function Card({ icon, title, subtitle, children }: { icon: ReactNode; title: str
   );
 }
 
-function NotWired({ text, env, wired }: { text: string; env: string; wired: boolean }) {
+function NotWired({ text, wired }: { text: string; wired: boolean }) {
+  if (wired) {
+    return <p className="text-sm text-[var(--text-muted)]">Service connected, but it returned no data for this molecule.</p>;
+  }
   return (
-    <p className="text-sm text-[var(--text-muted)]">
-      {wired ? 'Service wired but no data returned for this molecule. ' : text + ' '}
-      {!wired && (
-        <>
-          Set <code className="font-mono text-[var(--text-soft)]">{env}</code> to enable it — see{' '}
-          <a
-            href="https://docs.novomcp.com/deploying-services/"
-            target="_blank"
-            rel="noreferrer"
-            className="text-[var(--accent)] hover:underline"
-          >
-            deploying services
-          </a>
-          .
-        </>
-      )}
-    </p>
+    <div className="flex flex-col items-start gap-3">
+      <p className="text-sm text-[var(--text-muted)]">{text}</p>
+      <Link
+        href="/connections"
+        className="inline-flex items-center gap-1.5 text-sm text-[var(--accent)] hover:underline"
+      >
+        Connect it in Connections <ArrowRight className="h-3.5 w-3.5" />
+      </Link>
+    </div>
   );
 }

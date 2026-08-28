@@ -7,12 +7,10 @@ import {
   Zap,
   FileText,
   ArrowRight,
-  CheckCircle2,
-  Circle,
   Server,
-  BookOpen,
   FlaskConical,
   Package,
+  Plug,
 } from 'lucide-react';
 
 // OSS Control Panel dashboard. Reads local /api/local/health and
@@ -147,24 +145,30 @@ export default function DashboardPage() {
 
       {/* Two-column grid: providers + recent audit */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Providers */}
+        {/* Capabilities — a status glance; configuration lives in Connections */}
         <div className="bg-[var(--card)] border border-[var(--border)] flex flex-col">
           <div className="px-6 py-4 border-b border-[var(--border)] flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Package className="h-4 w-4 text-[var(--text-muted)]" />
               <h2 className="text-sm font-medium tracking-wide uppercase text-[var(--text-muted)]">
-                Optional services
+                Capabilities
               </h2>
             </div>
+            <span className="text-xs text-[var(--text-muted)] tabular-nums">
+              {enabledProviders.length} of {enabledProviders.length + disabledProviders.length} on
+            </span>
           </div>
-          <div className="divide-y divide-[var(--border)] max-h-96 overflow-y-auto">
-            {enabledProviders.map(([key]) => (
-              <ProviderRow key={key} providerKey={key} enabled />
-            ))}
-            {disabledProviders.map(([key]) => (
-              <ProviderRow key={key} providerKey={key} enabled={false} />
+          <div className="divide-y divide-[var(--border)] max-h-80 overflow-y-auto">
+            {[...enabledProviders, ...disabledProviders].map(([key, on]) => (
+              <ProviderRow key={key} providerKey={key} enabled={on} />
             ))}
           </div>
+          <Link
+            href="/connections"
+            className="px-6 py-3 border-t border-[var(--border)] text-xs text-[var(--accent)] hover:underline flex items-center gap-1.5"
+          >
+            Configure in Connections <ArrowRight className="h-3 w-3" />
+          </Link>
         </div>
 
         {/* Recent audit */}
@@ -225,10 +229,11 @@ export default function DashboardPage() {
             href="https://docs.novomcp.com/connecting-mcp-clients/"
           />
           <QuickAction
-            icon={<BookOpen className="h-5 w-5" />}
-            title="Deploy more services"
-            body="Add ADMET, docking, MD, QM to unlock more tools."
-            href="https://docs.novomcp.com/deploying-services/"
+            icon={<Plug className="h-5 w-5" />}
+            title="Connect a service"
+            body="Plug in ADMET, docking, MD, QM and more from the connector marketplace."
+            href="/connections"
+            internal
           />
         </div>
       </div>
@@ -249,19 +254,18 @@ function ProviderRow({ providerKey, enabled }: { providerKey: string; enabled: b
   const meta = PROVIDER_LABELS[providerKey];
   if (!meta) return null;
   return (
-    <div className="px-6 py-3 flex items-center justify-between gap-4">
-      <div className="flex items-center gap-3 min-w-0">
-        {enabled ? (
-          <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
-        ) : (
-          <Circle className="h-4 w-4 text-[var(--text-muted)] shrink-0" />
-        )}
-        <div className="min-w-0">
-          <p className={`text-sm ${enabled ? 'text-[var(--text)]' : 'text-[var(--text-muted)]'}`}>{meta.label}</p>
-          <p className="text-xs text-[var(--text-muted)] truncate">{meta.unlocks}</p>
-        </div>
-      </div>
-      <code className="text-xs text-[var(--text-muted)] font-mono shrink-0">{meta.envVar}</code>
+    <div className="px-6 py-2.5 flex items-center justify-between gap-4">
+      <p className={`text-sm truncate ${enabled ? 'text-[var(--text)]' : 'text-[var(--text-muted)]'}`}>{meta.label}</p>
+      <span
+        className={`inline-flex items-center gap-1.5 text-[11px] px-2 py-0.5 rounded-full border shrink-0 ${
+          enabled
+            ? 'text-emerald-500 border-emerald-500/25 bg-emerald-500/10'
+            : 'text-[var(--text-muted)] border-[var(--border)] bg-[var(--bg-warm)]'
+        }`}
+      >
+        <span className={`h-1.5 w-1.5 rounded-full ${enabled ? 'bg-emerald-500' : 'bg-[var(--text-muted)]'}`} />
+        {enabled ? 'connected' : 'not configured'}
+      </span>
     </div>
   );
 }
