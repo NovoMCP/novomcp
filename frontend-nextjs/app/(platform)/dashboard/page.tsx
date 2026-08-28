@@ -1,59 +1,44 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import Link from 'next/link';
-import {
-  Activity,
-  Zap,
-  FileText,
-  ArrowRight,
-  Server,
-  FlaskConical,
-  Package,
-  Plug,
-} from 'lucide-react';
 
 // OSS Control Panel dashboard. Reads local /api/local/health and
 // /api/local/audit (which read the engine + ~/.novo/audit.jsonl directly, no
-// managed backend needed). Renders engine status, tool inventory, provider
-// wiring, recent audit — the four things an OSS user actually wants to see
-// on first boot.
-//
-// Hosted deploys (NEXT_PUBLIC_REQUIRE_AUTH=true) still use the same page;
-// the "Local single-user mode" chip becomes the user's email + org.
+// managed backend needed). Leads with a status hero — engine health and how
+// much of the 68-tool catalog is unlocked — then capability tiles, recent
+// activity, and first-run actions. Every surface uses the marketplace's visual
+// language so the app reads as one product.
 
 interface HealthResp {
   engine_url: string;
   engine_reachable: boolean;
-  health: { status?: string; timestamp?: string; services_available?: number; version?: string; tools_total?: number } | null;
   version: string | null;
   tools_visible: number | null;
   tools_total: number | null;
-  tool_names: string[];
   rest_paths: number | null;
-  update_status: { current_version?: string; latest_version?: string; is_newer?: boolean; release_url?: string } | null;
   providers: Record<string, boolean>;
 }
 
 interface AuditResp {
   audit_path: string;
   error: string | null;
-  count: number;
-  entries: Array<{ event: string; ts?: string; payload?: any }>;
+  entries: Array<{ event: string; ts?: string; payload?: { tool?: string; success?: boolean; ts?: string } }>;
 }
 
-const PROVIDER_LABELS: Record<string, { label: string; unlocks: string; envVar: string }> = {
-  admet: { label: 'ADMET predictions', unlocks: 'predict_admet', envVar: 'ADDIE_MODELS_URL' },
-  docking: { label: 'Molecular docking', unlocks: 'dock_molecules, dock_with_strain', envVar: 'AUTODOCK_GPU_URL' },
-  md: { label: 'Molecular dynamics', unlocks: 'run_molecular_dynamics, generate_dynamics', envVar: 'GROMACS_MD_URL' },
-  structure: { label: 'Structure prediction', unlocks: 'predict_structure, get_protein_structure', envVar: 'OPENFOLD3_URL' },
-  qm: { label: 'Quantum mechanics', unlocks: 'run_qm_calculation, run_conformer_search', envVar: 'NOVOMCP_QM_URL' },
-  nnp: { label: 'Neural network potentials', unlocks: 'compute_energy, optimize_geometry_nnp', envVar: 'NOVOMCP_NNP_URL' },
-  compliance: { label: 'Compliance hook', unlocks: 'check_compliance', envVar: 'NOVOMCP_COMPLIANCE_URL' },
-  molecule_index: { label: 'Molecule index', unlocks: 'search_similar, filter_molecules, tree tools', envVar: 'NOVOMCP_MOLECULE_INDEX_URL' },
-  omics: { label: 'Omics data', unlocks: 'target_discovery, validate_target, stratify_patients', envVar: 'NOVOMCP_DB_HOST' },
-  literature: { label: 'Literature search', unlocks: 'search_literature, search_patents', envVar: 'PINECONE_API_KEY' },
-  materials: { label: 'Materials Project', unlocks: 'search_materials_project', envVar: 'MP_API_KEY' },
+// Capabilities shown as tiles: a monogram, a short name, and status.
+const CAPABILITIES: Record<string, { short: string; mono: string }> = {
+  admet: { short: 'ADMET', mono: 'AD' },
+  docking: { short: 'Docking', mono: 'AG' },
+  md: { short: 'Dynamics', mono: 'MD' },
+  structure: { short: 'Structure', mono: 'OF' },
+  qm: { short: 'Quantum', mono: 'QM' },
+  nnp: { short: 'NN potentials', mono: 'NN' },
+  compliance: { short: 'Compliance', mono: 'CO' },
+  molecule_index: { short: 'Molecule index', mono: 'IX' },
+  omics: { short: 'Omics', mono: 'OM' },
+  literature: { short: 'Literature', mono: 'LI' },
+  materials: { short: 'Materials', mono: 'MP' },
 };
 
 export default function DashboardPage() {
@@ -64,7 +49,7 @@ export default function DashboardPage() {
   useEffect(() => {
     Promise.all([
       fetch('/api/local/health').then((r) => (r.ok ? r.json() : null)),
-      fetch('/api/local/audit?limit=10').then((r) => (r.ok ? r.json() : null)),
+      fetch('/api/local/audit?limit=6').then((r) => (r.ok ? r.json() : null)),
     ]).then(([h, a]) => {
       setHealth(h);
       setAudit(a);
@@ -72,244 +57,212 @@ export default function DashboardPage() {
     });
   }, []);
 
-  const enabledProviders = Object.entries(health?.providers ?? {}).filter(([, on]) => on);
-  const disabledProviders = Object.entries(health?.providers ?? {}).filter(([, on]) => !on);
   const engineOk = !!health?.engine_reachable;
-  const versionLine = health?.update_status?.current_version
-    ? `v${health.update_status.current_version}${health.update_status.is_newer ? ` — v${health.update_status.latest_version} available` : ''}`
-    : null;
+  const providers = Object.entries(health?.providers ?? {}).filter(([key]) => CAPABILITIES[key]);
+  const onCount = providers.filter(([, on]) => on).length;
+  const ordered = [...providers].sort((a, b) => Number(b[1]) - Number(a[1]));
+  const visible = health?.tools_visible ?? null;
+  const total = health?.tools_total ?? 68;
+  const pct = visible != null ? Math.round((visible / total) * 100) : 0;
 
   return (
-    <div className="space-y-8">
-      {/* Header */}
+    <div className="max-w-5xl">
+      {/* header */}
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-3xl font-semibold text-[var(--text)]" style={{ fontFamily: 'var(--serif)' }}>
-            NovoMCP Control Panel
+          <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.16em] text-[var(--text-muted)]">
+            <span
+              className={`h-1.5 w-1.5 rounded-full ${engineOk ? 'bg-emerald-500' : 'bg-[var(--destructive)]'}`}
+              style={engineOk ? { boxShadow: '0 0 0 3px rgba(116,176,131,.18)' } : undefined}
+            />
+            NovoMCP · Local single-user
+          </div>
+          <h1 className="text-3xl text-[var(--text)] mt-2" style={{ fontFamily: 'var(--serif)', fontWeight: 500 }}>
+            Control Panel
           </h1>
-          <p className="text-sm text-[var(--text-muted)] mt-1">
-            Local single-user mode • {enabledProviders.length} of {enabledProviders.length + disabledProviders.length} optional services configured
-          </p>
         </div>
-        {versionLine && (
-          <a
-            href={health?.update_status?.release_url || '#'}
-            target="_blank"
-            rel="noreferrer"
-            className={`text-xs px-3 py-1.5 border ${health?.update_status?.is_newer ? 'border-[var(--accent)] text-[var(--accent)]' : 'border-[var(--border)] text-[var(--text-muted)]'}`}
-          >
-            {versionLine}
-          </a>
+        {health?.version && (
+          <span className="text-xs text-[var(--text-muted)] font-mono border border-[var(--border)] px-2.5 py-1 rounded-sm">
+            v{health.version}
+          </span>
         )}
       </div>
 
-      {/* Engine status card */}
-      <div className="bg-[var(--card)] border border-[var(--border)]">
-        <div className="px-6 py-4 border-b border-[var(--border)] flex items-center gap-2">
-          <Server className="h-4 w-4 text-[var(--text-muted)]" />
-          <h2 className="text-sm font-medium tracking-wide uppercase text-[var(--text-muted)]">
-            Engine
-          </h2>
-        </div>
-        <div className="px-6 py-5 grid grid-cols-2 md:grid-cols-4 gap-6">
-          <Stat
-            label="Status"
-            value={
-              loading ? '—' : engineOk ? (
-                <span className="flex items-center gap-1.5 text-emerald-500">
-                  <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                  healthy
-                </span>
-              ) : (
-                <span className="text-red-500">unreachable</span>
-              )
-            }
-          />
-          <Stat
-            label="Tools available"
-            value={
-              health?.tools_visible != null
-                ? `${health.tools_visible} of ${health.tools_total ?? 68}`
-                : '—'
-            }
-          />
-          <Stat label="REST endpoints" value={health?.rest_paths ?? '—'} />
-          <Stat label="Engine URL" value={<span className="text-xs font-mono truncate">{health?.engine_url ?? '—'}</span>} />
-        </div>
-        {!loading && !engineOk && (
-          <div className="px-6 py-3 border-t border-[var(--border)] text-xs text-red-500 bg-red-500/5">
-            The engine at {health?.engine_url} isn&apos;t responding. Run <code className="font-mono">python main_https.py</code> from the <code className="font-mono">orchestrator/</code> directory.
-          </div>
-        )}
-      </div>
-
-      {/* Two-column grid: providers + recent audit */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Capabilities — a status glance; configuration lives in Connections */}
-        <div className="bg-[var(--card)] border border-[var(--border)] flex flex-col">
-          <div className="px-6 py-4 border-b border-[var(--border)] flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Package className="h-4 w-4 text-[var(--text-muted)]" />
-              <h2 className="text-sm font-medium tracking-wide uppercase text-[var(--text-muted)]">
-                Capabilities
-              </h2>
+      {/* status hero */}
+      <div className="mt-7 grid md:grid-cols-[1.4fr_1fr] gap-px bg-[var(--border)] border border-[var(--border)] rounded-lg overflow-hidden">
+        <div className="bg-[var(--card)] px-6 py-6">
+          <p className="text-[11px] uppercase tracking-wider text-[var(--text-muted)]">Engine</p>
+          {loading ? (
+            <div className="h-8 w-40 bg-[var(--bg-warm)] animate-pulse rounded mt-2" />
+          ) : engineOk ? (
+            <div className="flex items-center gap-3 mt-1" style={{ fontFamily: 'var(--serif)' }}>
+              <span
+                className="h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse"
+                style={{ boxShadow: '0 0 0 4px rgba(116,176,131,.18)' }}
+              />
+              <span className="text-3xl text-[var(--text)]">Healthy</span>
             </div>
-            <span className="text-xs text-[var(--text-muted)] tabular-nums">
-              {enabledProviders.length} of {enabledProviders.length + disabledProviders.length} on
-            </span>
+          ) : (
+            <div className="text-3xl text-[var(--destructive)] mt-1" style={{ fontFamily: 'var(--serif)' }}>
+              Unreachable
+            </div>
+          )}
+          <div className="flex flex-wrap gap-x-8 gap-y-4 mt-6">
+            <HeroMeta k="Version" v={health?.version ?? '—'} />
+            <HeroMeta k="REST endpoints" v={health?.rest_paths ?? '—'} />
+            <HeroMeta k="Engine URL" v={health?.engine_url?.replace(/^https?:\/\//, '') ?? '—'} mono />
           </div>
-          <div className="divide-y divide-[var(--border)] max-h-80 overflow-y-auto">
-            {[...enabledProviders, ...disabledProviders].map(([key, on]) => (
-              <ProviderRow key={key} providerKey={key} enabled={on} />
-            ))}
-          </div>
-          <Link
-            href="/connections"
-            className="px-6 py-3 border-t border-[var(--border)] text-xs text-[var(--accent)] hover:underline flex items-center gap-1.5"
+          {!loading && !engineOk && (
+            <p className="text-xs text-[var(--text-muted)] mt-5">
+              Run <code className="font-mono">python main_https.py</code> from{' '}
+              <code className="font-mono">orchestrator/</code>, then reload.
+            </p>
+          )}
+        </div>
+        <div className="bg-[var(--card)] px-6 py-6 flex items-center gap-5">
+          <div
+            className="relative h-[104px] w-[104px] flex-none rounded-full grid place-items-center"
+            style={{ background: `conic-gradient(var(--accent) ${pct}%, var(--border) 0)` }}
+            role="img"
+            aria-label={`${visible ?? 0} of ${total} tools unlocked`}
           >
-            Configure in Connections <ArrowRight className="h-3 w-3" />
+            <div className="absolute inset-[11px] rounded-full bg-[var(--card)]" />
+            <div className="relative text-center" style={{ fontFamily: 'var(--serif)' }}>
+              <span className="text-2xl text-[var(--text)] tabular-nums">{visible ?? '—'}</span>
+              <span className="text-sm text-[var(--text-muted)] tabular-nums">/{total}</span>
+            </div>
+          </div>
+          <div>
+            <p className="text-[11px] uppercase tracking-wider text-[var(--text-muted)]">Tools unlocked</p>
+            <p className="text-[13px] text-[var(--text-soft)] mt-1.5 max-w-[20ch]">
+              Wire a service to unlock more of the catalog.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* capabilities */}
+      <div className="mt-9">
+        <div className="flex items-baseline justify-between mb-3">
+          <p className="text-[11px] uppercase tracking-wider text-[var(--text-muted)]">
+            Capabilities{!loading && providers.length > 0 && ` · ${onCount} on`}
+          </p>
+          <Link href="/connections" className="text-[12.5px] text-[var(--accent)] hover:underline">
+            Configure in Connections →
           </Link>
         </div>
+        <div className="grid gap-2.5 [grid-template-columns:repeat(auto-fill,minmax(208px,1fr))]">
+          {loading
+            ? Array.from({ length: 8 }).map((_, i) => (
+                <div key={i} className="h-[58px] bg-[var(--card)] border border-[var(--border)] rounded-md animate-pulse" />
+              ))
+            : ordered.map(([key, on]) => {
+                const c = CAPABILITIES[key];
+                return (
+                  <div
+                    key={key}
+                    className={`flex items-center gap-3 bg-[var(--card)] border rounded-md px-3.5 py-3 ${
+                      on ? 'border-emerald-500/30' : 'border-[var(--border)]'
+                    }`}
+                  >
+                    <div
+                      className="h-8 w-8 flex-none grid place-items-center rounded-lg bg-[var(--bg-warm)] border border-[var(--border)] text-[13px] text-[var(--text)]"
+                      style={{ fontFamily: 'var(--serif)' }}
+                    >
+                      {c.mono}
+                    </div>
+                    <span className={`text-[13.5px] font-semibold truncate ${on ? 'text-[var(--text)]' : 'text-[var(--text-soft)]'}`}>
+                      {c.short}
+                    </span>
+                    <span
+                      className={`ml-auto h-1.5 w-1.5 flex-none rounded-full ${on ? 'bg-emerald-500' : 'bg-[var(--text-muted)] opacity-50'}`}
+                      style={on ? { boxShadow: '0 0 0 3px rgba(116,176,131,.15)' } : undefined}
+                    />
+                  </div>
+                );
+              })}
+        </div>
+      </div>
 
-        {/* Recent audit */}
-        <div className="bg-[var(--card)] border border-[var(--border)]">
-          <div className="px-6 py-4 border-b border-[var(--border)] flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <FileText className="h-4 w-4 text-[var(--text-muted)]" />
-              <h2 className="text-sm font-medium tracking-wide uppercase text-[var(--text-muted)]">
-                Recent activity
-              </h2>
-            </div>
-            <span className="text-xs text-[var(--text-muted)] font-mono">
+      {/* activity + get started */}
+      <div className="mt-9 grid lg:grid-cols-[1.3fr_1fr] gap-4">
+        <div className="bg-[var(--card)] border border-[var(--border)] rounded-lg overflow-hidden">
+          <div className="px-5 py-3.5 border-b border-[var(--border)] flex items-center justify-between">
+            <h2 className="text-[11px] uppercase tracking-wider text-[var(--text-muted)]">Recent activity</h2>
+            <span className="text-[11px] font-mono text-[var(--text-muted)]">
               {audit?.audit_path?.replace(/^.*\/\.novo/, '~/.novo') ?? ''}
             </span>
           </div>
-          <div className="divide-y divide-[var(--border)] max-h-96 overflow-y-auto">
+          <div className="px-5 py-1">
             {loading ? (
-              <div className="px-6 py-8 text-sm text-[var(--text-muted)]">Loading…</div>
-            ) : audit?.error === 'no_audit_yet' ? (
-              <div className="px-6 py-8 text-sm text-[var(--text-muted)]">
-                No tool calls yet. Try one from the CLI:
-                <pre className="mt-2 text-xs bg-[var(--bg)] p-3 font-mono border border-[var(--border)]">{`curl -X POST ${health?.engine_url}/mcp/tools/calculate_properties \\
-  -H 'Authorization: Bearer x' \\
-  -H 'Content-Type: application/json' \\
-  -d '{"arguments": {"smiles": "CC(=O)Oc1ccccc1C(=O)O"}}'`}</pre>
+              <div className="py-8 text-sm text-[var(--text-muted)]">Loading…</div>
+            ) : (audit?.entries?.length ?? 0) === 0 ? (
+              <div className="py-8 text-sm text-[var(--text-muted)]">
+                No tool calls yet — profile a molecule or connect an MCP client to see activity here.
               </div>
-            ) : (audit?.entries.length ?? 0) === 0 ? (
-              <div className="px-6 py-8 text-sm text-[var(--text-muted)]">No entries</div>
             ) : (
-              audit?.entries.map((entry, i) => (
-                <AuditRow key={i} entry={entry} />
-              ))
+              audit?.entries.map((e, i) => {
+                const tool = e.payload?.tool || e.event || 'unknown';
+                const ts = e.ts || e.payload?.ts;
+                const ok = e.payload?.success;
+                return (
+                  <div key={i} className="flex items-center gap-3 py-2.5 border-b border-[var(--border)] last:border-0">
+                    <span className={`h-1.5 w-1.5 flex-none rounded-full ${ok === false ? 'bg-amber-500' : 'bg-emerald-500'}`} />
+                    <span className="font-mono text-[13px] text-[var(--text)] truncate">{tool}</span>
+                    {ts && <span className="ml-auto text-[11.5px] text-[var(--text-muted)] shrink-0">{new Date(ts).toLocaleString()}</span>}
+                  </div>
+                );
+              })
             )}
           </div>
         </div>
-      </div>
 
-      {/* Quick actions */}
-      <div className="bg-[var(--card)] border border-[var(--border)]">
-        <div className="px-6 py-4 border-b border-[var(--border)] flex items-center gap-2">
-          <Zap className="h-4 w-4 text-[var(--text-muted)]" />
-          <h2 className="text-sm font-medium tracking-wide uppercase text-[var(--text-muted)]">
-            Get started
-          </h2>
-        </div>
-        <div className="px-6 py-5 grid grid-cols-1 md:grid-cols-3 gap-4">
-          <QuickAction
-            icon={<FlaskConical className="h-5 w-5" />}
-            title="Profile a molecule"
-            body="Paste a SMILES, get computed properties in about a second."
-            href="/profile"
-            internal
-          />
-          <QuickAction
-            icon={<Activity className="h-5 w-5" />}
-            title="Connect any MCP client"
-            body="Works with any MCP-compatible AI assistant — Claude Desktop, Cursor, Codex, Zed, Cline, and others."
-            href="https://docs.novomcp.com/connecting-mcp-clients/"
-          />
-          <QuickAction
-            icon={<Plug className="h-5 w-5" />}
-            title="Connect a service"
-            body="Plug in ADMET, docking, MD, QM and more from the connector marketplace."
-            href="/connections"
-            internal
-          />
+        <div className="bg-[var(--card)] border border-[var(--border)] rounded-lg overflow-hidden">
+          <div className="px-5 py-3.5 border-b border-[var(--border)]">
+            <h2 className="text-[11px] uppercase tracking-wider text-[var(--text-muted)]">Get started</h2>
+          </div>
+          <div className="p-3">
+            <ActionCard href="/profile" internal title="Profile a molecule" body="Paste a SMILES, get computed properties in about a second." />
+            <ActionCard href="/connections" internal title="Connect a service" body="Plug in ADMET, docking, MD, QM from the marketplace." />
+            <ActionCard
+              href="https://docs.novomcp.com/connecting-mcp-clients/"
+              title="Connect an MCP client"
+              body="Claude, Cursor, Zed, and any MCP-compatible assistant."
+            />
+          </div>
         </div>
       </div>
     </div>
   );
 }
 
-function Stat({ label, value }: { label: string; value: React.ReactNode }) {
+function HeroMeta({ k, v, mono }: { k: string; v: ReactNode; mono?: boolean }) {
   return (
     <div>
-      <p className="text-xs uppercase tracking-wide text-[var(--text-muted)] mb-1">{label}</p>
-      <p className="text-lg text-[var(--text)]">{value}</p>
+      <p className="text-[10.5px] uppercase tracking-wider text-[var(--text-muted)]">{k}</p>
+      <p className={`mt-1 text-[var(--text-soft)] tabular-nums ${mono ? 'font-mono text-[12.5px]' : 'text-[15px]'}`}>{v}</p>
     </div>
   );
 }
 
-function ProviderRow({ providerKey, enabled }: { providerKey: string; enabled: boolean }) {
-  const meta = PROVIDER_LABELS[providerKey];
-  if (!meta) return null;
-  return (
-    <div className="px-6 py-2.5 flex items-center justify-between gap-4">
-      <p className={`text-sm truncate ${enabled ? 'text-[var(--text)]' : 'text-[var(--text-muted)]'}`}>{meta.label}</p>
-      <span
-        className={`inline-flex items-center gap-1.5 text-[11px] px-2 py-0.5 rounded-full border shrink-0 ${
-          enabled
-            ? 'text-emerald-500 border-emerald-500/25 bg-emerald-500/10'
-            : 'text-[var(--text-muted)] border-[var(--border)] bg-[var(--bg-warm)]'
-        }`}
-      >
-        <span className={`h-1.5 w-1.5 rounded-full ${enabled ? 'bg-emerald-500' : 'bg-[var(--text-muted)]'}`} />
-        {enabled ? 'connected' : 'not configured'}
-      </span>
-    </div>
-  );
-}
-
-function AuditRow({ entry }: { entry: any }) {
-  const tool = entry.payload?.tool || entry.event || 'unknown';
-  const ts = entry.ts || entry.payload?.ts || '';
-  const success = entry.payload?.success;
-  return (
-    <div className="px-6 py-3 flex items-center justify-between gap-3">
-      <div className="min-w-0 flex-1">
-        <p className="text-sm text-[var(--text)] font-mono truncate">{tool}</p>
-        {ts && <p className="text-xs text-[var(--text-muted)]">{new Date(ts).toLocaleString()}</p>}
-      </div>
-      {success !== undefined && (
-        <span className={`text-xs px-2 py-0.5 ${success ? 'text-emerald-500' : 'text-red-500'}`}>
-          {success ? 'ok' : 'error'}
-        </span>
-      )}
-    </div>
-  );
-}
-
-function QuickAction({ icon, title, body, href, internal }: { icon: React.ReactNode; title: string; body: string; href: string; internal?: boolean }) {
-  const className = 'group block p-4 border border-[var(--border)] hover:border-[var(--accent)]/50 transition-colors';
+function ActionCard({ href, title, body, internal }: { href: string; title: string; body: string; internal?: boolean }) {
+  const cls =
+    'block border border-[var(--border)] rounded-md px-3.5 py-3 my-1.5 hover:border-[var(--accent)]/50 hover:bg-[var(--bg-warm)] transition-colors group';
   const inner = (
     <>
-      <div className="flex items-center justify-between mb-2">
-        <span className="text-[var(--text-muted)] group-hover:text-[var(--accent)] transition-colors">{icon}</span>
-        <ArrowRight className="h-4 w-4 text-[var(--text-muted)] opacity-0 group-hover:opacity-100 transition-opacity" />
+      <div className="flex items-center justify-between text-sm font-semibold text-[var(--text)]">
+        {title}
+        <span className="text-[var(--accent)] opacity-0 group-hover:opacity-100 transition-opacity">→</span>
       </div>
-      <p className="text-sm font-medium text-[var(--text)] mb-1">{title}</p>
-      <p className="text-xs text-[var(--text-muted)]">{body}</p>
+      <p className="text-[12.5px] text-[var(--text-muted)] mt-1 leading-snug">{body}</p>
     </>
   );
-  if (internal) {
-    return (
-      <Link href={href} className={className}>
-        {inner}
-      </Link>
-    );
-  }
-  return (
-    <a href={href} target="_blank" rel="noreferrer" className={className}>
+  return internal ? (
+    <Link href={href} className={cls}>
+      {inner}
+    </Link>
+  ) : (
+    <a href={href} target="_blank" rel="noreferrer" className={cls}>
       {inner}
     </a>
   );
