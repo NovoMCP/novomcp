@@ -26,3 +26,9 @@ Each is a draft pending review. The series arc post, synthesizing the meta-rule 
 Drawn from validating a trajectory diagnostic in the summer of 2026. Same meta-rule, one layer beneath the result — in the measurement setup nobody thought to review.
 
 - [Configuration can produce a confident wrong answer](configuration-is-part-of-the-measurement.md) — co-authored with Dal Marsters
+
+## Drafts (free-energy series)
+
+Drawn from reviewing the free-energy correction design in the summer of 2026 — the same meta-rule, applied to written claims before any code exists.
+
+- [Bookkeeping and bookending in the FEP layer](bookkeeping-and-bookending.md) — reviewing design-doc claims against the standard applied to other people's methods
