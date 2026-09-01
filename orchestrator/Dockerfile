@@ -22,10 +22,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 # the path, so `python main_https.py` boots the package the same as a checkout.
 COPY main_https.py ./
 COPY src ./src/
-COPY ui-apps ./ui-apps/
-# Deploy-time runtime data, placed next to the modules that load it
-# (main_https.py resolves this relative to its own file).
-COPY openapi.json ./src/novomcp/openapi.json
+# Optional runtime assets (a curated openapi.json and a ui-apps directory) are
+# NOT shipped in OSS and are not copied here: the engine generates the OpenAPI
+# spec from its live route table (main_https.py serve_curated_openapi fallback)
+# and skips UI resources when ui-apps is absent (router.py guards on exists()).
+# A self-hoster who adds either to orchestrator/ can COPY it in their own build.
 
 # Runtime environment
 ENV PORT=8018
