@@ -35,13 +35,13 @@ The two paths above cover git-comfortable and docker-comfortable users. There is
 | Path | Status | Command |
 |---|---|---|
 | **PyPI package** | available | `pip install novomcp` — installs the engine with a `novomcp` entry point |
-| **Prebuilt Docker image (GHCR)** | planned, not yet shipped | `docker pull ghcr.io/novomcp/novomcp:latest` — skips the local build step; ~30 sec to running vs 2-3 min |
+| **Prebuilt Docker image (GHCR)** | available | `docker pull ghcr.io/novomcp/novomcp:latest` — skips the local build step; ~30 sec to running vs 2-3 min |
 | **`novo` CLI** (`npx novo` / `npm i -g novo`) | roadmap, targeted v1.4.5 | `novo dock ...`, `novo funnel run ...` — thin scriptable client, does NOT bundle GPU compute |
 | **Homebrew tap** | later, based on demand | `brew install novomcp` |
 
 **None of these are required** — they're conveniences layered on top of the git-clone and docker-compose paths that already work today.
 
-If someone asks "will you dockerize it?" — docker-compose already works (builds the engine locally); the prebuilt GHCR image is planned but not yet shipped.
+If someone asks "will you dockerize it?" — yes, both ways: docker-compose builds the engine locally, and a prebuilt image is published to GHCR on every release (`docker pull ghcr.io/novomcp/novomcp:latest`), which skips the local build.
 
 If someone asks "is there a PyPI package?" — yes, `pip install novomcp` (git clone also works).
 
@@ -89,12 +89,15 @@ docker compose up -d
 pip install --upgrade novomcp
 ```
 
-### Prebuilt Docker image (when available)
+### Prebuilt Docker image (GHCR)
 
 ```bash
 docker pull ghcr.io/novomcp/novomcp:latest
 docker restart novomcp   # or however your compose/k8s manifest names it
 ```
+
+Tags: `:latest` tracks `main`; `:sha-<short>` pins an exact `main` build; `:vX.Y.Z`
+(plus the moving `:X.Y` and `:X`) are published on each release tag.
 
 ### Homebrew (later)
 
@@ -134,7 +137,7 @@ docker compose up -d
 # pip install
 pip install novomcp==1.1.0
 
-# prebuilt docker (when available)
+# prebuilt docker
 docker pull ghcr.io/novomcp/novomcp:v1.1.0
 ```
 
