@@ -1681,6 +1681,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#two-ways-to-connect" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Two ways to connect
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#claude-desktop-macos-windows-linux" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1796,6 +1807,56 @@
     <span class="md-ellipsis">
       
         Zed
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#openai-codex" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OpenAI Codex
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="OpenAI Codex">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#full-engine-over-http-all-68-tools" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Full engine over HTTP (all 68 tools)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-novomcp-lite-command-stdio-subset-no-http" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The novomcp-lite command (stdio subset, no HTTP)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#chatgpt-developer-mode" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ChatGPT (Developer Mode)
       
     </span>
   </a>
@@ -2055,6 +2116,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#two-ways-to-connect" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Two ways to connect
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#claude-desktop-macos-windows-linux" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2177,6 +2249,56 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#openai-codex" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OpenAI Codex
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="OpenAI Codex">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#full-engine-over-http-all-68-tools" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Full engine over HTTP (all 68 tools)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-novomcp-lite-command-stdio-subset-no-http" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The novomcp-lite command (stdio subset, no HTTP)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#chatgpt-developer-mode" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ChatGPT (Developer Mode)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#custom-any-mcp-client" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2287,6 +2409,13 @@
 <h1 id="connecting-mcp-clients">Connecting MCP clients<a class="headerlink" href="#connecting-mcp-clients" title="Permanent link">&para;</a></h1>
 <p>Once the engine is running locally on <code>http://localhost:8018</code>, any MCP-compatible client can use it as a tool provider. This page walks through the exact config for the most common clients.</p>
 <p><strong>Before you start:</strong> confirm the engine is up with <code>curl -s http://localhost:8018/health</code> — expect <code>{"status":"healthy",...}</code>. If not, see the <a href="../quickstart/">Quickstart</a>.</p>
+<h3 id="two-ways-to-connect">Two ways to connect<a class="headerlink" href="#two-ways-to-connect" title="Permanent link">&para;</a></h3>
+<p>NovoMCP speaks MCP over two transports, and clients differ in which they accept:</p>
+<ul>
+<li><strong>HTTP — the full engine on <code>:8018</code>.</strong> All 68 tools. Clients that speak MCP over HTTP (Cursor, Codex, ChatGPT connectors) point straight at <code>http://localhost:8018/mcp/</code>. Clients that only accept a stdio <em>command</em> (Claude Desktop, Zed) reach the HTTP engine through the tiny <code>npx mcp-remote</code> bridge shown in those sections.</li>
+<li><strong>stdio — a command the client spawns.</strong> Zero networking; the client runs a local process and talks over stdin/stdout. If you installed <code>novomcp-lite</code> (the Apache-licensed chem + search subset, <code>pip install novomcp-lite</code>), its <code>novomcp-lite</code> command <em>is</em> a stdio MCP server — drop it into any command-based client (Claude Desktop, Zed, Codex) with no bridge. It exposes a subset of the 68 tools, so it's the fastest start, not the full surface.</li>
+</ul>
+<p>Rule of thumb: <strong>want all 68 tools → the HTTP engine</strong> (directly or via <code>mcp-remote</code>); <strong>want the quickest start → the <code>novomcp-lite</code> command.</strong></p>
 <hr />
 <h2 id="claude-desktop-macos-windows-linux">Claude Desktop (macOS / Windows / Linux)<a class="headerlink" href="#claude-desktop-macos-windows-linux" title="Permanent link">&para;</a></h2>
 <h3 id="0-prerequisite-nodejs">0. Prerequisite: Node.js<a class="headerlink" href="#0-prerequisite-nodejs" title="Permanent link">&para;</a></h3>
@@ -2436,23 +2565,57 @@
 <p>Restart Cursor after editing.</p>
 <hr />
 <h2 id="zed">Zed<a class="headerlink" href="#zed" title="Permanent link">&para;</a></h2>
-<p>Add to <code>~/.config/zed/settings.json</code> (macOS/Linux):</p>
+<p>Zed's <code>context_servers</code> run <strong>stdio</strong> MCP servers (a command Zed spawns), so reach the HTTP engine through the <code>mcp-remote</code> bridge — the same one Claude Desktop uses (needs Node.js — see the Node.js prerequisite under Claude Desktop above). Add to <code>~/.config/zed/settings.json</code> (macOS/Linux) or <code>%APPDATA%\Zed\settings.json</code> (Windows):</p>
 <div class="language-json highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="p">{</span>
 </span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="w">  </span><span class="nt">"context_servers"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 </span><span id="__span-10-3"><a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="w">    </span><span class="nt">"novomcp"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 </span><span id="__span-10-4"><a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a><span class="w">      </span><span class="nt">"command"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-</span><span id="__span-10-5"><a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a><span class="w">        </span><span class="nt">"path"</span><span class="p">:</span><span class="w"> </span><span class="s2">"curl"</span><span class="p">,</span>
+</span><span id="__span-10-5"><a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a><span class="w">        </span><span class="nt">"path"</span><span class="p">:</span><span class="w"> </span><span class="s2">"npx"</span><span class="p">,</span>
 </span><span id="__span-10-6"><a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a><span class="w">        </span><span class="nt">"args"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
-</span><span id="__span-10-7"><a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a><span class="w">          </span><span class="s2">"-N"</span><span class="p">,</span>
-</span><span id="__span-10-8"><a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a><span class="w">          </span><span class="s2">"-H"</span><span class="p">,</span><span class="w"> </span><span class="s2">"Authorization: Bearer x"</span><span class="p">,</span>
-</span><span id="__span-10-9"><a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a><span class="w">          </span><span class="s2">"http://localhost:8018/mcp/"</span>
+</span><span id="__span-10-7"><a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a><span class="w">          </span><span class="s2">"-y"</span><span class="p">,</span><span class="w"> </span><span class="s2">"mcp-remote"</span><span class="p">,</span>
+</span><span id="__span-10-8"><a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a><span class="w">          </span><span class="s2">"http://localhost:8018/mcp/"</span><span class="p">,</span>
+</span><span id="__span-10-9"><a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a><span class="w">          </span><span class="s2">"--header"</span><span class="p">,</span><span class="w"> </span><span class="s2">"Authorization:Bearer x"</span>
 </span><span id="__span-10-10"><a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a><span class="w">        </span><span class="p">]</span>
 </span><span id="__span-10-11"><a id="__codelineno-10-11" name="__codelineno-10-11" href="#__codelineno-10-11"></a><span class="w">      </span><span class="p">}</span>
 </span><span id="__span-10-12"><a id="__codelineno-10-12" name="__codelineno-10-12" href="#__codelineno-10-12"></a><span class="w">    </span><span class="p">}</span>
 </span><span id="__span-10-13"><a id="__codelineno-10-13" name="__codelineno-10-13" href="#__codelineno-10-13"></a><span class="w">  </span><span class="p">}</span>
 </span><span id="__span-10-14"><a id="__codelineno-10-14" name="__codelineno-10-14" href="#__codelineno-10-14"></a><span class="p">}</span>
 </span></code></pre></div>
-<p>Zed uses stdio for MCP; the <code>curl -N</code> invocation wraps our HTTP endpoint. Restart Zed.</p>
+<p>Zed restarts the context server automatically on save — no editor restart needed. If you installed <code>novomcp-lite</code>, skip the bridge and set <code>"path": "novomcp-lite"</code> (drop the <code>args</code>) for the chem + search subset.</p>
+<hr />
+<h2 id="openai-codex">OpenAI Codex<a class="headerlink" href="#openai-codex" title="Permanent link">&para;</a></h2>
+<p>Codex reads MCP config from <code>~/.codex/config.toml</code> (or a project-scoped <code>.codex/config.toml</code>) and supports <strong>both</strong> transports.</p>
+<h3 id="full-engine-over-http-all-68-tools">Full engine over HTTP (all 68 tools)<a class="headerlink" href="#full-engine-over-http-all-68-tools" title="Permanent link">&para;</a></h3>
+<div class="language-toml highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="k">[mcp_servers.novomcp]</span>
+</span><span id="__span-11-2"><a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="n">url</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"http://localhost:8018/mcp/"</span>
+</span><span id="__span-11-3"><a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a><span class="n">bearer_token_env_var</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"NOVOMCP_TOKEN"</span>
+</span></code></pre></div>
+<p><code>bearer_token_env_var</code> names an environment variable holding the token; local mode accepts any string:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">NOVOMCP_TOKEN</span><span class="o">=</span>x
+</span></code></pre></div>
+<h3 id="the-novomcp-lite-command-stdio-subset-no-http">The <code>novomcp-lite</code> command (stdio subset, no HTTP)<a class="headerlink" href="#the-novomcp-lite-command-stdio-subset-no-http" title="Permanent link">&para;</a></h3>
+<div class="language-toml highlight"><pre><span></span><code><span id="__span-13-1"><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="k">[mcp_servers.novomcp-lite]</span>
+</span><span id="__span-13-2"><a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a><span class="n">command</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"novomcp-lite"</span>
+</span></code></pre></div>
+<p>Or add it without editing the file:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-14-1"><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>codex<span class="w"> </span>mcp<span class="w"> </span>add<span class="w"> </span>novomcp-lite<span class="w"> </span>--<span class="w"> </span>novomcp-lite
+</span></code></pre></div>
+<p>Start a Codex session and run <code>/mcp</code> to confirm the server is connected and its tools are listed.</p>
+<hr />
+<h2 id="chatgpt-developer-mode">ChatGPT (Developer Mode)<a class="headerlink" href="#chatgpt-developer-mode" title="Permanent link">&para;</a></h2>
+<p>ChatGPT connects to MCP servers through <strong>Developer Mode</strong> (Settings → toggle Developer Mode on; the connector list lives under Plugins, formerly Connectors). Unlike Claude, Codex, and Zed, ChatGPT connects only to a <strong>remote</strong> server over Streamable HTTP or SSE — there is no "run a local command" option, and the ChatGPT web app cannot reach <code>http://localhost</code>. So the engine has to be reachable at a URL ChatGPT can hit.</p>
+<p><strong>Option A — tunnel the local engine (quickest).</strong> Expose <code>:8018</code> over HTTPS, then register the tunnel URL:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-15-1"><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="c1"># cloudflared shown; ngrok works the same way</span>
+</span><span id="__span-15-2"><a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>cloudflared<span class="w"> </span>tunnel<span class="w"> </span>--url<span class="w"> </span>http://localhost:8018
+</span><span id="__span-15-3"><a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a><span class="c1"># -&gt; https://&lt;random&gt;.trycloudflare.com</span>
+</span></code></pre></div>
+<p>In ChatGPT: Settings → Developer Mode → add a connector:</p>
+<ul>
+<li><strong>URL</strong>: <code>https://&lt;your-tunnel&gt;/mcp/</code></li>
+<li><strong>Auth</strong>: none (local mode accepts any bearer), or a real token if you've configured auth</li>
+</ul>
+<p><strong>Option B — point at a deployed instance.</strong> If you self-host the engine behind HTTPS (your own cloud/EKS), register that URL directly — no tunnel needed.</p>
+<p><strong>Heads-up:</strong> OpenAI does not verify custom connectors, and a connector can read <em>and write</em> through every tool the server exposes — only connect a server you control. A tunnel also makes your local engine reachable by anyone who has the URL for as long as it's open; close it when you're done.</p>
 <hr />
 <h2 id="custom-any-mcp-client">Custom / any MCP client<a class="headerlink" href="#custom-any-mcp-client" title="Permanent link">&para;</a></h2>
 <p>Any client that speaks MCP JSON-RPC 2024-11-05 over HTTP works. Point it at:</p>
