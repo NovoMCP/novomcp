@@ -64,6 +64,9 @@ export default function DashboardPage() {
   const visible = health?.tools_visible ?? null;
   const total = health?.tools_total ?? 68;
   const pct = visible != null ? Math.round((visible / total) * 100) : 0;
+  // First run: engine is up but the user hasn't done anything yet (no audit
+  // history). Surface a welcome with the two things worth doing first.
+  const firstRun = !loading && engineOk && (audit?.entries?.length ?? 0) === 0;
 
   return (
     <div className="max-w-5xl">
@@ -140,6 +143,32 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+
+      {/* first-run welcome — brand-new user, engine up, nothing done yet */}
+      {firstRun && (
+        <div className="mt-6 rounded-lg border border-[var(--accent)]/25 bg-[var(--accent)]/[0.07] px-6 py-5">
+          <p className="text-lg text-[var(--text)]" style={{ fontFamily: 'var(--serif)' }}>
+            Welcome — you&apos;re running NovoMCP locally.
+          </p>
+          <p className="text-sm text-[var(--text-muted)] mt-1">
+            Nothing to provision. Two good ways to start:
+          </p>
+          <div className="flex flex-wrap gap-3 mt-4">
+            <Link
+              href="/profile"
+              className="inline-flex items-center gap-2 bg-[var(--accent)] text-white text-sm font-medium px-4 py-2 rounded-md hover:brightness-105 transition"
+            >
+              Profile a molecule →
+            </Link>
+            <Link
+              href="/connections"
+              className="inline-flex items-center gap-2 border border-[var(--border)] text-[var(--text-soft)] text-sm px-4 py-2 rounded-md hover:border-[var(--accent)] hover:text-[var(--accent)] transition-colors"
+            >
+              Connect a service →
+            </Link>
+          </div>
+        </div>
+      )}
 
       {/* capabilities */}
       <div className="mt-9">
