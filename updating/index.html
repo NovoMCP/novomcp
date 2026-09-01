@@ -1895,10 +1895,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#prebuilt-docker-image-when-available" class="md-nav__link">
+  <a href="#prebuilt-docker-image-ghcr" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Prebuilt Docker image (when available)
+        Prebuilt Docker image (GHCR)
       
     </span>
   </a>
@@ -2144,10 +2144,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#prebuilt-docker-image-when-available" class="md-nav__link">
+  <a href="#prebuilt-docker-image-ghcr" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Prebuilt Docker image (when available)
+        Prebuilt Docker image (GHCR)
       
     </span>
   </a>
@@ -2286,7 +2286,7 @@
 </tr>
 <tr>
 <td><strong>Prebuilt Docker image (GHCR)</strong></td>
-<td>planned, not yet shipped</td>
+<td>available</td>
 <td><code>docker pull ghcr.io/novomcp/novomcp:latest</code> — skips the local build step; ~30 sec to running vs 2-3 min</td>
 </tr>
 <tr>
@@ -2302,7 +2302,7 @@
 </tbody>
 </table>
 <p><strong>None of these are required</strong> — they're conveniences layered on top of the git-clone and docker-compose paths that already work today.</p>
-<p>If someone asks "will you dockerize it?" — docker-compose already works (builds the engine locally); the prebuilt GHCR image is planned but not yet shipped.</p>
+<p>If someone asks "will you dockerize it?" — yes, both ways: docker-compose builds the engine locally, and a prebuilt image is published to GHCR on every release (<code>docker pull ghcr.io/novomcp/novomcp:latest</code>), which skips the local build.</p>
 <p>If someone asks "is there a PyPI package?" — yes, <code>pip install novomcp</code> (git clone also works).</p>
 <p>If someone asks "is there a CLI?" — <code>novo</code> is on the roadmap (targeted v1.4.5); for now the MCP interface (any MCP-compatible AI assistant) or the REST API are the two "call it programmatically" paths.</p>
 <h2 id="how-updates-work">How updates work<a class="headerlink" href="#how-updates-work" title="Permanent link">&para;</a></h2>
@@ -2329,10 +2329,12 @@
 <h3 id="pip-install-novomcp-from-pypi"><code>pip install novomcp</code> (from PyPI)<a class="headerlink" href="#pip-install-novomcp-from-pypi" title="Permanent link">&para;</a></h3>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>pip<span class="w"> </span>install<span class="w"> </span>--upgrade<span class="w"> </span>novomcp
 </span></code></pre></div>
-<h3 id="prebuilt-docker-image-when-available">Prebuilt Docker image (when available)<a class="headerlink" href="#prebuilt-docker-image-when-available" title="Permanent link">&para;</a></h3>
+<h3 id="prebuilt-docker-image-ghcr">Prebuilt Docker image (GHCR)<a class="headerlink" href="#prebuilt-docker-image-ghcr" title="Permanent link">&para;</a></h3>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>docker<span class="w"> </span>pull<span class="w"> </span>ghcr.io/novomcp/novomcp:latest
 </span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>docker<span class="w"> </span>restart<span class="w"> </span>novomcp<span class="w">   </span><span class="c1"># or however your compose/k8s manifest names it</span>
 </span></code></pre></div>
+<p>Tags: <code>:latest</code> tracks <code>main</code>; <code>:sha-&lt;short&gt;</code> pins an exact <code>main</code> build; <code>:vX.Y.Z</code>
+(plus the moving <code>:X.Y</code> and <code>:X</code>) are published on each release tag.</p>
 <h3 id="homebrew-later">Homebrew (later)<a class="headerlink" href="#homebrew-later" title="Permanent link">&para;</a></h3>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>brew<span class="w"> </span>upgrade<span class="w"> </span>novomcp
 </span></code></pre></div>
@@ -2359,7 +2361,7 @@
 </span><span id="__span-10-6"><a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a><span class="c1"># pip install</span>
 </span><span id="__span-10-7"><a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>pip<span class="w"> </span>install<span class="w"> </span><span class="nv">novomcp</span><span class="o">==</span><span class="m">1</span>.1.0
 </span><span id="__span-10-8"><a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>
-</span><span id="__span-10-9"><a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a><span class="c1"># prebuilt docker (when available)</span>
+</span><span id="__span-10-9"><a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a><span class="c1"># prebuilt docker</span>
 </span><span id="__span-10-10"><a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a>docker<span class="w"> </span>pull<span class="w"> </span>ghcr.io/novomcp/novomcp:v1.1.0
 </span></code></pre></div>
 <p>Then <a href="https://github.com/NovoMCP/novomcp/issues">open an issue</a> so we can fix it forward.</p>
