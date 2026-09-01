@@ -4,6 +4,15 @@ Once the engine is running locally on `http://localhost:8018`, any MCP-compatibl
 
 **Before you start:** confirm the engine is up with `curl -s http://localhost:8018/health` — expect `{"status":"healthy",...}`. If not, see the [Quickstart](quickstart.md).
 
+### Two ways to connect
+
+NovoMCP speaks MCP over two transports, and clients differ in which they accept:
+
+- **HTTP — the full engine on `:8018`.** All 68 tools. Clients that speak MCP over HTTP (Cursor, Codex, ChatGPT connectors) point straight at `http://localhost:8018/mcp/`. Clients that only accept a stdio *command* (Claude Desktop, Zed) reach the HTTP engine through the tiny `npx mcp-remote` bridge shown in those sections.
+- **stdio — a command the client spawns.** Zero networking; the client runs a local process and talks over stdin/stdout. If you installed `novomcp-lite` (the Apache-licensed chem + search subset, `pip install novomcp-lite`), its `novomcp-lite` command *is* a stdio MCP server — drop it into any command-based client (Claude Desktop, Zed, Codex) with no bridge. It exposes a subset of the 68 tools, so it's the fastest start, not the full surface.
+
+Rule of thumb: **want all 68 tools → the HTTP engine** (directly or via `mcp-remote`); **want the quickest start → the `novomcp-lite` command.**
+
 ---
 
 ## Claude Desktop (macOS / Windows / Linux)
@@ -183,18 +192,18 @@ Restart Cursor after editing.
 
 ## Zed
 
-Add to `~/.config/zed/settings.json` (macOS/Linux):
+Zed's `context_servers` run **stdio** MCP servers (a command Zed spawns), so reach the HTTP engine through the `mcp-remote` bridge — the same one Claude Desktop uses (needs Node.js — see the Node.js prerequisite under Claude Desktop above). Add to `~/.config/zed/settings.json` (macOS/Linux) or `%APPDATA%\Zed\settings.json` (Windows):
 
 ```json
 {
   "context_servers": {
     "novomcp": {
       "command": {
-        "path": "curl",
+        "path": "npx",
         "args": [
-          "-N",
-          "-H", "Authorization: Bearer x",
-          "http://localhost:8018/mcp/"
+          "-y", "mcp-remote",
+          "http://localhost:8018/mcp/",
+          "--header", "Authorization:Bearer x"
         ]
       }
     }
@@ -202,7 +211,65 @@ Add to `~/.config/zed/settings.json` (macOS/Linux):
 }
 ```
 
-Zed uses stdio for MCP; the `curl -N` invocation wraps our HTTP endpoint. Restart Zed.
+Zed restarts the context server automatically on save — no editor restart needed. If you installed `novomcp-lite`, skip the bridge and set `"path": "novomcp-lite"` (drop the `args`) for the chem + search subset.
+
+---
+
+## OpenAI Codex
+
+Codex reads MCP config from `~/.codex/config.toml` (or a project-scoped `.codex/config.toml`) and supports **both** transports.
+
+### Full engine over HTTP (all 68 tools)
+
+```toml
+[mcp_servers.novomcp]
+url = "http://localhost:8018/mcp/"
+bearer_token_env_var = "NOVOMCP_TOKEN"
+```
+
+`bearer_token_env_var` names an environment variable holding the token; local mode accepts any string:
+
+```bash
+export NOVOMCP_TOKEN=x
+```
+
+### The `novomcp-lite` command (stdio subset, no HTTP)
+
+```toml
+[mcp_servers.novomcp-lite]
+command = "novomcp-lite"
+```
+
+Or add it without editing the file:
+
+```bash
+codex mcp add novomcp-lite -- novomcp-lite
+```
+
+Start a Codex session and run `/mcp` to confirm the server is connected and its tools are listed.
+
+---
+
+## ChatGPT (Developer Mode)
+
+ChatGPT connects to MCP servers through **Developer Mode** (Settings → toggle Developer Mode on; the connector list lives under Plugins, formerly Connectors). Unlike Claude, Codex, and Zed, ChatGPT connects only to a **remote** server over Streamable HTTP or SSE — there is no "run a local command" option, and the ChatGPT web app cannot reach `http://localhost`. So the engine has to be reachable at a URL ChatGPT can hit.
+
+**Option A — tunnel the local engine (quickest).** Expose `:8018` over HTTPS, then register the tunnel URL:
+
+```bash
+# cloudflared shown; ngrok works the same way
+cloudflared tunnel --url http://localhost:8018
+# -> https://<random>.trycloudflare.com
+```
+
+In ChatGPT: Settings → Developer Mode → add a connector:
+
+- **URL**: `https://<your-tunnel>/mcp/`
+- **Auth**: none (local mode accepts any bearer), or a real token if you've configured auth
+
+**Option B — point at a deployed instance.** If you self-host the engine behind HTTPS (your own cloud/EKS), register that URL directly — no tunnel needed.
+
+**Heads-up:** OpenAI does not verify custom connectors, and a connector can read *and write* through every tool the server exposes — only connect a server you control. A tunnel also makes your local engine reachable by anyone who has the URL for as long as it's open; close it when you're done.
 
 ---
 
