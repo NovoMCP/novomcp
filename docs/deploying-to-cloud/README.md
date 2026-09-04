@@ -41,9 +41,14 @@ Each of the per-cloud pages covers three tiers:
 
 ## Pages
 
+Full-stack reference deployments:
 - [aws.md](./aws.md)
 - [gcp.md](./gcp.md)
 - [azure.md](./azure.md)
+
+Rent-a-GPU: run a single GPU compute service on a serverless / on-demand GPU platform and point the engine at it (no full VM):
+- [modal.md](./modal.md) — docking (`autodock-gpu`) on Modal's serverless GPUs; fits synchronous `dock_molecules`.
+- [runpod.md](./runpod.md) — molecular dynamics (`gromacs-md`) on a Runpod GPU pod; fits async `run_molecular_dynamics`.
 
 ## What none of these deploy for you
 
