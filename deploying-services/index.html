@@ -2083,14 +2083,29 @@
 <td>CPU. CREST.</td>
 </tr>
 <tr>
-<td><code>compute_energy</code></td>
+<td><code>run_qm_hessian</code></td>
 <td><code>novomcp-qm</code></td>
-<td>CPU. Single-point energy.</td>
+<td>CPU. Hessian / frequencies.</td>
 </tr>
 <tr>
-<td><code>optimize_geometry_nnp</code></td>
-<td><code>novomcp-nnp</code></td>
-<td>GPU or CPU. AIMNet2 / MACE / ANI-2x.</td>
+<td><code>run_excited_states</code></td>
+<td><code>novomcp-qm</code></td>
+<td>CPU. Excited-state energies.</td>
+</tr>
+<tr>
+<td><code>predict_redox_potential</code></td>
+<td><code>novomcp-qm</code></td>
+<td>CPU.</td>
+</tr>
+<tr>
+<td><code>predict_reaction_thermodynamics</code></td>
+<td><code>novomcp-qm</code></td>
+<td>CPU. ΔG, ΔH.</td>
+</tr>
+<tr>
+<td><code>parameterize_metal</code></td>
+<td><code>novomcp-qm</code></td>
+<td>CPU + your own Gaussian (two-phase; Gaussian-only).</td>
 </tr>
 <tr>
 <td><code>predict_frontier_orbitals</code></td>
@@ -2098,9 +2113,19 @@
 <td>CPU.</td>
 </tr>
 <tr>
+<td><code>compute_energy</code></td>
+<td><code>novomcp-nnp</code></td>
+<td>GPU or CPU. MLIP single-point energy.</td>
+</tr>
+<tr>
+<td><code>optimize_geometry_nnp</code></td>
+<td><code>novomcp-nnp</code></td>
+<td>GPU or CPU. AIMNet2 / MACE / ANI-2x.</td>
+</tr>
+<tr>
 <td><code>predict_pka</code></td>
 <td><code>novomcp-properties</code></td>
-<td>CPU. Trained pKa model.</td>
+<td>CPU. Trained pKa model (weights NonCommercial, opt-in).</td>
 </tr>
 <tr>
 <td><code>predict_solubility</code></td>
@@ -2116,11 +2141,6 @@
 <td><code>find_transition_state</code></td>
 <td><code>novomcp-neb</code></td>
 <td>GPU. NEB via tblite.</td>
-</tr>
-<tr>
-<td><code>parameterize_metal</code></td>
-<td><code>novomcp-qm</code></td>
-<td>CPU. MCPB.py workflow.</td>
 </tr>
 <tr>
 <td><code>run_novo_ag</code></td>
@@ -2166,7 +2186,7 @@ AWS Marketplace and GCP Cloud Marketplace listings under development.</p>
 - <a href="openfold3/"><code>openfold3.md</code></a>, protein structure prediction (also Chai-1, Boltz-2 compatible)
 - <a href="novomcp-nnp/"><code>novomcp-nnp.md</code></a>, neural network potentials (AIMNet2, MACE, ANI-2x)
 - <a href="novomcp-neb/"><code>novomcp-neb.md</code></a>, transition-state search (CI-NEB)</p>
-<p>Every service follows the same pattern: docker image at <code>ghcr.io/ariharrisonlab/&lt;service&gt;:latest</code>, env var <code>&lt;SERVICE_NAME_UPPER&gt;_URL</code> wires the engine to it, structured errors when unreachable.</p>
+<p>Every service follows the same pattern: docker image at <code>ghcr.io/novomcp/&lt;service&gt;:latest</code>, env var <code>&lt;SERVICE_NAME_UPPER&gt;_URL</code> wires the engine to it, structured errors when unreachable.</p>
 <h2 id="building-from-source">Building from source<a class="headerlink" href="#building-from-source" title="Permanent link">&para;</a></h2>
 <p>Each compute service has its own repository. The engine talks to them over HTTP; there's no vendored build path in this repo. If you want to modify or rebuild a service, clone its source and follow its own README.</p>
 

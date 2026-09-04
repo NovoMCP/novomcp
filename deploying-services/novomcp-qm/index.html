@@ -1106,6 +1106,28 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#parameterize_metal-two-phase-and-gaussian-only" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        parameterize_metal: two-phase, and Gaussian-only
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#where-the-approximation-stops" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Where the approximation stops
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -2008,6 +2030,28 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#parameterize_metal-two-phase-and-gaussian-only" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        parameterize_metal: two-phase, and Gaussian-only
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#where-the-approximation-stops" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Where the approximation stops
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -2054,18 +2098,23 @@
 </span></code></pre></div>
 <h2 id="verify">Verify<a class="headerlink" href="#verify" title="Permanent link">&para;</a></h2>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>curl<span class="w"> </span>-s<span class="w"> </span>http://localhost:8031/health
-</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="c1"># {"status":"healthy","xtb_version":"6.7.1","crest_available":true}</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="c1"># {"status":"healthy","service":"novomcp-qm","version":"1.1.0","port":8031,</span>
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="c1">#  "engines":{"xtb":{"available":true,"method":"GFN2-xTB","hessian":true},</span>
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="c1">#             "stda":{"available":true,"method":"sTDA-xTB"},</span>
+</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="c1">#             "crest":{"available":true,"fallback":"RDKit-ETKDG"}}}</span>
 </span></code></pre></div>
 <h2 id="tools-that-light-up">Tools that light up<a class="headerlink" href="#tools-that-light-up" title="Permanent link">&para;</a></h2>
 <ul>
 <li><code>run_qm_calculation</code>, GFN2-xTB energy / opt / vibrational</li>
 <li><code>run_conformer_search</code>, CREST conformer generation</li>
-<li><code>compute_energy</code>, single-point energy</li>
 <li><code>predict_frontier_orbitals</code>, HOMO/LUMO</li>
+<li><code>run_qm_hessian</code>, Hessian and vibrational frequencies</li>
+<li><code>run_excited_states</code>, excited-state energies</li>
+<li><code>predict_redox_potential</code>, redox potentials</li>
 <li><code>predict_reaction_thermodynamics</code>, ΔG, ΔH</li>
-<li><code>parameterize_metal</code>, MCPB.py Phase 1/2 for metal-coordinating residues</li>
-<li><code>dock_with_strain</code>, post-dock GFN2-xTB strain filter (pairs with <code>autodock-gpu</code>)</li>
+<li><code>parameterize_metal</code>, MCPB.py metal-site parameterization (two-phase, Gaussian-only, see below)</li>
 </ul>
+<p><code>dock_with_strain</code> also uses this service for its post-dock GFN2-xTB strain check, but it is gated on <code>autodock-gpu</code> (see that page). <code>compute_energy</code> is served by <code>novomcp-nnp</code>, not this service.</p>
 <h2 id="env-vars">Env vars<a class="headerlink" href="#env-vars" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -2105,6 +2154,15 @@
 <li><strong>CREST conformer search:</strong> 5–60 min depending on flexibility</li>
 <li><strong>MCPB.py metal parameterization:</strong> 10–60 min for typical zinc/iron systems</li>
 </ul>
+<h2 id="parameterize_metal-two-phase-and-gaussian-only">parameterize_metal: two-phase, and Gaussian-only<a class="headerlink" href="#parameterize_metal-two-phase-and-gaussian-only" title="Permanent link">&para;</a></h2>
+<p><code>parameterize_metal</code> builds AMBER/GROMACS parameters for a metal-coordination site via MCPB.py, and it runs in two phases with your own QM package in the middle:</p>
+<ul>
+<li><strong>Phase 1</strong> extracts the coordination fragment and emits Gaussian <code>.com</code> input files: a <code>small_fc</code> frequency job for the Hessian and a <code>large_mk</code> Pop(MK) job for the ESP charges. You run these in Gaussian yourself, externally.</li>
+<li><strong>Phase 2</strong> consumes the two logs, extracts force constants (Seminario method) and RESP charges, and returns the <code>.frcmod</code>/<code>.prep</code> files plus GROMACS topology.</li>
+</ul>
+<p>The honest boundary: this path is <strong>Gaussian-only</strong>. ORCA input is accepted and the Hessian parses, but the MK-ESP-to-RESP charge path is not wired end to end for ORCA, so a complete run needs Gaussian. Do not point Phase 2 at ORCA logs expecting charges back.</p>
+<h2 id="where-the-approximation-stops">Where the approximation stops<a class="headerlink" href="#where-the-approximation-stops" title="Permanent link">&para;</a></h2>
+<p>The service defaults to GFN2-xTB, a semi-empirical method. It gives good geometries and relative energies that are dependable for ranking conformers or comparing close analogs. It is not a stand-in for a DFT-accurate absolute energy, or for a subtle electronic effect the approximation smooths over. Use it to triage within a comparable series and escalate the survivors to a higher level of theory when the absolute number has to be right. A tool that oversells its accuracy costs you a wrong decision made quickly, which is worse than a slow one.</p>
 
 
 

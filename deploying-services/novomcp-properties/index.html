@@ -2056,7 +2056,12 @@
 </span></code></pre></div>
 <h2 id="verify">Verify<a class="headerlink" href="#verify" title="Permanent link">&para;</a></h2>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>curl<span class="w"> </span>-s<span class="w"> </span>http://localhost:8030/health
-</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="c1"># {"status":"healthy", ...}</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="c1"># {"status":"healthy","service":"novomcp-properties","version":"1.0.0","port":8030,</span>
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="c1">#  "predictors":{"pka":{"backend":"rdkit-empirical","ready":false,"weights_loaded":false,"empirical_only":true},</span>
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="c1">#                "solubility":{"backend":"chemprop-aqsoldb","ready":true},</span>
+</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="c1">#                "bde":{"backend":"alfabet","ready":true}},</span>
+</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="c1">#  "ready":"2/3"}</span>
+</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="c1"># pka shows ready:false until you opt in to the NonCommercial weights (HF_PKA_MODEL_REPO); solubility + bde are ready.</span>
 </span></code></pre></div>
 <h2 id="tools-that-light-up">Tools that light up<a class="headerlink" href="#tools-that-light-up" title="Permanent link">&para;</a></h2>
 <ul>
@@ -2112,6 +2117,7 @@
 <li>pKa model: a routed ensemble — a per-atom-charge specialist for sulfonamides / aromatic N–H, and a general model for everything else; each route reports an uncertainty estimate. Benchmarked on SAMPL7.</li>
 <li>Solubility model: pre-trained on AqSolDB, fine-tuned on BigSolDB with temperature as an input feature.</li>
 <li>BDE model: alfabet pretrained network.</li>
+<li>Solubility and BDE outputs are screening-grade ML predictions: dependable for ranking within a comparable series, not as absolute experimental values.</li>
 <li>If weights can't be loaded, the affected predictor reports unavailable and its endpoints return <code>503</code> rather than serving a silent fallback.</li>
 <li>All three are stateless, safe to scale horizontally behind a load balancer for high-throughput screening.</li>
 </ul>

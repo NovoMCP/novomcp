@@ -1146,6 +1146,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#weights-and-licenses" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Weights and licenses
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#speed" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2042,6 +2053,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#weights-and-licenses" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Weights and licenses
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#speed" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2078,9 +2100,9 @@
 
 
 <h1 id="novomcp-nnp">novomcp-nnp<a class="headerlink" href="#novomcp-nnp" title="Permanent link">&para;</a></h1>
-<p>Neural network potentials for fast geometry optimization and energy prediction. Three model backends: <strong>AIMNet2</strong>, <strong>MACE</strong>, and <strong>ANI-2x</strong>. GPU-accelerated; CPU works but is 10–50× slower.</p>
+<p>Neural network potentials for fast geometry optimization and energy prediction. The published image serves two backends: <strong>MACE</strong> and <strong>ANI-2x</strong>. GPU-accelerated; CPU works but is 10–50× slower.</p>
 <p>Two axes, kept orthogonal:
-- <strong><code>method</code></strong> — <em>which potential</em> runs (<code>aimnet2</code> / <code>mace</code> / <code>ani-2x</code>).
+- <strong><code>method</code></strong> — <em>which potential</em> runs (<code>mace</code> / <code>ani-2x</code>).
 - <strong><code>engine</code></strong> — <em>how it executes</em>: <code>ase</code> (ASE BFGS optimizer, default) or <code>alchemi</code> (the <a href="https://github.com/NVIDIA/nvalchemi-toolkit">NVIDIA ALCHEMI Toolkit</a> GPU-batched relaxation dynamics running the same <code>method</code> potential on batched CUDA kernels). The ALCHEMI engine is what powers <code>batch_geometry_relaxation</code>, which relaxes a whole library in one batched pass instead of a per-molecule loop.</p>
 <h2 id="pre-reqs">Pre-reqs<a class="headerlink" href="#pre-reqs" title="Permanent link">&para;</a></h2>
 <ul>
@@ -2111,11 +2133,14 @@
 </span></code></pre></div>
 <h2 id="verify">Verify<a class="headerlink" href="#verify" title="Permanent link">&para;</a></h2>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>curl<span class="w"> </span>-s<span class="w"> </span>http://localhost:8032/health
-</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="c1"># {"status":"healthy","backends":["aimnet2","mace","ani-2x"],"gpu_available":true}</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="c1"># {"status":"healthy","service":"novomcp-nnp","version":"1.0.0","port":8032,</span>
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="c1">#  "models":{"ani2x":{"available":true},"mace":{"available":true}},</span>
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="c1">#  "ready_models":["ani2x","mace"]}</span>
 </span></code></pre></div>
 <h2 id="tools-that-light-up">Tools that light up<a class="headerlink" href="#tools-that-light-up" title="Permanent link">&para;</a></h2>
 <ul>
 <li><code>optimize_geometry_nnp</code>, fast single-molecule NNP geometry optimization</li>
+<li><code>compute_energy</code>, single-point energy and forces (MLIP; batched via <code>engine=alchemi</code>)</li>
 <li><code>batch_geometry_relaxation</code>, library relaxation in one batched pass (built for the geometry phase of <code>screen_oled_library</code> / <code>screen_electrolyte_library</code>)</li>
 <li>Model selection is the <code>method</code> argument (<code>auto | ani2x | mace</code>); execution engine is the <code>engine</code> argument (<code>ase | alchemi</code>)</li>
 </ul>
@@ -2136,8 +2161,8 @@
 </tr>
 <tr>
 <td><code>DEFAULT_BACKEND</code></td>
-<td><code>aimnet2</code></td>
-<td>Model backend when caller doesn't specify <code>method</code></td>
+<td><code>mace</code></td>
+<td>Model backend when caller doesn't specify <code>method</code>. Must be one the image serves (<code>mace</code> or <code>ani2x</code>).</td>
 </tr>
 <tr>
 <td><code>USE_GPU</code></td>
@@ -2152,7 +2177,7 @@
 </tbody>
 </table>
 <h2 id="alchemi-batched-engine-optional">ALCHEMI batched engine (optional)<a class="headerlink" href="#alchemi-batched-engine-optional" title="Permanent link">&para;</a></h2>
-<p>The <code>engine=alchemi</code> path routes relaxation through the NVIDIA ALCHEMI Toolkit's batched dynamics — many systems co-resident on the GPU per kernel call. It runs the same <code>method</code> potential you'd use otherwise (MACE / AIMNet2); ALCHEMI is the <em>execution</em> layer, not a new model.</p>
+<p>The <code>engine=alchemi</code> path routes relaxation through the NVIDIA ALCHEMI Toolkit's batched dynamics — many systems co-resident on the GPU per kernel call. It runs the same <code>method</code> potential you'd use otherwise (MACE / ANI-2x); ALCHEMI is the <em>execution</em> layer, not a new model.</p>
 <ul>
 <li><strong>Build:</strong> the image must install the toolkit extra — <code>pip install 'nvalchemi-toolkit[cu13]' --extra-index-url https://download.pytorch.org/whl/cu130 --extra-index-url https://pypi.nvidia.com</code> (CUDA 12/13 only; no CPU wheels). Keep it an <em>optional</em> build arg so the base image stays CPU-installable.</li>
 <li><strong>Endpoints:</strong> <code>POST /api/optimize-geometry</code> accepts <code>engine</code> for single molecules; <code>POST /api/relax-batch</code> accepts <code>{smiles_list, method, engine, fmax}</code> and returns per-input relaxed XYZ + energy + convergence in input order, with per-item failures reported inline (a bad SMILES never fails the batch).</li>
@@ -2160,13 +2185,15 @@
 </ul>
 <h2 id="backend-cheatsheet">Backend cheatsheet<a class="headerlink" href="#backend-cheatsheet" title="Permanent link">&para;</a></h2>
 <ul>
-<li><strong>AIMNet2</strong>, best all-round accuracy for organics containing H/C/N/O/S/F/Cl. Recommended default.</li>
-<li><strong>MACE</strong>, best for periodic systems and materials. Slightly slower than AIMNet2 for small molecules.</li>
-<li><strong>ANI-2x</strong>, fast, covers H/C/N/O/S/F/Cl. Slightly less accurate than AIMNet2 but wider validation on drug-like molecules.</li>
+<li><strong>MACE</strong>, strong general-purpose potential, good on periodic systems and materials. Recommended default.</li>
+<li><strong>ANI-2x</strong>, fast, covers H/C/N/O/S/F/Cl, wide validation on drug-like molecules.</li>
 </ul>
+<p>AIMNet2 is referenced by the engine but is <strong>not bundled in the current published image</strong> — <code>/health</code> reports only the backends actually loaded, and requesting <code>method=aimnet2</code> returns a structured error. Use MACE or ANI-2x, or build the image with AIMNet2 weights yourself if you need it.</p>
+<h2 id="weights-and-licenses">Weights and licenses<a class="headerlink" href="#weights-and-licenses" title="Permanent link">&para;</a></h2>
+<p>The model weights are bundled in the image. The MACE backend uses <strong>MACE-MPA-0, which is MIT-licensed</strong> — not MACE-MP-0, whose Academic Software License forbids commercial use. So the MACE path is commercial-safe here. ANI-2x ships under its own upstream open license; if you run this commercially, confirm it against its source repository. The service code itself is Apache-2.0.</p>
 <h2 id="speed">Speed<a class="headerlink" href="#speed" title="Permanent link">&para;</a></h2>
 <ul>
-<li><strong>AIMNet2 opt (drug-sized molecule):</strong> ~0.5 s (GPU) / ~10 s (CPU)</li>
+<li><strong>MACE opt (drug-sized molecule):</strong> ~0.5 s (GPU) / ~10 s (CPU)</li>
 <li><strong>Batch of 1000 molecules:</strong> ~2 min (GPU)</li>
 </ul>
 
