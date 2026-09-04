@@ -15,15 +15,17 @@ Open Corpus is built on.
 | `omics_targets` (UniProt/PDB cross-references) | **UniProt** | CC-BY-4.0 |
 | `omics_targets` (pathway context) | **Reactome** | CC0 |
 | `omics_resistance` (pathogenic/resistance variants) | **ClinVar** (NCBI) | Public domain |
-| `omics_perturbation` (Perturb-seq signature reversal) | see the per-row **`license_tag`** column | ⚠ **verify before shipping** |
+| `omics_perturbation` (signature reversal: TCGA / GTEx / Expression Atlas / SRA) | per-row **`license_tag`**; permissive only (see below) | public / CC0 |
 
-**⚠ `omics_perturbation` license — open item.** This table carries a per-row
-`license_tag` (the pipeline tracked source licensing per signature). Its
-aggregate redistribution terms are **not yet confirmed**. Before publishing
-omics-core, either (a) confirm every `license_tag` is permissive/attribution and
-list the sources here, or (b) filter the export to permissive rows, or (c) hold
-`omics_perturbation` out of the first omics-core release (`target_discovery`
-degrades gracefully — the perturbation channel is additive to the omics score).
+**`omics_perturbation` — allowlist-gated (NonCommercial excluded).** Per the
+pipeline's `LICENSE_AUDIT.md`, the permissive sources are TCGA & GTEx
+(public/open, summary-level only), Expression Atlas (**CC0**), and SRA/recount3
+(open-access). **DisGeNET is CC-BY-NC-SA (NonCommercial)** and must **not** ship
+in this commercial-OK pack. The exporter enforces this: `omics_perturbation` is
+**skipped by default** and only rows whose `license_tag` is explicitly
+allowlisted via `--perturbation-licenses` are exported, after the maintainer
+inspects the printed tag distribution. `target_discovery` degrades gracefully if
+the channel is omitted.
 
 **Not included:** any compliance columns, controlled-substance flags, or
 internal fields — only the columns the OSS engine reads are exported.
