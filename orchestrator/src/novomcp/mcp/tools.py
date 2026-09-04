@@ -2838,9 +2838,9 @@ TOOL_LOCAL_REQUIREMENTS: Dict[str, list] = {
     "pull_from_source":    ["env:NEVER_SHIP_IN_OSS"],
 
     # Omics tools — need Postgres + omics schema loaded. Roadmap: v1.1.x SQLite bundle.
-    "target_discovery": ["env:NOVOMCP_DB_HOST"],
-    "stratify_patients": ["env:NOVOMCP_DB_HOST"],
-    "validate_target":   ["env:NOVOMCP_DB_HOST"],
+    "target_discovery": ["omics"],
+    "stratify_patients": ["omics"],
+    "validate_target":   ["omics"],
 
     # Funnel-persistence tools — need audit/credit-ledger backend.
     # Roadmap: v1.8.x reference implementation.
@@ -2954,6 +2954,13 @@ def _requirement_met(req: str) -> bool:
         return any(os.getenv(n, "").strip() for n in names)
     if req.startswith("file:"):
         return os.path.exists(os.path.expanduser(req[5:]))
+    if req == "omics":
+        # Omics tools work when a Postgres omics DB is configured OR the local
+        # SQLite omics data pack is present (query routing in core/db_helper.py).
+        if os.getenv("NOVOMCP_DB_HOST", "").strip() or os.getenv("AURORA_HOST", "").strip():
+            return True
+        omics_db = os.getenv("NOVOMCP_OMICS_DB") or os.path.expanduser("~/.novo/omics/omics.db")
+        return os.path.exists(omics_db)
     return True  # unknown format — assume met (fail-open)
 
 
