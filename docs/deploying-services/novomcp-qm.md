@@ -29,7 +29,10 @@ export NOVOMCP_QM_URL=http://localhost:8031
 
 ```bash
 curl -s http://localhost:8031/health
-# {"status":"healthy","xtb_version":"6.7.1","crest_available":true}
+# {"status":"healthy","service":"novomcp-qm","version":"1.1.0","port":8031,
+#  "engines":{"xtb":{"available":true,"method":"GFN2-xTB","hessian":true},
+#             "stda":{"available":true,"method":"sTDA-xTB"},
+#             "crest":{"available":true,"fallback":"RDKit-ETKDG"}}}
 ```
 
 ## Tools that light up

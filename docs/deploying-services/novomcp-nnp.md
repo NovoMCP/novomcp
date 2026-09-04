@@ -1,9 +1,9 @@
 # novomcp-nnp
 
-Neural network potentials for fast geometry optimization and energy prediction. Three model backends: **AIMNet2**, **MACE**, and **ANI-2x**. GPU-accelerated; CPU works but is 10–50× slower.
+Neural network potentials for fast geometry optimization and energy prediction. The published image serves two backends: **MACE** and **ANI-2x**. GPU-accelerated; CPU works but is 10–50× slower.
 
 Two axes, kept orthogonal:
-- **`method`** — *which potential* runs (`aimnet2` / `mace` / `ani-2x`).
+- **`method`** — *which potential* runs (`mace` / `ani-2x`).
 - **`engine`** — *how it executes*: `ase` (ASE BFGS optimizer, default) or `alchemi` (the [NVIDIA ALCHEMI Toolkit](https://github.com/NVIDIA/nvalchemi-toolkit) GPU-batched relaxation dynamics running the same `method` potential on batched CUDA kernels). The ALCHEMI engine is what powers `batch_geometry_relaxation`, which relaxes a whole library in one batched pass instead of a per-molecule loop.
 
 ## Pre-reqs
@@ -43,7 +43,9 @@ export NOVOMCP_NNP_URL=http://localhost:8032
 
 ```bash
 curl -s http://localhost:8032/health
-# {"status":"healthy","backends":["aimnet2","mace","ani-2x"],"gpu_available":true}
+# {"status":"healthy","service":"novomcp-nnp","version":"1.0.0","port":8032,
+#  "models":{"ani2x":{"available":true},"mace":{"available":true}},
+#  "ready_models":["ani2x","mace"]}
 ```
 
 ## Tools that light up
@@ -58,13 +60,13 @@ curl -s http://localhost:8032/health
 | Var | Default | Purpose |
 |---|---|---|
 | `PORT` | `8032` | HTTP listen port |
-| `DEFAULT_BACKEND` | `aimnet2` | Model backend when caller doesn't specify `method` |
+| `DEFAULT_BACKEND` | `mace` | Model backend when caller doesn't specify `method`. Must be one the image serves (`mace` or `ani2x`). |
 | `USE_GPU` | `auto` | Force `cpu` or `gpu`; `auto` detects at boot |
 | `ALCHEMI_ENABLED` | `false` | Enable the `engine=alchemi` GPU-batched path (requires the `nvalchemi-toolkit` extra + a CUDA 12/13 GPU). When `false`, requests with `engine=alchemi` get a structured `503 alchemi backend not built` error. |
 
 ## ALCHEMI batched engine (optional)
 
-The `engine=alchemi` path routes relaxation through the NVIDIA ALCHEMI Toolkit's batched dynamics — many systems co-resident on the GPU per kernel call. It runs the same `method` potential you'd use otherwise (MACE / AIMNet2); ALCHEMI is the *execution* layer, not a new model.
+The `engine=alchemi` path routes relaxation through the NVIDIA ALCHEMI Toolkit's batched dynamics — many systems co-resident on the GPU per kernel call. It runs the same `method` potential you'd use otherwise (MACE / ANI-2x); ALCHEMI is the *execution* layer, not a new model.
 
 - **Build:** the image must install the toolkit extra — `pip install 'nvalchemi-toolkit[cu13]' --extra-index-url https://download.pytorch.org/whl/cu130 --extra-index-url https://pypi.nvidia.com` (CUDA 12/13 only; no CPU wheels). Keep it an *optional* build arg so the base image stays CPU-installable.
 - **Endpoints:** `POST /api/optimize-geometry` accepts `engine` for single molecules; `POST /api/relax-batch` accepts `{smiles_list, method, engine, fmax}` and returns per-input relaxed XYZ + energy + convergence in input order, with per-item failures reported inline (a bad SMILES never fails the batch).
@@ -72,15 +74,16 @@ The `engine=alchemi` path routes relaxation through the NVIDIA ALCHEMI Toolkit's
 
 ## Backend cheatsheet
 
-- **AIMNet2**, best all-round accuracy for organics containing H/C/N/O/S/F/Cl. Recommended default.
-- **MACE**, best for periodic systems and materials. Slightly slower than AIMNet2 for small molecules.
-- **ANI-2x**, fast, covers H/C/N/O/S/F/Cl. Slightly less accurate than AIMNet2 but wider validation on drug-like molecules.
+- **MACE**, strong general-purpose potential, good on periodic systems and materials. Recommended default.
+- **ANI-2x**, fast, covers H/C/N/O/S/F/Cl, wide validation on drug-like molecules.
+
+AIMNet2 is referenced by the engine but is **not bundled in the current published image** — `/health` reports only the backends actually loaded, and requesting `method=aimnet2` returns a structured error. Use MACE or ANI-2x, or build the image with AIMNet2 weights yourself if you need it.
 
 ## Weights and licenses
 
-The model weights are bundled in the image. The MACE backend uses **MACE-MPA-0, which is MIT-licensed** — not MACE-MP-0, whose Academic Software License forbids commercial use. So the MACE path is commercial-safe here. AIMNet2 and ANI-2x ship under their own upstream open licenses; if you run this commercially, confirm each against its source repository. The service code itself is Apache-2.0.
+The model weights are bundled in the image. The MACE backend uses **MACE-MPA-0, which is MIT-licensed** — not MACE-MP-0, whose Academic Software License forbids commercial use. So the MACE path is commercial-safe here. ANI-2x ships under its own upstream open license; if you run this commercially, confirm it against its source repository. The service code itself is Apache-2.0.
 
 ## Speed
 
-- **AIMNet2 opt (drug-sized molecule):** ~0.5 s (GPU) / ~10 s (CPU)
+- **MACE opt (drug-sized molecule):** ~0.5 s (GPU) / ~10 s (CPU)
 - **Batch of 1000 molecules:** ~2 min (GPU)

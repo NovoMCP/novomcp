@@ -31,7 +31,12 @@ export NOVOMCP_QM_URL=http://localhost:8031   # required for the charge-based pK
 
 ```bash
 curl -s http://localhost:8030/health
-# {"status":"healthy", ...}
+# {"status":"healthy","service":"novomcp-properties","version":"1.0.0","port":8030,
+#  "predictors":{"pka":{"backend":"rdkit-empirical","ready":false,"weights_loaded":false,"empirical_only":true},
+#                "solubility":{"backend":"chemprop-aqsoldb","ready":true},
+#                "bde":{"backend":"alfabet","ready":true}},
+#  "ready":"2/3"}
+# pka shows ready:false until you opt in to the NonCommercial weights (HF_PKA_MODEL_REPO); solubility + bde are ready.
 ```
 
 ## Tools that light up
