@@ -16,6 +16,8 @@ Authentication: IRSA in-cluster, or Secrets Manager password lookup via
 
 import logging
 import os
+import re
+import sqlite3
 from typing import List, Dict, Any, Tuple, Optional
 import httpx
 import asyncio
@@ -473,6 +475,66 @@ async def execute_sql(sql: str, params: Optional[Tuple] = None, database: str = 
     return await helper.execute_sql(sql, params, database)
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Optional local SQLite omics backend (OSS data pack)
+# ─────────────────────────────────────────────────────────────────────────────
+# When a local omics SQLite DB is present, `omics.*` read queries route here
+# instead of Postgres — so target_discovery / stratify_patients light up from
+# the downloadable data pack with no database server. The file is ATTACHed as
+# schema `omics`, so the executors' existing `FROM omics.omics_targets` SQL runs
+# verbatim; psycopg2's `%s` placeholders are translated to sqlite3's `?`.
+#
+# This is read-only and omics-only: writes (execute_sql) and every non-omics
+# query fall through to Postgres unchanged. Presence of the file is the gate —
+# no env flag needed — matching the local-default spine pattern.
+NOVOMCP_OMICS_DB = os.getenv("NOVOMCP_OMICS_DB") or os.path.expanduser("~/.novo/omics/omics.db")
+
+_OMICS_SCHEMA_REF = re.compile(r"\bomics\.", re.IGNORECASE)
+
+
+def _omics_sqlite_available() -> bool:
+    return os.path.isfile(NOVOMCP_OMICS_DB)
+
+
+def _maybe_json(v: Any) -> Any:
+    """Decode a JSON-text column back to dict/list, mirroring psycopg2's default
+    JSONB/array auto-decode. Postgres JSONB and `text[]` columns
+    (population_frequencies, pdb_ids, key_variants, top_pathways, key_alleles,
+    metabolizer_phenotypes, ...) come back parsed under psycopg2; the executors
+    rely on that (`pop_freqs.get(...)`). SQLite stores them as TEXT, so a value
+    that looks like a JSON object/array is decoded here to match. Plain scalars
+    pass through untouched.
+    """
+    if isinstance(v, str) and v[:1] in ("{", "["):
+        try:
+            return json.loads(v)
+        except (ValueError, TypeError):
+            return v
+    return v
+
+
+def _query_omics_sqlite(sql: str, params: Optional[Tuple]) -> List[Dict[str, Any]]:
+    """Run an `omics.*` SELECT against the local SQLite data pack.
+
+    Opens an in-memory connection and ATTACHes the omics file as schema
+    `omics`, so `FROM omics.omics_targets` resolves exactly as under Postgres.
+    Omics queries carry no literal `%`, so the `%s`->`?` swap is safe. JSON/array
+    columns are decoded to match psycopg2's row shape.
+    """
+    conn = sqlite3.connect(":memory:")
+    try:
+        conn.row_factory = sqlite3.Row
+        conn.execute("ATTACH DATABASE ? AS omics", (NOVOMCP_OMICS_DB,))
+        cur = conn.execute(sql.replace("%s", "?"), tuple(params) if params else ())
+        return [{k: _maybe_json(row[k]) for k in row.keys()} for row in cur.fetchall()]
+    finally:
+        conn.close()
+
+
 async def query_sql(sql: str, params: Optional[Tuple] = None, database: str = None) -> List[Dict[str, Any]]:
+    # Route omics reads to the local SQLite pack when it is installed; otherwise
+    # (and for every non-omics query) use Postgres.
+    if _OMICS_SCHEMA_REF.search(sql) and _omics_sqlite_available():
+        return await async_execute(lambda: _query_omics_sqlite(sql, params))()
     helper = get_db_helper()
     return await helper.query_sql(sql, params, database)
