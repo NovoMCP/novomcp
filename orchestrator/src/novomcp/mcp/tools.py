@@ -1421,7 +1421,7 @@ MCP_TOOLS = {
     "search_literature": {
         "name": "search_literature",
         "title": "Search Literature",
-        "description": "Find published journal articles and research papers on drug discovery topics. Searches 14,398 curated peer-reviewed publications via Pinecone semantic search. Returns paper titles, abstracts, authors, DOIs, and relevance scores. Covers ADMET research, target validation, medicinal chemistry, SAR studies, and clinical pharmacology. Use for literature review, prior art assessment, and evidence gathering during target evaluation.",
+        "description": "Find published journal articles and research papers on drug discovery topics. Works out of the box against PubMed (NCBI E-utilities) — no API key required — returning titles, authors, journal, year, DOI, and PubMed links. When a Pinecone index is configured (PINECONE_API_KEY), it searches a curated semantic index first and falls back to PubMed on any error. Covers ADMET research, target validation, medicinal chemistry, SAR studies, and clinical pharmacology. Use for literature review, prior art assessment, and evidence gathering. The `source` field in the response says which backend answered (pubmed | pinecone).",
         "annotations": {
             "readOnlyHint": True,
             "destructiveHint": False
@@ -2886,8 +2886,10 @@ TOOL_LOCAL_REQUIREMENTS: Dict[str, list] = {
     "lead_optimization": ["env:LEAD_OPTIMIZATION_URL"],
     "optimize_molecule": ["env:MOLMIM_OPTIMIZER_URL"],
 
-    # Literature via Pinecone — roadmap v1.2.x adds PubMed fallback.
-    "search_literature": ["env:PINECONE_API_KEY"],
+    # search_literature: always available via a PubMed (NCBI E-utilities) floor;
+    # PINECONE_API_KEY, when set, adds the curated semantic index on top.
+    # search_patents stays Pinecone-only (no public patent fallback yet).
+    "search_literature": ["any"],
     "search_patents":    ["env:PINECONE_API_KEY"],
 
     # Compliance path — generic hook. Needs a compliance service wired via
@@ -8387,116 +8389,171 @@ class MCPToolExecutor:
         )
 
     async def _execute_search_literature(self, args: Dict[str, Any]) -> ToolResult:
-        """
-        Search curated drug discovery literature from Pinecone.
-        Searches across multiple namespaces (uploads, pubmed, preprints) and
-        deduplicates results to return unique papers.
+        """Search drug-discovery literature.
+
+        PubMed (NCBI E-utilities) is the always-available floor — no key, works
+        out of the box. When PINECONE_API_KEY is set, the curated semantic index
+        is tried first (richer) and PubMed is the fallback if it errors.
         """
         query = args.get("query")
         if not query:
             return ToolResult(success=False, error="Missing required parameter: query")
-
         top_k = min(args.get("top_k", 10), 20)
         year_min = args.get("year_min")
 
+        if os.getenv("PINECONE_API_KEY"):
+            try:
+                papers = await self._literature_pinecone(query, top_k, year_min)
+                return self._literature_result(query, papers, "pinecone")
+            except Exception as e:
+                logger.warning(
+                    f"Pinecone literature search failed ({str(e)[:150]}); falling back to PubMed"
+                )
+
         try:
-            # Import Pinecone client
-            from novomcp.core.pinecone_client import get_pinecone_client
-            import asyncio
-
-            pinecone_client = get_pinecone_client()
-
-            # Build filters (only if year filter specified)
-            filters = {}
-            if year_min:
-                filters["year"] = {"$gte": year_min}
-
-            # Request 3x results per namespace to allow for deduplication
-            fetch_count = min(top_k * 3, 60)
-
-            # Generate embedding once, reuse across all namespace searches
-            query_embedding = await pinecone_client.generate_embeddings(query)
-
-            # Search across all literature namespaces in parallel (with pre-computed embedding)
-            namespaces = ["uploads", "pubmed", "preprints"]
-            search_tasks = [
-                pinecone_client.search_literature(
-                    query=query,
-                    filters=filters if filters else None,
-                    top_k=fetch_count,
-                    namespace=ns,
-                    query_embedding=query_embedding,
-                )
-                for ns in namespaces
-            ]
-
-            results_per_ns = await asyncio.gather(*search_tasks, return_exceptions=True)
-
-            # Merge results from all namespaces
-            raw_papers = []
-            for ns, result in zip(namespaces, results_per_ns):
-                if isinstance(result, Exception):
-                    logger.warning(f"Literature search in namespace '{ns}' failed: {result}")
-                    continue
-                for paper in result:
-                    paper["namespace"] = ns
-                    raw_papers.append(paper)
-
-            # Sort by relevance score (descending)
-            raw_papers.sort(key=lambda p: p.get("score", 0), reverse=True)
-
-            # Deduplicate per unique paper, keeping the highest-scoring chunk.
-            # Canonical identifiers first (pmcid/doi/pmid are stable across the
-            # chunks of one paper); fall back to a normalized title, then the
-            # chunk id. Title is normalized (strip + lowercase) so whitespace
-            # drift between chunks doesn't defeat the dedup. The PMC `uploads`
-            # corpus has no doi, so the prior `doi or title` key leaned entirely
-            # on exact-title matching — pmcid makes it robust.
-            seen_papers = {}
-            for paper in raw_papers:
-                paper_key = (
-                    paper.get("pmcid")
-                    or paper.get("doi")
-                    or paper.get("pmid")
-                    or (paper.get("title") or "").strip().lower()
-                    or paper.get("id")
-                )
-                if not paper_key:
-                    continue
-
-                # Keep only the first (highest-scoring) result per paper
-                if paper_key not in seen_papers:
-                    seen_papers[paper_key] = paper
-
-            # Convert back to list and limit to requested top_k
-            papers = list(seen_papers.values())[:top_k]
-
+            papers = await self._literature_pubmed(query, top_k, year_min)
+            return self._literature_result(query, papers, "pubmed")
+        except httpx.HTTPStatusError as e:
             return ToolResult(
-                success=True,
-                data={
-                    "query": query,
-                    "total_results": len(papers),
-                    "papers": papers,
-                    "tool_suggestions": [
-                        self._tool_suggestion(
-                            "search_biorxiv",
-                            "Search bioRxiv/medRxiv for recent preprints (may include unpublished cutting-edge research)"
-                        ),
-                        self._tool_suggestion(
-                            "search_clinical_trials",
-                            "Find related clinical trials to see how research translates to clinical practice"
-                        )
-                    ]
-                },
-                usage={"queries": 1, "tool": "search_literature"}
+                success=False,
+                error=f"PubMed returned HTTP {e.response.status_code}. "
+                      f"{'Rate limited — retry in a few seconds.' if e.response.status_code == 429 else 'Upstream error, try again.'}",
             )
-
-        except ValueError as e:
-            # Pinecone not configured
-            return ToolResult(success=False, error=f"Literature search not configured: {str(e)}")
         except Exception as e:
-            logger.exception(f"Error in search_literature: {e}")
-            return ToolResult(success=False, error=f"Literature search failed: {str(e)}")
+            logger.exception(f"Error in search_literature (PubMed): {e}")
+            return ToolResult(success=False, error=f"Literature search failed: {str(e)[:300]}")
+
+    async def _literature_pinecone(self, query: str, top_k: int, year_min) -> List[Dict[str, Any]]:
+        """Curated vector-index search over the uploads/pubmed/preprints
+        namespaces, deduped by canonical id then normalized title. Raises on any
+        Pinecone error so the caller can fall back to PubMed."""
+        from novomcp.core.pinecone_client import get_pinecone_client
+        import asyncio
+
+        pinecone_client = get_pinecone_client()
+        filters = {"year": {"$gte": year_min}} if year_min else {}
+        fetch_count = min(top_k * 3, 60)
+        query_embedding = await pinecone_client.generate_embeddings(query)
+        namespaces = ["uploads", "pubmed", "preprints"]
+        search_tasks = [
+            pinecone_client.search_literature(
+                query=query,
+                filters=filters if filters else None,
+                top_k=fetch_count,
+                namespace=ns,
+                query_embedding=query_embedding,
+            )
+            for ns in namespaces
+        ]
+        results_per_ns = await asyncio.gather(*search_tasks, return_exceptions=True)
+        raw_papers = []
+        for ns, result in zip(namespaces, results_per_ns):
+            if isinstance(result, Exception):
+                logger.warning(f"Literature search in namespace '{ns}' failed: {result}")
+                continue
+            for paper in result:
+                paper["namespace"] = ns
+                raw_papers.append(paper)
+        raw_papers.sort(key=lambda p: p.get("score", 0), reverse=True)
+        seen_papers = {}
+        for paper in raw_papers:
+            paper_key = (
+                paper.get("pmcid")
+                or paper.get("doi")
+                or paper.get("pmid")
+                or (paper.get("title") or "").strip().lower()
+                or paper.get("id")
+            )
+            if not paper_key:
+                continue
+            if paper_key not in seen_papers:
+                seen_papers[paper_key] = paper
+        return list(seen_papers.values())[:top_k]
+
+    async def _literature_pubmed(self, query: str, top_k: int, year_min) -> List[Dict[str, Any]]:
+        """PubMed via NCBI E-utilities (esearch -> esummary). Public, no key.
+
+        `NCBI_API_KEY` raises the rate limit to 10 req/s (3/s without); we make
+        two calls per query, so the unauthenticated limit is fine for
+        interactive use. NCBI asks callers to identify via `tool` (+ optional
+        `email`) params.
+        """
+        base = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils"
+        common = {"db": "pubmed", "retmode": "json", "tool": "novomcp"}
+        if os.getenv("NCBI_EMAIL"):
+            common["email"] = os.getenv("NCBI_EMAIL")
+        if os.getenv("NCBI_API_KEY"):
+            common["api_key"] = os.getenv("NCBI_API_KEY")
+
+        esearch = {**common, "term": query, "retmax": top_k, "sort": "relevance"}
+        if year_min:
+            esearch.update({"mindate": str(year_min), "maxdate": "3000", "datetype": "pdat"})
+
+        async with httpx.AsyncClient(timeout=20.0) as client:
+            r = await client.get(f"{base}/esearch.fcgi", params=esearch)
+            r.raise_for_status()
+            pmids = ((r.json().get("esearchresult") or {}).get("idlist")) or []
+            if not pmids:
+                return []
+            r2 = await client.get(
+                f"{base}/esummary.fcgi", params={**common, "id": ",".join(pmids)}
+            )
+            r2.raise_for_status()
+            result = (r2.json().get("result") or {})
+
+        papers = []
+        for pmid in pmids:  # preserve esearch relevance order
+            rec = result.get(pmid)
+            if isinstance(rec, dict):
+                papers.append(self._pubmed_paper(pmid, rec))
+        return papers
+
+    @staticmethod
+    def _pubmed_paper(pmid: str, rec: Dict[str, Any]) -> Dict[str, Any]:
+        """Map one NCBI esummary record to the paper shape the tool returns."""
+        authors = [a.get("name") for a in (rec.get("authors") or []) if a.get("name")]
+        year = None
+        for tok in str(rec.get("pubdate") or rec.get("epubdate") or "").split():
+            if tok[:4].isdigit():
+                year = int(tok[:4])
+                break
+        doi = ""
+        for aid in (rec.get("articleids") or []):
+            if aid.get("idtype") == "doi":
+                doi = aid.get("value") or ""
+                break
+        return {
+            "pmid": pmid,
+            "title": rec.get("title") or "",
+            "authors": authors,
+            "year": year,
+            "journal": rec.get("fulljournalname") or rec.get("source") or "",
+            "doi": doi,
+            "url": f"https://pubmed.ncbi.nlm.nih.gov/{pmid}/",
+            "namespace": "pubmed",
+        }
+
+    def _literature_result(self, query: str, papers: List[Dict[str, Any]], source: str) -> ToolResult:
+        return ToolResult(
+            success=True,
+            data={
+                "query": query,
+                "total_results": len(papers),
+                "papers": papers,
+                "source": source,
+                "tool_suggestions": [
+                    self._tool_suggestion(
+                        "search_biorxiv",
+                        "Search bioRxiv/medRxiv for recent preprints (may include unpublished cutting-edge research)"
+                    ),
+                    self._tool_suggestion(
+                        "search_clinical_trials",
+                        "Find related clinical trials to see how research translates to clinical practice"
+                    )
+                ]
+            },
+            usage={"queries": 1, "tool": "search_literature"}
+        )
 
     async def _execute_search_patents(self, args: Dict[str, Any]) -> ToolResult:
         """
