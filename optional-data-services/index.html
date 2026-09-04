@@ -2148,11 +2148,14 @@
 <p>Tools that need it: <code>target_discovery</code>, <code>validate_target</code>, <code>stratify_patients</code>.</p>
 <p>Two ways to provide the omics data — a <strong>local SQLite pack</strong> (easiest, no server) or <strong>your own Postgres</strong>. Either works; the engine picks the pack automatically when it's present.</p>
 <h4 id="option-a-the-sqlite-data-pack-no-database-server">Option A — the SQLite data pack (no database server)<a class="headerlink" href="#option-a-the-sqlite-data-pack-no-database-server" title="Permanent link">&para;</a></h4>
-<p>Install a pack and the engine routes <code>omics.*</code> reads to it automatically — the tools light up with no <code>NOVOMCP_DB_HOST</code> set:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="c1"># target discovery:</span>
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>python<span class="w"> </span>scripts/omics-pack/install_omics_pack.py<span class="w"> </span>omics-core.sqlite.gz
-</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="c1"># + patient stratification (PGx layer):</span>
-</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>python<span class="w"> </span>scripts/omics-pack/install_omics_pack.py<span class="w"> </span>omics-core.sqlite.gz<span class="w"> </span>omics-pgx.sqlite.gz
+<p>Download a pack from the <a href="https://github.com/NovoMCP/novomcp/releases/tag/omics-pack-v1">omics-pack-v1 release</a> and install it — the engine routes <code>omics.*</code> reads to it automatically, and the tools light up with no <code>NOVOMCP_DB_HOST</code> set:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="c1"># download (omics-core = target discovery; omics-pgx = + patient stratification):</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>curl<span class="w"> </span>-LO<span class="w"> </span>https://github.com/NovoMCP/novomcp/releases/download/omics-pack-v1/omics-core.sqlite.gz
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>curl<span class="w"> </span>-LO<span class="w"> </span>https://github.com/NovoMCP/novomcp/releases/download/omics-pack-v1/omics-pgx.sqlite.gz<span class="w">   </span><span class="c1"># optional</span>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="c1"># install:</span>
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>python<span class="w"> </span>scripts/omics-pack/install_omics_pack.py<span class="w"> </span>omics-core.sqlite.gz<span class="w">                      </span><span class="c1"># target discovery</span>
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>python<span class="w"> </span>scripts/omics-pack/install_omics_pack.py<span class="w"> </span>omics-core.sqlite.gz<span class="w"> </span>omics-pgx.sqlite.gz<span class="w">  </span><span class="c1"># + patient stratification</span>
 </span></code></pre></div>
 <p>Packs merge into <code>~/.novo/omics/omics.db</code> (override with <code>NOVOMCP_OMICS_DB</code>). They ship as <strong>two license-distinct downloads</strong>:</p>
 <table>
