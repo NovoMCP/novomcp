@@ -24,14 +24,18 @@ The engine works without any of them. Property calculation, similarity search, l
 | `get_protein_structure` | (external RCSB PDB) | Requires internet. |
 | `run_qm_calculation` | `novomcp-qm` | CPU. xTB / CREST. |
 | `run_conformer_search` | `novomcp-qm` | CPU. CREST. |
-| `compute_energy` | `novomcp-qm` | CPU. Single-point energy. |
-| `optimize_geometry_nnp` | `novomcp-nnp` | GPU or CPU. AIMNet2 / MACE / ANI-2x. |
+| `run_qm_hessian` | `novomcp-qm` | CPU. Hessian / frequencies. |
+| `run_excited_states` | `novomcp-qm` | CPU. Excited-state energies. |
+| `predict_redox_potential` | `novomcp-qm` | CPU. |
+| `predict_reaction_thermodynamics` | `novomcp-qm` | CPU. ΔG, ΔH. |
+| `parameterize_metal` | `novomcp-qm` | CPU + your own Gaussian (two-phase; Gaussian-only). |
 | `predict_frontier_orbitals` | `novomcp-qm` | CPU. |
-| `predict_pka` | `novomcp-properties` | CPU. Trained pKa model. |
+| `compute_energy` | `novomcp-nnp` | GPU or CPU. MLIP single-point energy. |
+| `optimize_geometry_nnp` | `novomcp-nnp` | GPU or CPU. AIMNet2 / MACE / ANI-2x. |
+| `predict_pka` | `novomcp-properties` | CPU. Trained pKa model (weights NonCommercial, opt-in). |
 | `predict_solubility` | `novomcp-properties` | CPU. |
 | `predict_bde` | `novomcp-properties` | CPU. |
 | `find_transition_state` | `novomcp-neb` | GPU. NEB via tblite. |
-| `parameterize_metal` | `novomcp-qm` | CPU. MCPB.py workflow. |
 | `run_novo_ag` | (all of the above for its 11 stages) | Autonomous funnel. |
 
 ## Wiring pattern
@@ -87,7 +91,7 @@ AWS Marketplace and GCP Cloud Marketplace listings under development.
 - [`novomcp-nnp.md`](./novomcp-nnp.md), neural network potentials (AIMNet2, MACE, ANI-2x)
 - [`novomcp-neb.md`](./novomcp-neb.md), transition-state search (CI-NEB)
 
-Every service follows the same pattern: docker image at `ghcr.io/ariharrisonlab/<service>:latest`, env var `<SERVICE_NAME_UPPER>_URL` wires the engine to it, structured errors when unreachable.
+Every service follows the same pattern: docker image at `ghcr.io/novomcp/<service>:latest`, env var `<SERVICE_NAME_UPPER>_URL` wires the engine to it, structured errors when unreachable.
 
 ## Building from source
 

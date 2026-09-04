@@ -49,6 +49,7 @@ curl -s http://localhost:8032/health
 ## Tools that light up
 
 - `optimize_geometry_nnp`, fast single-molecule NNP geometry optimization
+- `compute_energy`, single-point energy and forces (MLIP; batched via `engine=alchemi`)
 - `batch_geometry_relaxation`, library relaxation in one batched pass (built for the geometry phase of `screen_oled_library` / `screen_electrolyte_library`)
 - Model selection is the `method` argument (`auto | ani2x | mace`); execution engine is the `engine` argument (`ase | alchemi`)
 
@@ -74,6 +75,10 @@ The `engine=alchemi` path routes relaxation through the NVIDIA ALCHEMI Toolkit's
 - **AIMNet2**, best all-round accuracy for organics containing H/C/N/O/S/F/Cl. Recommended default.
 - **MACE**, best for periodic systems and materials. Slightly slower than AIMNet2 for small molecules.
 - **ANI-2x**, fast, covers H/C/N/O/S/F/Cl. Slightly less accurate than AIMNet2 but wider validation on drug-like molecules.
+
+## Weights and licenses
+
+The model weights are bundled in the image. The MACE backend uses **MACE-MPA-0, which is MIT-licensed** — not MACE-MP-0, whose Academic Software License forbids commercial use. So the MACE path is commercial-safe here. AIMNet2 and ANI-2x ship under their own upstream open licenses; if you run this commercially, confirm each against its source repository. The service code itself is Apache-2.0.
 
 ## Speed
 

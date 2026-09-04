@@ -57,5 +57,6 @@ curl -s http://localhost:8030/health
 - pKa model: a routed ensemble — a per-atom-charge specialist for sulfonamides / aromatic N–H, and a general model for everything else; each route reports an uncertainty estimate. Benchmarked on SAMPL7.
 - Solubility model: pre-trained on AqSolDB, fine-tuned on BigSolDB with temperature as an input feature.
 - BDE model: alfabet pretrained network.
+- Solubility and BDE outputs are screening-grade ML predictions: dependable for ranking within a comparable series, not as absolute experimental values.
 - If weights can't be loaded, the affected predictor reports unavailable and its endpoints return `503` rather than serving a silent fallback.
 - All three are stateless, safe to scale horizontally behind a load balancer for high-throughput screening.
