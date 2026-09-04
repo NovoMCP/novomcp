@@ -108,7 +108,7 @@ def _serialize(v):
     return v
 
 
-def _export_table(pg, table: str, spec: dict, sq: sqlite3.Connection) -> int:
+def _export_table(pg, table: str, spec: dict, sq: sqlite3.Connection, where: str = "") -> int:
     cols = [c for c, _ in spec["columns"]]
     ddl_cols = ", ".join(f'"{c}" {t}' for c, t in spec["columns"])
     sq.execute(f'CREATE TABLE "{table}" ({ddl_cols})')
@@ -117,7 +117,7 @@ def _export_table(pg, table: str, spec: dict, sq: sqlite3.Connection) -> int:
 
     # Plain positional cursor: rows come back as tuples in `cols` order.
     cur = pg.cursor()
-    cur.execute(f'SELECT {", ".join(cols)} FROM omics.{table}')
+    cur.execute(f'SELECT {", ".join(cols)} FROM omics.{table} {where}')
     n = 0
     while True:
         batch = cur.fetchmany(5000)
@@ -135,6 +135,14 @@ def main() -> None:
     ap = argparse.ArgumentParser(description="Export omics schema -> SQLite packs.")
     ap.add_argument("--out", default="./dist", help="output directory")
     ap.add_argument("--gzip", action="store_true", help="also write .sqlite.gz")
+    ap.add_argument(
+        "--perturbation-licenses", default="",
+        help="comma-separated allowlist of permissive omics_perturbation license_tag "
+             "values to export. REQUIRED to include omics_perturbation — the table can "
+             "carry NonCommercial-licensed rows (e.g. DisGeNET, CC-BY-NC-SA), so it is "
+             "SKIPPED by default. Run once without this flag to print the distinct tags, "
+             "then re-run allowlisting only the permissive ones.",
+    )
     args = ap.parse_args()
 
     out = Path(args.out)
@@ -151,7 +159,30 @@ def main() -> None:
                 for table, spec in TABLES.items():
                     if spec["pack"] != pack:
                         continue
-                    rows = _export_table(pg, table, spec, sq)
+                    where = ""
+                    if table == "omics_perturbation":
+                        # NonCommercial-risk table: report the license_tag distribution,
+                        # and export ONLY explicitly-allowlisted permissive tags. Skipped
+                        # by default so a stray NonCommercial row (e.g. DisGeNET,
+                        # CC-BY-NC-SA) can never leak into the CC-BY core pack.
+                        tc = pg.cursor()
+                        tc.execute("SELECT license_tag, count(*) FROM omics.omics_perturbation "
+                                   "GROUP BY license_tag ORDER BY 2 DESC")
+                        dist = tc.fetchall()
+                        tc.close()
+                        print("  omics_perturbation license_tag distribution:", file=sys.stderr)
+                        for tag, cnt in dist:
+                            print(f"    {tag!r}: {cnt:,}", file=sys.stderr)
+                        allow = [t.strip() for t in args.perturbation_licenses.split(",") if t.strip()]
+                        if not allow:
+                            print("  SKIP omics_perturbation — no --perturbation-licenses allowlist "
+                                  "(exclude NonCommercial rows explicitly; target_discovery degrades "
+                                  "gracefully without this channel).", file=sys.stderr)
+                            continue
+                        quoted = ",".join("'" + t.replace("'", "''") + "'" for t in allow)
+                        where = f"WHERE license_tag IN ({quoted})"
+                        print(f"  including omics_perturbation rows with license_tag in {allow}", file=sys.stderr)
+                    rows = _export_table(pg, table, spec, sq, where)
                     print(f"  {table}: {rows:,} rows", file=sys.stderr)
                     total += rows
                 sq.commit()

@@ -35,7 +35,12 @@ the columns the engine reads are exported; Postgres array/JSONB columns are
 serialized to JSON text so the engine decodes them back to the same shape.
 
 ```bash
-NOVOMCP_DB_HOST=... DB_PASSWORD=... python export_omics.py --out ./dist --gzip
+# 1) dry pass: prints the omics_perturbation license_tag distribution (and skips
+#    that table by default — it can hold NonCommercial rows like DisGeNET).
+NOVOMCP_DB_HOST=... DB_PASSWORD=... python export_omics.py --out ./dist
+# 2) re-run allowlisting only the permissive tags you saw in step 1:
+NOVOMCP_DB_HOST=... DB_PASSWORD=... python export_omics.py --out ./dist --gzip \
+  --perturbation-licenses "TCGA,GTEx,Expression Atlas,SRA"
 # -> dist/omics-core.sqlite(.gz), dist/omics-pgx.sqlite(.gz)
 ```
 
@@ -45,7 +50,9 @@ code license.
 
 ## Open items
 
-- **`omics_perturbation` license** — carries a per-row `license_tag`; confirm
-  aggregate terms (or filter/hold) before publishing omics-core. See its NOTICE.
 - **gnomAD/ODbL** — if population frequencies can be recomputed from CPIC (CC0),
   the PGx pack drops to a single ShareAlike license.
+
+(The `omics_perturbation` NonCommercial risk is now handled in the exporter:
+DisGeNET (CC-BY-NC-SA) and any non-allowlisted tag are excluded by default —
+see [NOTICE-omics-core.md](NOTICE-omics-core.md).)
