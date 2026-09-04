@@ -14,13 +14,16 @@ Two ways to provide the omics data — a **local SQLite pack** (easiest, no serv
 
 #### Option A — the SQLite data pack (no database server)
 
-Install a pack and the engine routes `omics.*` reads to it automatically — the tools light up with no `NOVOMCP_DB_HOST` set:
+Download a pack from the [omics-pack-v1 release](https://github.com/NovoMCP/novomcp/releases/tag/omics-pack-v1) and install it — the engine routes `omics.*` reads to it automatically, and the tools light up with no `NOVOMCP_DB_HOST` set:
 
 ```bash
-# target discovery:
-python scripts/omics-pack/install_omics_pack.py omics-core.sqlite.gz
-# + patient stratification (PGx layer):
-python scripts/omics-pack/install_omics_pack.py omics-core.sqlite.gz omics-pgx.sqlite.gz
+# download (omics-core = target discovery; omics-pgx = + patient stratification):
+curl -LO https://github.com/NovoMCP/novomcp/releases/download/omics-pack-v1/omics-core.sqlite.gz
+curl -LO https://github.com/NovoMCP/novomcp/releases/download/omics-pack-v1/omics-pgx.sqlite.gz   # optional
+
+# install:
+python scripts/omics-pack/install_omics_pack.py omics-core.sqlite.gz                      # target discovery
+python scripts/omics-pack/install_omics_pack.py omics-core.sqlite.gz omics-pgx.sqlite.gz  # + patient stratification
 ```
 
 Packs merge into `~/.novo/omics/omics.db` (override with `NOVOMCP_OMICS_DB`). They ship as **two license-distinct downloads**:
