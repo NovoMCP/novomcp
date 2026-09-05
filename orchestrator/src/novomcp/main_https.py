@@ -315,7 +315,7 @@ _SERVICE_DEFAULTS = [
         "NOVOMCP_QM_API_KEY",
         "",  # Set via NOVOMCP_QM_API_KEY env var
     ),
-    # NovoMCP NNP - Neural network potentials: ANI-2x, MACE-MP-0
+    # NovoMCP NNP - Neural network potentials: ANI-2x, MACE-MPA-0
     (
         "novomcp-nnp",
         "NOVOMCP_NNP_URL",

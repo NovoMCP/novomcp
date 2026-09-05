@@ -74,10 +74,10 @@ The `engine=alchemi` path routes relaxation through the NVIDIA ALCHEMI Toolkit's
 
 ## Backend cheatsheet
 
-- **MACE**, strong general-purpose potential, good on periodic systems and materials. Recommended default.
+- **MACE** (MACE-MPA-0), strong general-purpose potential, good on periodic systems and materials. Recommended default.
 - **ANI-2x**, fast, covers H/C/N/O/S/F/Cl, wide validation on drug-like molecules.
 
-AIMNet2 is referenced by the engine but is **not bundled in the current published image** — `/health` reports only the backends actually loaded, and requesting `method=aimnet2` returns a structured error. Use MACE or ANI-2x, or build the image with AIMNet2 weights yourself if you need it.
+These two are the only backends the published image serves. `/health` reports exactly which loaded, and requesting any other `method` (e.g. `aimnet2`) returns a structured `"Model '<name>' not available"` result rather than crashing. If you need another potential, build the image with its weights yourself.
 
 ## Weights and licenses
 
