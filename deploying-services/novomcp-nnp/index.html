@@ -2185,10 +2185,10 @@
 </ul>
 <h2 id="backend-cheatsheet">Backend cheatsheet<a class="headerlink" href="#backend-cheatsheet" title="Permanent link">&para;</a></h2>
 <ul>
-<li><strong>MACE</strong>, strong general-purpose potential, good on periodic systems and materials. Recommended default.</li>
+<li><strong>MACE</strong> (MACE-MPA-0), strong general-purpose potential, good on periodic systems and materials. Recommended default.</li>
 <li><strong>ANI-2x</strong>, fast, covers H/C/N/O/S/F/Cl, wide validation on drug-like molecules.</li>
 </ul>
-<p>AIMNet2 is referenced by the engine but is <strong>not bundled in the current published image</strong> — <code>/health</code> reports only the backends actually loaded, and requesting <code>method=aimnet2</code> returns a structured error. Use MACE or ANI-2x, or build the image with AIMNet2 weights yourself if you need it.</p>
+<p>These two are the only backends the published image serves. <code>/health</code> reports exactly which loaded, and requesting any other <code>method</code> (e.g. <code>aimnet2</code>) returns a structured <code>"Model '&lt;name&gt;' not available"</code> result rather than crashing. If you need another potential, build the image with its weights yourself.</p>
 <h2 id="weights-and-licenses">Weights and licenses<a class="headerlink" href="#weights-and-licenses" title="Permanent link">&para;</a></h2>
 <p>The model weights are bundled in the image. The MACE backend uses <strong>MACE-MPA-0, which is MIT-licensed</strong> — not MACE-MP-0, whose Academic Software License forbids commercial use. So the MACE path is commercial-safe here. ANI-2x ships under its own upstream open license; if you run this commercially, confirm it against its source repository. The service code itself is Apache-2.0.</p>
 <h2 id="speed">Speed<a class="headerlink" href="#speed" title="Permanent link">&para;</a></h2>
