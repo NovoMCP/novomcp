@@ -78,6 +78,16 @@ novomcp
 
 `novomcp` is the console command — it boots the MCP + REST server.
 
+### Prebuilt Docker image (GHCR)
+
+No Python, no build — pull the published image and run it:
+
+```bash
+docker run --rm -p 8018:8018 ghcr.io/novomcp/novomcp:latest
+```
+
+The engine listens on port 8018 (MCP + REST); `/health` is the readiness check. The image is rebuilt on every push to `main` (`:latest`, plus `:sha-<short>` to pin an exact build) and on each release tag (`:vX.Y.Z`, with the moving `:X.Y` and `:X`). It's public — no login to pull. Pass configuration with `-e`, e.g. `-e NOVOMCP_QM_URL=...` to wire a compute service.
+
 ### From source
 
 For hacking on the engine itself:
