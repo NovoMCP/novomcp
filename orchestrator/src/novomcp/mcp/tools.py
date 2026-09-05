@@ -105,6 +105,7 @@ FUNNEL_AUTOLOG_SKIP = {
     "get_pipeline_audit",
     "search_prior_runs",      # audit read with lazy backstop — own write path
     "run_novo_ag",            # meta trigger — returns prompt text, not a discovery event
+    "run_materials_ag",       # meta trigger (materials) — returns prompt text, not an event
     "get_credit_usage",
     "get_platform_info",
     "novo_compute_info",
@@ -1128,6 +1129,31 @@ MCP_TOOLS = {
                 }
             },
             "required": ["disease"]
+        }
+    },
+
+    "run_materials_ag": {
+        "name": "run_materials_ag",
+        "title": "'Materials AG' / 'mgm' → Materials Autonomous Mode Trigger",
+        "description": "TRIGGER KEYWORDS: 'Materials AG', 'materials ag', 'mgm', 'MGM' (case-insensitive; slash-prefixed forms like '/mgm' may be intercepted by MCP clients as slash commands and won't reach the model — recommend 'mgm' without the slash). Call ONLY when the user's message contains one of these literal tokens. The materials-science counterpart to run_novo_ag/agm: returns a multi-stage autonomous screening protocol for an OLED emitter, battery-electrolyte, or catalyst application — read it and follow it. Pass application as '<domain>_<target>' (e.g. 'oled_blue', 'oled_tadf', 'li_ion_electrolyte', 'na_ion_electrolyte', 'co2_reduction_catalyst'). Optionally pass smiles_list (the candidate library); if omitted the protocol explains how to assemble one. If the QM/NNP compute stack isn't wired, it returns a setup guide instead of the protocol. For messages without these keywords, operate in normal collaborative mode.",
+        "annotations": {
+            "readOnlyHint": True,
+            "destructiveHint": False
+        },
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "application": {
+                    "type": "string",
+                    "description": "The screening application as '<domain>_<target>'. OLED: 'oled_blue' | 'oled_green' | 'oled_red' | 'oled_deep-blue' | 'oled_tadf' | 'oled_phosphorescent' | 'oled_any'. Electrolyte: 'li_ion_electrolyte' | 'high_voltage_li_ion_electrolyte' | 'na_ion_electrolyte' | 'aqueous_electrolyte'. Catalyst: 'co2_reduction_catalyst' and similar (catalyst templates arrive in a follow-up release). Required."
+                },
+                "smiles_list": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Optional candidate library (SMILES strings). If omitted, the returned protocol explains how to assemble one (user-provided, SMARTS-filtered, or via search_materials_project)."
+                }
+            },
+            "required": ["application"]
         }
     },
 
@@ -2725,7 +2751,7 @@ SHARED_TOOLS = frozenset({
     "save_funnel_stage", "get_funnel_audit", "get_pipeline_audit",
     "save_funnel_context", "get_funnel_context",
     "generate_upload_url", "get_file_status", "list_files",
-    "audit_system", "run_novo_ag", "save_funnel_memory", "search_prior_runs",
+    "audit_system", "run_novo_ag", "run_materials_ag", "save_funnel_memory", "search_prior_runs",
 })
 
 
@@ -6735,6 +6761,150 @@ class MCPToolExecutor:
                 success=False,
                 error=f"Failed to load autonomous prompt: {str(e)}",
                 usage={"queries": 0, "tool": "run_novo_ag"}
+            )
+
+    async def _execute_run_materials_ag(self, args: Dict[str, Any], context: Dict[str, Any] = None) -> ToolResult:
+        """Trigger tool: returns the materials-science autonomous screening protocol.
+
+        The materials counterpart to run_novo_ag. Bridges 'mgm oled_blue' /
+        'materials ag li_ion_electrolyte' to the screen_* MCP prompt for that
+        domain, with a setup-guide fallback when the QM/NNP stack isn't wired.
+        """
+        application = (args.get("application") or "").strip().lower()
+        if not application:
+            return ToolResult(
+                success=False,
+                error="Missing required parameter: application (e.g. 'oled_blue', 'li_ion_electrolyte')"
+            )
+
+        # Parse '<domain>_<target>' into (domain, template, substitutions).
+        if application.endswith("catalyst"):
+            return ToolResult(
+                success=True,
+                data={
+                    "application": application,
+                    "status": "not_yet_available",
+                    "message": (
+                        "The catalyst screening template is not in this release. OLED and "
+                        "battery-electrolyte applications are available now (e.g. 'oled_blue', "
+                        "'li_ion_electrolyte'). Catalyst screening (coordination-shell QM + "
+                        "parameterize_metal + binding-energy ranking) arrives in a follow-up."
+                    ),
+                },
+                usage={"queries": 0, "tool": "run_materials_ag"}
+            )
+
+        if application.endswith("electrolyte"):
+            domain = "electrolyte"
+            template_key = "screen_electrolyte_library"
+            prefix = application[: -len("electrolyte")].rstrip("_")
+            window_map = {
+                "li_ion": "standard_li_ion", "standard_li_ion": "standard_li_ion",
+                "high_voltage_li_ion": "high_voltage_li_ion", "high_voltage": "high_voltage_li_ion",
+                "na_ion": "na_ion", "aqueous": "aqueous",
+            }
+            subs = {"{voltage_window}": window_map.get(prefix, "standard_li_ion"), "{reference_electrode}": ""}
+        elif application.startswith("oled"):
+            domain = "oled"
+            template_key = "screen_oled_library"
+            subs = {"{emission_target}": application[len("oled"):].lstrip("_") or "any"}
+        else:
+            return ToolResult(
+                success=False,
+                error=(
+                    f"Unrecognized application '{application}'. Use an OLED "
+                    f"('oled_blue', 'oled_tadf', ...), electrolyte ('li_ion_electrolyte', "
+                    f"'na_ion_electrolyte', ...), or catalyst application."
+                )
+            )
+
+        # Setup-guide fallback: the screening phases need the QM + NNP services.
+        _required_env = [
+            ("NOVOMCP_NNP_URL",
+             "NNP service for batched geometry relaxation (batch_geometry_relaxation)",
+             "docs/deploying-services/novomcp-nnp.md"),
+            ("NOVOMCP_QM_URL",
+             "QM service for frontier orbitals / excited states / redox potentials",
+             "docs/deploying-services/novomcp-qm.md"),
+        ]
+        _missing = [(name, why, doc) for name, why, doc in _required_env if not os.getenv(name, "").strip()]
+        if _missing:
+            return ToolResult(
+                success=True,
+                data={
+                    "application": application,
+                    "status": "setup_required",
+                    "message": (
+                        f"Materials autonomous mode for '{application}' needs the QM/NNP compute "
+                        f"stack, which isn't fully wired on this install. Once these services are "
+                        f"configured, mgm runs a full multi-stage screen."
+                    ),
+                    "missing_services": [
+                        {"env_var": name, "provides": why, "docs": doc}
+                        for name, why, doc in _missing
+                    ],
+                    "quick_start": (
+                        "Wire the services above — see the deployment guides at "
+                        "https://docs.novomcp.com/deploying-services/ (self-hosted, Modal, and "
+                        "Runpod walkthroughs). The QM service is CPU-only; NNP wants a GPU."
+                    ),
+                    "manual_workflow_hint": (
+                        "In the meantime you can still triage a candidate library manually with the "
+                        "always-available tools: (1) search_materials_project (needs a free MP_API_KEY) "
+                        f"to pull known {domain} materials; (2) calculate_properties / "
+                        "get_molecule_profile for RDKit-level descriptors on each candidate. That gives "
+                        "a first-pass shortlist without the QM/NNP electronic-structure screen."
+                    ),
+                },
+                usage={"queries": 0, "tool": "run_materials_ag"}
+            )
+
+        template = MCP_PROMPT_TEMPLATES.get(template_key)
+        if not template:
+            return ToolResult(success=False, error=f"Prompt template '{template_key}' not found")
+
+        try:
+            raw_text = template["messages"][0]["content"]["text"]
+            smiles_list = args.get("smiles_list") or []
+            smiles_sub = ", ".join(smiles_list) if smiles_list else "(assemble the library first — see the preamble above)"
+            instructions = raw_text.replace("{smiles_list}", smiles_sub)
+            for k, v in subs.items():
+                instructions = instructions.replace(k, v)
+
+            preamble = (
+                f"You are running MATERIALS autonomous mode (mgm) for application "
+                f"'{application}' (domain: {domain}).\n\n"
+                f"STEP 0 — assemble the candidate library:\n"
+                f"- If the user supplied SMILES, use them.\n"
+                f"- Otherwise, assemble a small set of plausible {domain} candidates from known "
+                f"motifs (SMARTS-filtered), or use search_materials_project (needs a free MP_API_KEY), "
+                f"and confirm the list with the user before the expensive QM phases.\n"
+                f"Then run the screening protocol below on that library.\n\n"
+                f"For each candidate, close with a structured verdict — GO / CAUTION / STOP — with the "
+                f"specific property that drove it, so the user gets a decision, not just numbers.\n\n"
+                f"---\n\n"
+            )
+
+            return ToolResult(
+                success=True,
+                data={
+                    "application": application,
+                    "domain": domain,
+                    "instructions": preamble + instructions,
+                    "next_step": (
+                        "Follow the instructions above. Assemble the library first, then run the "
+                        "screening phases, then present a ranked table with a GO/CAUTION/STOP verdict "
+                        "per candidate."
+                    ),
+                },
+                usage={"queries": 1, "tool": "run_materials_ag"}
+            )
+        except Exception as e:
+            logger.error(f"Failed to load materials prompt template: {e}")
+            return ToolResult(
+                success=False,
+                error=f"Failed to load materials autonomous prompt: {str(e)}",
+                usage={"queries": 0, "tool": "run_materials_ag"}
             )
 
     async def _execute_list_funnels(self, args: Dict[str, Any], context: Dict[str, Any] = None) -> ToolResult:
