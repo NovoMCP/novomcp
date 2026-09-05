@@ -200,4 +200,4 @@ jobs:
           pip install pytest pytest-asyncio -r src/novomcp/analysis/requirements.txt
       - name: Run tool tests
         working-directory: orchestrator
-        run: pytest src/novomcp/mcp/test_analyze_admet_trajectory.py src/novomcp/mcp/test_search_literature_pubmed.py -q
+        run: pytest src/novomcp/mcp/test_analyze_admet_trajectory.py src/novomcp/mcp/test_search_literature_pubmed.py src/novomcp/mcp/test_run_materials_ag.py -q
