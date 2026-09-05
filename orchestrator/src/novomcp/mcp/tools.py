@@ -1145,7 +1145,7 @@ MCP_TOOLS = {
             "properties": {
                 "application": {
                     "type": "string",
-                    "description": "The screening application as '<domain>_<target>'. OLED: 'oled_blue' | 'oled_green' | 'oled_red' | 'oled_deep-blue' | 'oled_tadf' | 'oled_phosphorescent' | 'oled_any'. Electrolyte: 'li_ion_electrolyte' | 'high_voltage_li_ion_electrolyte' | 'na_ion_electrolyte' | 'aqueous_electrolyte'. Catalyst: 'co2_reduction_catalyst' and similar (catalyst templates arrive in a follow-up release). Required."
+                    "description": "The screening application as '<domain>_<target>'. OLED: 'oled_blue' | 'oled_green' | 'oled_red' | 'oled_deep-blue' | 'oled_tadf' | 'oled_phosphorescent' | 'oled_any'. Electrolyte: 'li_ion_electrolyte' | 'high_voltage_li_ion_electrolyte' | 'na_ion_electrolyte' | 'aqueous_electrolyte'. Catalyst: 'co2_reduction_catalyst' | 'hydrogenation_catalyst' | 'oxygen_evolution_catalyst' | 'nitrogen_reduction_catalyst' (transition-metal candidates, binding-energy screen). Required."
                 },
                 "smiles_list": {
                     "type": "array",
@@ -3060,6 +3060,9 @@ PROMPT_TOOL_REQUIREMENTS: Dict[str, list] = {
     "screen_electrolyte_library": [
         "predict_redox_potential", "run_qm_calculation",
     ],
+    "screen_catalyst_library": [
+        "run_qm_calculation", "optimize_geometry_nnp",
+    ],
 }
 
 
@@ -3506,6 +3509,27 @@ MCP_PROMPTS = {
                 "required": False
             }
         ]
+    },
+    "screen_catalyst_library": {
+        "name": "Screen Catalyst Candidate Library",
+        "description": "Screen a library of transition-metal catalyst candidates for a target reaction by substrate binding energy (Sabatier ranking). Geometry via MACE (covers metals), binding energies via GFN2-xTB, optional activation barrier via NEB. Screening-grade for transition metals — for triage, not quantitative catalysis. Materials-science workflow; no clinical pipeline.",
+        "arguments": [
+            {
+                "name": "smiles_list",
+                "description": "Comma-separated SMILES of catalyst candidates (metal complexes / organometallics). 1-50 per screen.",
+                "required": True
+            },
+            {
+                "name": "target_reaction",
+                "description": "The reaction to screen for, e.g. 'co2_reduction', 'hydrogenation', 'oxygen_evolution', 'nitrogen_reduction'. Determines the default substrate.",
+                "required": True
+            },
+            {
+                "name": "substrate",
+                "description": "SMILES of the substrate to bind. Default inferred from target_reaction (CO2 -> 'O=C=O', hydrogenation -> '[H][H]', etc.). Provide explicitly for reactions not in the default map.",
+                "required": False
+            }
+        ]
     }
 }
 
@@ -3606,6 +3630,17 @@ MCP_PROMPT_TEMPLATES = {
                 "content": {
                     "type": "text",
                     "text": "Screen this library of electrolyte candidates for stability. SMILES list: {smiles_list}\nVoltage window: {voltage_window} (default: 'standard_li_ion' = 0.0-4.2 V vs Li/Li+)\nReference electrode: {reference_electrode} (default: inferred from voltage_window)\n\n**Scope note:** This is a materials-science workflow, NOT a drug discovery funnel. Do NOT call target_discovery, predict_admet, check_compliance, or any pipeline/funnel tool. No funnel_id, no save_funnel_stage, no save_funnel_memory. This is an ad-hoc electrochemical stability screen.\n\n**Window specifications:**\n- standard_li_ion: 0.0-4.2 V vs Li/Li+ (reduction window 0.0, oxidation 4.2)\n- high_voltage_li_ion: 0.0-4.5 V vs Li/Li+\n- na_ion: 0.0-3.8 V vs Na/Na+\n- aqueous: -0.5 to +1.5 V vs SHE (thermodynamic water stability window)\n- custom: ask the user for explicit bounds before proceeding\n\n**PHASE 1 — Geometry optimization (batch):**\nCall batch_geometry_relaxation ONCE with the full smiles_list and method='auto' — relaxes the whole library in a single batched pass (engine='alchemi' when the ALCHEMI Toolkit backend is available; sequential fallback otherwise). Neutral species only in this phase (redox calc handles charged states internally). For any candidate the batch reports as failed (unusual element), retry that one with optimize_geometry_nnp method='mace' or fall back to run_qm_calculation optimize. Collect relaxed geometries.\n\n**PHASE 2 — Redox potential calc (expensive — batch cost warning):**\nFor each optimized candidate, call predict_redox_potential with reference_electrode set per the voltage window. This runs the full xTB thermodynamic cycle: neutral optimization, cation optimization, anion optimization, vertical IP, vertical EA, then converts to oxidation/reduction potentials vs the chosen reference. Per-class SMARTS calibration applies automatically (nitriles 0.003 V MAE, sulfones 0.019 V, carbonates 0.318 V). Returns oxidation_potential_v, reduction_potential_v, stability flags for 4 voltage windows, and a calibration_class field indicating which calibration ran.\n\n**COST WARNING:** 50 credits per candidate. Before Phase 2, tell the user: \"Redox screen on {N} candidates will cost {N*50} credits. This is the expensive step — proceed?\" If the user confirms or the list is ≤ 5, proceed. If > 20 candidates, recommend a 2-pass approach: first pass uses predict_frontier_orbitals (20 credits) as a cheap pre-screen to filter candidates with plausible HOMO/LUMO in the redox window, then full redox only on survivors.\n\n**PHASE 3 — Stability classification:**\nFor each candidate, classify against the requested voltage_window:\n- STABLE: oxidation_potential > window_upper AND reduction_potential < window_lower\n- OXIDATION-LIMITED: oxidation_potential < window_upper (will oxidize at top of window)\n- REDUCTION-LIMITED: reduction_potential > window_lower (will reduce at bottom of window)\n- UNSTABLE: both limits fail\n\nInclude the safety margin: how far below / above the window each candidate sits (e.g. \"oxidation at 4.8 V, 0.6 V headroom vs 4.2 V window\").\n\n**Known boundary — water:**\nIf any SMILES is 'O' (water) or similar, skip the redox call and return a note: \"Water as solute not supported — ALPB self-solvation artifacts produce unreliable values.\"\n\n**PRESENT RESULTS AS A RANKED TABLE:**\n| Rank | SMILES (truncated) | Calibration Class | E_ox (V vs ref) | E_red (V vs ref) | Window Verdict | Margin (V) |\n\nBelow the table:\n- Top 3 stable candidates with 1-line rationale (calibration class MAE, headroom)\n- Any that failed the window with the limiting potential + how far out of window\n- Total credits spent\n- If the screen suggests a specific use case (e.g. high-voltage cathode electrolyte, anode protection additive, ionic-liquid solvent), say so explicitly with reasoning\n\nFinish with: \"Ready to deep-dive? I can check reaction thermodynamics for oxidation/reduction decomposition paths, compute activation barriers via find_transition_state for transition metal side reactions, or pull analog candidates from search_materials_project.\""
+                }
+            }
+        ]
+    },
+    "screen_catalyst_library": {
+        "messages": [
+            {
+                "role": "user",
+                "content": {
+                    "type": "text",
+                    "text": "Screen this library of transition-metal catalyst candidates for a target reaction, by substrate binding energy. SMILES list: {smiles_list}\nTarget reaction: {target_reaction}\nSubstrate: {substrate}\n\n**Scope note:** This is a materials-science workflow, NOT a drug discovery funnel. Do NOT call target_discovery, predict_admet, check_compliance, or any pipeline/funnel tool. No funnel_id, no save_funnel_stage, no save_funnel_memory. This is an ad-hoc catalyst binding-energy screen. If the substrate above reads '(specify the substrate SMILES)', ask the user for it before proceeding.\n\n**Method note — transition metals:** Use method='mace' for geometry (MACE-MPA-0 covers the periodic table; ANI-2x is organics-only and will NOT handle a metal center). Energies come from GFN2-xTB via run_qm_calculation, which has transition-metal parameters. Everything here is SCREENING-GRADE for metals: relative binding energies and coordination geometries for triage, not quantitative catalysis. Escalate promising candidates to DFT.\n\n**PHASE 1 — Geometry (batch):**\nCall batch_geometry_relaxation with the full smiles_list and method='mace' to relax each catalyst complex. For any candidate the batch reports as failed, retry with optimize_geometry_nnp method='mace', or run_qm_calculation calculation_type='optimize'. Relax the free substrate ({substrate}) once as well. Collect the relaxed geometries.\n\n**PHASE 2 — Substrate binding energy:**\nFor each optimized catalyst, build the substrate-bound complex (substrate coordinated at the metal), relax it (method='mace'), then take single-point energies with run_qm_calculation (GFN2-xTB) for three species: the bound complex, the free catalyst, and the free substrate. Binding energy E_bind = E(complex) - E(catalyst) - E(substrate); more negative = stronger binding. Report E_bind per candidate in consistent units (kcal/mol).\n\n**PHASE 3 — Sabatier ranking:**\nRank by how close each binding energy sits to the optimal window for {target_reaction} (Sabatier: too weak and the substrate never activates; too strong and the catalyst is poisoned by the bound intermediate). If you do not have a known optimal window for this reaction, rank toward MODERATE binding (neither weakest nor strongest) and say so explicitly — do NOT assume the strongest binder is best.\n\n**Optional deep-dive (top candidates only):**\n- Activation barrier: for the top 1-3, estimate the rate-limiting barrier with find_transition_state (NEB) between the bound and product-like states. This is the real activity metric; binding energy is a proxy for it.\n- Metal-site MD stability: parameterize_metal can build an AMBER/GROMACS topology for the metal site for an MD check. NOTE: that path is Gaussian-only and human-in-the-loop (Phase 1 emits Gaussian .com files you run externally, Phase 2 consumes the logs) — it is NOT an autonomous step. Offer it; do not run it silently.\n\n**PRESENT RESULTS AS A RANKED TABLE:**\n| Rank | SMILES (truncated) | Metal | E_bind (kcal/mol) | Sabatier fit | Verdict |\n\nFor each candidate give a structured verdict — GO / CAUTION / STOP — with the property that drove it (e.g. GO: binding in the optimal window; CAUTION: binds a bit strong, poisoning risk; STOP: substrate does not bind, or geometry failed). Below the table:\n- Top 3 with a 1-line rationale each\n- Any that failed geometry or did not bind, with the reason\n- Restate the caveat: these are xTB/NNP triage numbers for transition metals, not quantitative — validate the top picks with DFT.\n\nFinish with: \"Ready to deep-dive? I can estimate activation barriers with find_transition_state for the top candidates, or set up a metal-site MD topology via parameterize_metal (Gaussian-only, manual).\""
                 }
             }
         ]
@@ -6779,22 +6814,19 @@ class MCPToolExecutor:
 
         # Parse '<domain>_<target>' into (domain, template, substitutions).
         if application.endswith("catalyst"):
-            return ToolResult(
-                success=True,
-                data={
-                    "application": application,
-                    "status": "not_yet_available",
-                    "message": (
-                        "The catalyst screening template is not in this release. OLED and "
-                        "battery-electrolyte applications are available now (e.g. 'oled_blue', "
-                        "'li_ion_electrolyte'). Catalyst screening (coordination-shell QM + "
-                        "parameterize_metal + binding-energy ranking) arrives in a follow-up."
-                    ),
-                },
-                usage={"queries": 0, "tool": "run_materials_ag"}
-            )
-
-        if application.endswith("electrolyte"):
+            domain = "catalyst"
+            template_key = "screen_catalyst_library"
+            reaction = application[: -len("catalyst")].rstrip("_") or "general"
+            substrate_map = {
+                "co2_reduction": "O=C=O", "hydrogenation": "[H][H]",
+                "oxygen_evolution": "O", "oer": "O",
+                "nitrogen_reduction": "N#N", "nrr": "N#N",
+            }
+            subs = {
+                "{target_reaction}": reaction,
+                "{substrate}": substrate_map.get(reaction, "(specify the substrate SMILES)"),
+            }
+        elif application.endswith("electrolyte"):
             domain = "electrolyte"
             template_key = "screen_electrolyte_library"
             prefix = application[: -len("electrolyte")].rstrip("_")
