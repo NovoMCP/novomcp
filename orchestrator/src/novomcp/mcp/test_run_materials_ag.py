@@ -30,10 +30,37 @@ def test_missing_application_errors():
     assert not r.success
 
 
-def test_catalyst_not_yet_available():
+def test_catalyst_setup_required_without_stack(monkeypatch):
+    monkeypatch.delenv("NOVOMCP_QM_URL", raising=False)
+    monkeypatch.delenv("NOVOMCP_NNP_URL", raising=False)
     r = _run({"application": "co2_reduction_catalyst"})
     assert r.success
-    assert r.data["status"] == "not_yet_available"
+    assert r.data["status"] == "setup_required"
+    assert "catalyst" in r.data["manual_workflow_hint"]
+
+
+def test_catalyst_protocol_with_stack(monkeypatch):
+    monkeypatch.setenv("NOVOMCP_QM_URL", "http://qm")
+    monkeypatch.setenv("NOVOMCP_NNP_URL", "http://nnp")
+    r = _run({"application": "co2_reduction_catalyst"})
+    assert r.success
+    assert r.data["domain"] == "catalyst"
+    instr = r.data["instructions"]
+    assert "Target reaction: co2_reduction" in instr   # {target_reaction} substituted
+    assert "Substrate: O=C=O" in instr                 # reaction→substrate map
+    assert "{target_reaction}" not in instr            # no leftover placeholder
+    assert "{substrate}" not in instr
+    assert "GO / CAUTION / STOP" in instr              # verdict framing
+    assert "ANI-2x is organics-only" in instr          # metal method caveat
+
+
+def test_catalyst_unknown_reaction_prompts_for_substrate(monkeypatch):
+    monkeypatch.setenv("NOVOMCP_QM_URL", "http://qm")
+    monkeypatch.setenv("NOVOMCP_NNP_URL", "http://nnp")
+    r = _run({"application": "some_novel_reaction_catalyst"})
+    assert r.success
+    assert r.data["domain"] == "catalyst"
+    assert "(specify the substrate SMILES)" in r.data["instructions"]
 
 
 def test_setup_required_without_stack(monkeypatch):
