@@ -8,10 +8,10 @@ Once the engine is running locally on `http://localhost:8018`, any MCP-compatibl
 
 NovoMCP speaks MCP over two transports, and clients differ in which they accept:
 
-- **HTTP — the full engine on `:8018`.** All 68 tools. Clients that speak MCP over HTTP (Cursor, Codex, ChatGPT connectors) point straight at `http://localhost:8018/mcp/`. Clients that only accept a stdio *command* (Claude Desktop, Zed) reach the HTTP engine through the tiny `npx mcp-remote` bridge shown in those sections.
-- **stdio — a command the client spawns.** Zero networking; the client runs a local process and talks over stdin/stdout. If you installed `novomcp-lite` (the Apache-licensed chem + search subset, `pip install novomcp-lite`), its `novomcp-lite` command *is* a stdio MCP server — drop it into any command-based client (Claude Desktop, Zed, Codex) with no bridge. It exposes a subset of the 68 tools, so it's the fastest start, not the full surface.
+- **HTTP — the full engine on `:8018`.** All 69 tools. Clients that speak MCP over HTTP (Cursor, Codex, ChatGPT connectors) point straight at `http://localhost:8018/mcp/`. Clients that only accept a stdio *command* (Claude Desktop, Zed) reach the HTTP engine through the tiny `npx mcp-remote` bridge shown in those sections.
+- **stdio — a command the client spawns.** Zero networking; the client runs a local process and talks over stdin/stdout. If you installed `novomcp-lite` (the Apache-licensed chem + search subset, `pip install novomcp-lite`), its `novomcp-lite` command *is* a stdio MCP server — drop it into any command-based client (Claude Desktop, Zed, Codex) with no bridge. It exposes a subset of the 69 tools, so it's the fastest start, not the full surface.
 
-Rule of thumb: **want all 68 tools → the HTTP engine** (directly or via `mcp-remote`); **want the quickest start → the `novomcp-lite` command.**
+Rule of thumb: **want all 69 tools → the HTTP engine** (directly or via `mcp-remote`); **want the quickest start → the `novomcp-lite` command.**
 
 ---
 
@@ -219,7 +219,7 @@ Zed restarts the context server automatically on save — no editor restart need
 
 Codex reads MCP config from `~/.codex/config.toml` (or a project-scoped `.codex/config.toml`) and supports **both** transports.
 
-### Full engine over HTTP (all 68 tools)
+### Full engine over HTTP (all 69 tools)
 
 ```toml
 [mcp_servers.novomcp]
