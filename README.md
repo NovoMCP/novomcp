@@ -83,7 +83,7 @@ npm run dev
 
 Then open **http://localhost:3000**. The dashboard's server-side routes proxy to the engine at `NOVOMCP_ENGINE_URL` (default `http://localhost:8018`); set that env var if your engine runs elsewhere.
 
-> **Tools available: "N of 68"** — a bare local install has **11 of 68** tools working immediately (profiles, property calc, ChEMBL/clinical-trials/bioRxiv search, library screening, MD pre-flight). The rest are capability-gated: each unlocks as you wire its optional service (ADMET, docking, MD, QM, NNP, omics, molecule index…). The dashboard shows the live count and which env var unlocks each capability.
+> **Tools available: "N of 69"** — a bare local install has **14 of 69** tools working immediately (profiles, property calc, ChEMBL/clinical-trials/bioRxiv/PubMed-literature search, library screening, MD pre-flight, and the agm/mgm autonomous-mode triggers). The rest are capability-gated: each unlocks as you wire its optional service (ADMET, docking, MD, QM, NNP, omics, molecule index…). The dashboard shows the live count and which env var unlocks each capability.
 
 ## Configuration
 

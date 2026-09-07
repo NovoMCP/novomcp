@@ -212,7 +212,7 @@ The engine and the dashboard are **two separate processes**. The dashboard's ser
 
     Open **http://localhost:3000**. Set `NOVOMCP_ENGINE_URL` if your engine runs somewhere other than `http://localhost:8018`.
 
-Once connected, the dashboard shows **Tools available: 11 of 68** — the 11 that work with nothing wired, out of the full catalog. That count climbs as you [deploy services](deploying-services/README.md); the dashboard lists which env var unlocks each capability. See [Tool availability](tool-availability.md) for the full map.
+Once connected, the dashboard shows **Tools available: 14 of 69** — the 14 that work with nothing wired, out of the full catalog. That count climbs as you [deploy services](deploying-services/README.md); the dashboard lists which env var unlocks each capability. See [Tool availability](tool-availability.md) for the full map.
 
 ## What next
 

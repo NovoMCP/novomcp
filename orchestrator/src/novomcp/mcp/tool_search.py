@@ -1,7 +1,7 @@
 """
 Tool Search — in-memory semantic retrieval over the MCP tool catalog.
 
-For 68 tool descriptions growing toward ~100, this module holds a numpy
+For 69 tool descriptions growing toward ~100, this module holds a numpy
 embedding index in RAM (~400 KB at 1536 dims) and serves cosine-similarity
 retrieval per query. No Pinecone, no SQL VECTOR, no Redis — the catalog
 is small and static; the codebase is the source of truth.
