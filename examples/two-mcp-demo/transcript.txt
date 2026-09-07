@@ -1,0 +1,38 @@
+========================================================================
+STEP 1  discovery via AWS Registry of Open Data (roda-mcp-server, MCP)
+========================================================================
+  query: 'cheminformatics'  (plain language, not a keyword filter)
+  total_count: 1
+    -> NovoMCP Open Corpus (lite)  [novomcp-open-corpus-lite]
+       license: CC-BY-4.0 (https://creativecommons.org/licenses/by/4.0/)
+========================================================================
+STEP 2  the same finding for 'ADMET'
+========================================================================
+  query 'ADMET' -> total_count: 1
+    -> NovoMCP Open Corpus (lite)
+========================================================================
+STEP 3  bridge: pull a compound the discovered corpus contains
+========================================================================
+  the corpus is all 122,454,458 PubChem compounds (managed_by [NovoMCP](https://github.com/NovoMCP)).
+  taking one of them: imatinib (Gleevec), PubChem CID 5291
+  SMILES: CC1=C(C=C(C=C1)NC(=O)C2=CC=C(C=C2)CN3CCN(CC3)C)NC4=NC=CC(=N4)C5=CN=CC=C5
+========================================================================
+STEP 4  analysis via the NovoMCP engine (streamable-http, MCP)
+========================================================================
+  get_molecule_profile -> RDKit descriptors, computed in-process:
+    molecular_weight   493.615
+    logp               4.59
+    tpsa               86.28
+    hbd                2
+    hba                7
+    rotatable_bonds    7
+    aromatic_rings     4
+  admet: not wired on this install. get_molecule_profile also
+  returns 30+ ADMET predictions once you point ADDIE_MODELS_URL at
+  the open addie-models service. Capability-gated, not edition-gated.
+========================================================================
+DONE
+========================================================================
+  Two MCP servers, one pipeline: AWS RODA discovered the corpus in
+  plain language (sole cheminformatics/ADMET result), and the NovoMCP
+  engine analyzed a compound from it. No AWS account, no API key.
