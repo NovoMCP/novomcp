@@ -7,9 +7,9 @@
 
 ---
 
-Every diagnostic in NovoMCP that carries a defensive default also carries a peer field that names the path the value came from. The value arrives with its provenance in the same return record. Downstream consumers read the source before they trust the number. A verdict harness that requires a locked measurement raises the moment a fallback fires. The pattern is one string field, and it converts a silent fallback into a caught one.
+NovoMCP applies a single convention to a diagnostic that carries a defensive default: the value travels with a peer field that names the path it came from. Provenance arrives in the same return record, and a consumer reads the source before it trusts the number. A verdict harness that requires a locked measurement raises the moment a fallback fires. The pattern is one string field, and it converts a silent fallback into a caught one.
 
-The mechanism is mechanical and general. Any code path with a defensive default is a candidate for a peer field that reports which path was taken. This is the field, the evidence, and the standard NovoMCP now runs on every fallback-capable return point.
+The mechanism is general. Any code path with a defensive default is a candidate for a peer field that reports which path was taken. This is the standard NovoMCP applies as it hardens each fallback-capable return point. Adoption is rolling, not universal: some diagnostics, `analyze_optimization_trajectory` among them, do not expose the field today. A consumer checks for the provenance field where a diagnostic documents it, rather than assuming every return record carries one.
 
 ---
 
