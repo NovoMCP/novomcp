@@ -1411,10 +1411,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#why-in-memory-not-a-vector-database" class="md-nav__link">
+  <a href="#the-substrate-rule" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Why in-memory, not a vector database
+        The substrate rule
       
     </span>
   </a>
@@ -1422,10 +1422,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#the-silent-failure-lesson" class="md-nav__link">
+  <a href="#diagnostics-ship-before-the-feature" class="md-nav__link">
     <span class="md-ellipsis">
       
-        The silent-failure lesson
+        Diagnostics ship before the feature
       
     </span>
   </a>
@@ -1433,10 +1433,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#the-latent-bug-lesson" class="md-nav__link">
+  <a href="#retrieval-finds-the-gaps-that-listings-hide" class="md-nav__link">
     <span class="md-ellipsis">
       
-        The latent-bug lesson
+        Retrieval finds the gaps that listings hide
       
     </span>
   </a>
@@ -1444,10 +1444,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#composability-not-capture" class="md-nav__link">
+  <a href="#two-layers-no-conflict" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Composability, not capture
+        Two layers, no conflict
       
     </span>
   </a>
@@ -1455,10 +1455,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#benefits-for-enterprise-mcp" class="md-nav__link">
+  <a href="#what-enterprise-mcp-buyers-get" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Benefits for enterprise MCP
+        What enterprise MCP buyers get
       
     </span>
   </a>
@@ -1477,21 +1477,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#what-we-would-do-differently" class="md-nav__link">
+  <a href="#the-standard-novomcp-runs" class="md-nav__link">
     <span class="md-ellipsis">
       
-        What we would do differently
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#for-other-mcp-platforms" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        For other MCP platforms
+        The standard NovoMCP runs
       
     </span>
   </a>
@@ -1965,10 +1954,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#why-in-memory-not-a-vector-database" class="md-nav__link">
+  <a href="#the-substrate-rule" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Why in-memory, not a vector database
+        The substrate rule
       
     </span>
   </a>
@@ -1976,10 +1965,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#the-silent-failure-lesson" class="md-nav__link">
+  <a href="#diagnostics-ship-before-the-feature" class="md-nav__link">
     <span class="md-ellipsis">
       
-        The silent-failure lesson
+        Diagnostics ship before the feature
       
     </span>
   </a>
@@ -1987,10 +1976,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#the-latent-bug-lesson" class="md-nav__link">
+  <a href="#retrieval-finds-the-gaps-that-listings-hide" class="md-nav__link">
     <span class="md-ellipsis">
       
-        The latent-bug lesson
+        Retrieval finds the gaps that listings hide
       
     </span>
   </a>
@@ -1998,10 +1987,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#composability-not-capture" class="md-nav__link">
+  <a href="#two-layers-no-conflict" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Composability, not capture
+        Two layers, no conflict
       
     </span>
   </a>
@@ -2009,10 +1998,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#benefits-for-enterprise-mcp" class="md-nav__link">
+  <a href="#what-enterprise-mcp-buyers-get" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Benefits for enterprise MCP
+        What enterprise MCP buyers get
       
     </span>
   </a>
@@ -2031,21 +2020,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#what-we-would-do-differently" class="md-nav__link">
+  <a href="#the-standard-novomcp-runs" class="md-nav__link">
     <span class="md-ellipsis">
       
-        What we would do differently
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#for-other-mcp-platforms" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        For other MCP platforms
+        The standard NovoMCP runs
       
     </span>
   </a>
@@ -2078,87 +2056,73 @@
 
 
 <h1 id="server-side-tool-search-for-a-68-tool-mcp-platform">Server-side tool search for a 68-tool MCP platform<a class="headerlink" href="#server-side-tool-search-for-a-68-tool-mcp-platform" title="Permanent link">&para;</a></h1>
-<p><em>What happens when the AI vendor's fix doesn't reach you</em></p>
 <p><strong>Published:</strong> April 23, 2026
 <strong>Author:</strong> NovoMCP engineering</p>
 <hr />
-<p>In April 2026, Anthropic shipped tool search in the Claude Agent SDK. It defers tool schema loading so agents can operate over catalogs of hundreds of tools without losing selection accuracy. Our MCP platform crossed that threshold this year. We now expose 68 tools to the AI assistants our customers use, ranging across target discovery, quantum chemistry, molecular dynamics, docking, and materials science.</p>
-<p>The SDK feature was designed for exactly our problem. It did not reach us.</p>
-<p>We serve two surfaces beyond Claude.ai. One is NovoWorkbench, a desktop application written in Rust with a custom HTTP router that speaks to Claude, GPT-5.2, Gemini, and Ollama on equal footing. No SDK in the hot path. No Anthropic tool search. The other surface is Claude.ai itself, but there, remote MCP servers load all tool schemas upfront. The deferred-loading pattern only activates for SDK-based applications, not for servers reached over the protocol.</p>
-<p>The problem the SDK solves exists everywhere. The SDK's solution reaches one slice of the problem.</p>
-<p>So we built the same pattern on the server. This is what that looked like, what we learned, and why we think this is the correct posture for any enterprise MCP server over roughly 30 tools.</p>
+<p>NovoMCP exposes 68 tools to the AI assistants its customers run, across target discovery, quantum chemistry, molecular dynamics, docking, and materials science. Every tool is discoverable by intent, on every model provider, without loading 68 schemas into the context window on each turn. The retrieval layer is roughly 100 lines of Python. It builds in one second at container startup, answers a query in 25 milliseconds, and ships inside the engine. It reached 100 percent recall on a 50-prompt evaluation set the day it went live.</p>
+<p>That capability is the subject of this piece. The reason it had to be built on the server is the market constraint underneath it.</p>
+<p>Client-side tool search exists. Anthropic shipped it in the Claude Agent SDK in April 2026: deferred schema loading that keeps an agent accurate over catalogs of hundreds of tools. It reaches SDK-based applications on Claude. It does not reach a remote MCP server, and it does not reach the other model providers a pharma IT shop runs in parallel. NovoMCP serves two surfaces beyond Claude.ai. NovoWorkbench is a Rust desktop that speaks to Claude, GPT-5.2, Gemini, and Ollama on equal footing, with no SDK in the hot path. The MCP protocol is the other, and there remote servers load every schema upfront. The problem is universal. A client-side fix covers one slice of it.</p>
+<p>NovoMCP builds the pattern into the server, where it serves every model the customer chooses. This is the architecture, the evidence, and the standard it establishes for any enterprise MCP server past roughly 30 tools.</p>
 <hr />
 <h2 id="the-architecture">The architecture<a class="headerlink" href="#the-architecture" title="Permanent link">&para;</a></h2>
-<p>The core insight of tool search is simple: if the LLM only needs a few tools per turn, do not send it all 68 every turn. Send the summary, let the agent request specific tool schemas on demand.</p>
-<p>Implementing that in a protocol-compliant way takes about 100 lines of Python.</p>
-<p><strong>One embedding call at server startup.</strong> On container boot we concatenate each tool's name, description, parameter names, and enum values into a short text blob. All 68 blobs go to an embedding model in a single batched HTTP request. The returned vectors are truncated to 1536 dimensions, L2-normalized so cosine similarity becomes a plain dot product, and held in a numpy array at module scope. Total cost: one second, one network round-trip, no persistent storage.</p>
-<p><strong>One embedding call per query.</strong> A new endpoint, <code>POST /mcp/tool-search</code>, takes a user query string. We embed the query, compute the dot product against all 68 tool vectors, return the top-K with similarity scores. Typical round trip: 25 milliseconds end to end.</p>
-<p><strong>A core whitelist of eight tools that always surface.</strong> Platform info, usage lookup, funnel logging, the autonomous-mode trigger, job polling. Ensures a caller can orient itself even when retrieval misses.</p>
-<p><strong>Template manifests for known workflows.</strong> When a caller names a prompt template, our discovery funnel, an OLED screening pipeline, an electrolyte stability screen, the endpoint skips retrieval and returns that template's full tool set. Templates encode their flow; encoding their tool set alongside is a small extension that prevents retrieval from missing a tool the workflow depends on.</p>
-<p><strong>A keyword-match fallback.</strong> If the embedding provider is unreachable at startup or during a query, we fall back to substring matching on tool names and descriptions. Not as good as embeddings, but functional. The endpoint stays up; a diagnostic field surfaces the embedding failure to callers.</p>
-<p>That is the entire retrieval layer. For 68 tools, it is about 420 kilobytes of RAM.</p>
+<p>The mechanism is direct. When the model needs a few tools per turn, the engine sends a summary and lets the agent request specific schemas on demand, rather than shipping all 68 every turn. Protocol-compliant, in about 100 lines of Python.</p>
+<p><strong>One embedding call at startup.</strong> On container boot the engine concatenates each tool's name, description, parameter names, and enum values into a short text blob. All 68 blobs go to an embedding model in a single batched request. The vectors are truncated to 1536 dimensions, L2-normalized so cosine similarity is a plain dot product, and held in a numpy array at module scope. One second, one round-trip, no persistent storage.</p>
+<p><strong>One embedding call per query.</strong> <code>POST /mcp/tool-search</code> takes a query string, embeds it, computes the dot product against all 68 tool vectors, and returns the top-K with similarity scores. Round trip, 25 milliseconds end to end.</p>
+<p><strong>A core whitelist of eight tools that always surface.</strong> Platform info, usage lookup, funnel logging, the autonomous-mode trigger, job polling. A caller orients itself even when retrieval misses.</p>
+<p><strong>Template manifests for known workflows.</strong> When a caller names a prompt template (the discovery funnel, an OLED screening pipeline, an electrolyte-stability screen) the endpoint skips retrieval and returns that template's full tool set. The template already encodes its flow; encoding its tool set alongside removes a class of retrieval miss.</p>
+<p><strong>A keyword-match fallback.</strong> If the embedding provider is unreachable at startup or at query time, the endpoint falls back to substring matching on names and descriptions. Lower quality, fully functional. The endpoint stays up, and a diagnostic field reports the embedding failure to callers.</p>
+<p>That is the entire retrieval layer. For 68 tools it holds 420 kilobytes of RAM.</p>
 <hr />
-<h2 id="why-in-memory-not-a-vector-database">Why in-memory, not a vector database<a class="headerlink" href="#why-in-memory-not-a-vector-database" title="Permanent link">&para;</a></h2>
-<p>We already run managed vector infrastructure for two workloads. Literature search across millions of peer-reviewed papers, correct substrate, millions of vectors, cross-user persistence required. And our funnel memory index, which persists terminal summaries of past discovery runs across sessions and grows per-user over time, correct substrate, continuous growth, persistence required.</p>
-<p>Tool search is neither of those. The catalog is small, static, and the same for every container replica. The codebase is the source of truth for tool descriptions. Nothing needs to persist. Nothing needs to survive a restart, rebuilding 68 embeddings in one second is faster and simpler than any disk-persistence scheme.</p>
-<p>The pattern is: vector-database infrastructure earns its keep at tens of thousands of items and up, where the cost of network round-trips to the index is amortized across selectivity wins. At 68 items, a numpy dot product runs in half a millisecond. A managed vector query, however fast the service is, adds 50–100 milliseconds of network round-trip to every LLM turn. For retrieval that runs per-message, that latency is visible.</p>
-<p>The first lesson of the build: <strong>the right substrate depends on the corpus size, not the architecture's sophistication</strong>. We considered using our existing vector infrastructure for consistency. We would have paid for that consistency in latency on every turn. We would not have gotten anything in return. Reflexively reaching for the existing vector database was the easy mistake to avoid.</p>
+<h2 id="the-substrate-rule">The substrate rule<a class="headerlink" href="#the-substrate-rule" title="Permanent link">&para;</a></h2>
+<p>NovoMCP already runs managed vector infrastructure for two workloads. Literature search across millions of peer-reviewed papers: millions of vectors, cross-user persistence, the correct substrate. Funnel memory, which persists terminal summaries of past discovery runs and grows per user over time: continuous growth, persistence required, again the correct substrate.</p>
+<p>Tool search is neither. The catalog is small, static, and identical across every container replica. The codebase is the source of truth for tool descriptions. Nothing needs to persist, and rebuilding 68 embeddings in one second beats any disk-persistence scheme.</p>
+<p><strong>The substrate is chosen by corpus size, not by architectural sophistication.</strong> At 68 items a numpy dot product runs in half a millisecond. A managed vector query, however fast the service, adds 50 to 100 milliseconds of network round-trip to every LLM turn, and this retrieval runs per message. Vector-database infrastructure earns its place at tens of thousands of items and up, where selectivity wins amortize the round-trip. Below that line, the round-trip is pure latency the customer feels on every message. Reaching for the existing vector database would have bought consistency and paid for it in latency on every turn, with nothing in return.</p>
 <hr />
-<h2 id="the-silent-failure-lesson">The silent-failure lesson<a class="headerlink" href="#the-silent-failure-lesson" title="Permanent link">&para;</a></h2>
-<p>We shipped the endpoint. The first production probe of <code>/mcp/tool-search/status</code> returned:</p>
+<h2 id="diagnostics-ship-before-the-feature">Diagnostics ship before the feature<a class="headerlink" href="#diagnostics-ship-before-the-feature" title="Permanent link">&para;</a></h2>
+<p>The first production probe of <code>/mcp/tool-search/status</code> returned:</p>
 <div class="language-json highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="p">{</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span><span class="nt">"ready"</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">  </span><span class="nt">"size"</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span>
 </span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="w">  </span><span class="nt">"built_at"</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span>
 </span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="p">}</span>
 </span></code></pre></div>
-<p>The index had not built. The container had started, the route was registered, queries returned empty. No errors in logs. No exceptions raised. Nothing to investigate except the absence of success.</p>
-<p>The cause was a credential-lookup failure during the background index build. The exception raised was caught by a wrapper and logged at a level that did not surface prominently. The shared utility we had reached for worked correctly in adjacent services; in this specific code path, on this specific deployment surface, it did not. Everything looked fine. Nothing was.</p>
-<p>The fix was straightforward: inject the embedding credentials through the same mechanism the rest of the server already uses for its primary LLM orchestration. One module, no new dependencies.</p>
-<p>The lesson was harder: <strong>the diagnostic surface of a new component matters more than its happy-path code</strong>. We had built the full retrieval pipeline before building the observability. The status endpoint existed but reported only success flags, not failure reasons. We added a <code>last_error</code> field, a <code>build_attempts</code> counter, a configuration-present flag, and a manual-rebuild endpoint so operators could retry a failed build without restarting the container. The next production probe showed exactly what had gone wrong in fewer characters than this paragraph.</p>
-<p>We now start new MCP components with observability, not with the feature. Build the status endpoint first. Surface the last error. Expose the configuration the component thinks it is using. Every minute spent on diagnostics during the build saves an hour of production spelunking when it is most expensive to spend.</p>
+<p>The index had not built. The container had started, the route was registered, queries returned empty. No errors in the logs. No exceptions surfaced. The only signal was the absence of success.</p>
+<p>The cause was a credential-lookup failure in the background index build. The exception was caught by a wrapper and logged below the level that draws attention. The shared utility worked correctly in adjacent services; on this code path, on this deployment surface, it did not. The fix injected the embedding credentials through the same mechanism the server already uses for its primary LLM orchestration. One module, no new dependencies.</p>
+<p>The standard is the durable output. <strong>A new component ships its status endpoint before its feature.</strong> The retrieval pipeline existed before the observability did, and the status endpoint reported success flags without failure reasons. The engine now carries a <code>last_error</code> field, a <code>build_attempts</code> counter, a configuration-present flag, and a manual-rebuild endpoint that retries a failed build without a container restart. The next probe reported the exact failure in fewer characters than this paragraph.</p>
+<p>New MCP components at NovoMCP start with observability, not with the feature. Build the status endpoint first. Surface the last error. Expose the configuration the component believes it is using. Every minute on diagnostics during the build returns an hour of production investigation at the moment that hour is most expensive.</p>
 <hr />
-<h2 id="the-latent-bug-lesson">The latent-bug lesson<a class="headerlink" href="#the-latent-bug-lesson" title="Permanent link">&para;</a></h2>
-<p>We built an evaluation set alongside the endpoint. Fifty prompts across six categories, funnel stages, Compute-tier tools, materials workflows, ambiguous cases, adversarial paraphrases, and negative cases that should not strongly surface any tool. For each prompt, a list of tools that must appear in the top ten results. A Python script that hits the endpoint, records the actual rankings, computes recall at ten, and reports per-category aggregates.</p>
-<p>The first real run against production returned 95.8 percent recall. Above our ship gate of 90 percent, but not a clean pass. The failures clustered on queries that should have surfaced a specific tool, one whose description was sound, whose presence in the MCP catalog was confirmed, whose index vector had been built correctly. The retrieval system was doing its job. And yet the tool never appeared in results.</p>
-<p>The cause was upstream of retrieval entirely. A comparison path in our visibility layer handled most code paths correctly but had an edge case that silently excluded certain tools under certain configurations. Name-based tool listings had never surfaced the gap because name-based listings answer "what passes the filter?" and return whatever the filter produces. Retrieval asks a different question, "what is relevant to this intent?", and fails visibly when the relevant thing is absent. The second question is less forgiving of silent filters.</p>
-<p>We fixed the edge case. Recall moved from 95.8 percent to 100 percent.</p>
-<p><strong>Latent gaps in discovery surface immediately under retrieval workloads.</strong> Name-based listings and retrieval workloads answer different questions. Listings return what the filter produces and are trusted as authoritative. Retrieval exposes whether the relevant tool is reachable at all, and fails visibly when it is not. Any MCP server with tier-gated access should assume similar gaps exist somewhere in its visibility layer and that a retrieval workload will find them. The fix-surface is the platform, not the new endpoint.</p>
+<h2 id="retrieval-finds-the-gaps-that-listings-hide">Retrieval finds the gaps that listings hide<a class="headerlink" href="#retrieval-finds-the-gaps-that-listings-hide" title="Permanent link">&para;</a></h2>
+<p>The endpoint shipped with an evaluation set. Fifty prompts across six categories: funnel stages, Compute-tier tools, materials workflows, ambiguous cases, adversarial paraphrases, and negative cases that should surface nothing strongly. Each prompt names the tools that must appear in the top ten. A script hits the endpoint, records the rankings, computes recall at ten, and reports per-category aggregates.</p>
+<p>The first production run returned 95.8 percent recall, above the 90 percent ship gate and short of clean. The misses clustered on queries that should have surfaced a specific tool whose description was sound, whose presence in the catalog was confirmed, whose vector had been built correctly. Retrieval was doing its job. The tool never appeared.</p>
+<p>The cause sat upstream of retrieval. A comparison path in the visibility layer handled most cases correctly and had an edge case that silently excluded certain tools under certain configurations. Name-based tool listings had never exposed the gap, because a listing answers "what passes the filter?" and returns whatever the filter produces. Retrieval asks "what is relevant to this intent?" and fails visibly when the relevant thing is absent. Fixing the edge case moved recall from 95.8 percent to 100 percent.</p>
+<p><strong>A retrieval workload surfaces the latent gaps a listing workload conceals.</strong> Listings return what the filter produces and are trusted as authoritative. Retrieval exposes whether the relevant tool is reachable at all. Any MCP server with tier-gated access carries similar gaps somewhere in its visibility layer, and a retrieval workload will find them. The fix surface is the platform, not the new endpoint.</p>
 <hr />
-<h2 id="composability-not-capture">Composability, not capture<a class="headerlink" href="#composability-not-capture" title="Permanent link">&para;</a></h2>
-<p>A server-side retrieval layer composes with Anthropic's client-side one. When Anthropic eventually ships tool search to remote MCP hosts, there is a draft specification and the direction is clear, two things happen. Claude.ai users get tool search automatically, at the client layer, based on Anthropic's ranker. They pay no context tax on our 68 tools. Simultaneously, NovoWorkbench users continue getting tool search from our server, at the retrieval layer, based on our embedding model, regardless of which AI provider the user selected.</p>
-<p>Neither layer conflicts with the other. They operate at different scopes. One decides what to load for a session in a specific client. The other decides what to load for a query regardless of client. We get the benefit of Anthropic's improvements to Claude, without waiting for them, and without waiting specifically for a Rust Agent SDK that may never ship.</p>
-<p>The important property here is not technical. It is economic. An AI platform that ships only client-side optimizations for its own SDK is asking customers to pick a model vendor and stay. A server-side retrieval layer serves every AI vendor that speaks the protocol. The platform's tool surface scales without the customer having to pick a side in the ongoing AI vendor competition.</p>
-<p>This matters more as tool counts grow. The 68 tools we run today become 75 by year-end and plausibly 150 within eighteen months. Tool count grows with the platform's capability. The client that cannot defer schema loading hits an accuracy cliff around 30 to 50 tools. Customers running Ollama or GPT-5.2 against a platform that did not build server-side retrieval hit that cliff first and hardest.</p>
+<h2 id="two-layers-no-conflict">Two layers, no conflict<a class="headerlink" href="#two-layers-no-conflict" title="Permanent link">&para;</a></h2>
+<p>Server-side retrieval composes with client-side retrieval. When Anthropic ships tool search to remote MCP hosts (a draft specification exists and the direction is set) two things happen at once. Claude.ai users get tool search at the client layer, on Anthropic's ranker, with no context tax on the 68 tools. NovoWorkbench users continue to get tool search at the retrieval layer, on the engine's embedding model, on whichever provider they selected.</p>
+<p>The layers operate at different scopes and do not conflict. One decides what to load for a session in a specific client. The other decides what to load for a query on any client. NovoMCP takes the benefit of Anthropic's improvements to Claude without waiting for them, and without waiting for a Rust Agent SDK that may never ship.</p>
+<p>The property that matters here is economic, not technical. A platform that ships only client-side optimizations for its own SDK asks the customer to pick a model vendor and stay. A server-side retrieval layer serves every AI vendor that speaks the protocol. The tool surface scales without the customer picking a side in the AI-vendor competition. That matters more as tool counts grow: the 68 tools today become 75 by year-end and plausibly 150 within eighteen months. A client that cannot defer schema loading hits an accuracy cliff around 30 to 50 tools. Customers running Ollama or GPT-5.2 against a platform without server-side retrieval hit that cliff first and hardest.</p>
 <hr />
-<h2 id="benefits-for-enterprise-mcp">Benefits for enterprise MCP<a class="headerlink" href="#benefits-for-enterprise-mcp" title="Permanent link">&para;</a></h2>
-<p>Five things fall out of this pattern that matter to enterprise buyers. We had not anticipated all of them at the start; they emerged from the build.</p>
-<p><strong>Every model, same quality.</strong> Every model provider in the customer's environment gets identical tool-selection quality. No dependency on any single vendor's SDK. Important for pharma IT shops that cannot commit to one AI provider.</p>
-<p><strong>Observability.</strong> The retrieval path is auditable. Every query can be logged with its returned tools and similarity scores. Every index build records a duration, an error, an attempt count. Every description change runs against the eval set. None of this is available when the retrieval is a black box inside a client SDK.</p>
-<p><strong>Description quality as a versioned artifact.</strong> The eval set catches description regressions before deploy. A tool description is no longer a prose field; it is a piece of the discovery surface that is tested, committed, and rolled back like any other code change. For enterprise buyers who care about reproducibility of AI-agent behavior, this is a non-trivial property.</p>
-<p><strong>Air-gapped deployment compatibility.</strong> Self-hosted pharma and defense customers run NovoMCP in environments where a vendor's client-side SDK features may not reach. Server-side retrieval sits inside their perimeter. The capability ships with the software, not with a specific AI vendor relationship.</p>
-<p><strong>Latent bug surface.</strong> Retrieval workloads test discovery in a way that name-based tool calls do not. Any enterprise MCP server past 30 tools should assume it has latent gaps in its visibility layer and that retrieval will surface them.</p>
+<h2 id="what-enterprise-mcp-buyers-get">What enterprise MCP buyers get<a class="headerlink" href="#what-enterprise-mcp-buyers-get" title="Permanent link">&para;</a></h2>
+<p><strong>Every model, one quality bar.</strong> Identical tool-selection quality across every provider in the customer's environment, with no dependency on a single vendor's SDK. Decisive for pharma IT that cannot commit to one AI provider.</p>
+<p><strong>An auditable retrieval path.</strong> Every query logs its returned tools and similarity scores. Every index build records a duration, an error, and an attempt count. Every description change runs against the eval set. None of this exists when retrieval is a black box inside a client SDK.</p>
+<p><strong>Description quality as a versioned artifact.</strong> A tool description is a piece of the discovery surface: tested, committed, and rolled back like any other code. The eval set catches description regressions before deploy. For buyers who require reproducible AI-agent behavior, this is load-bearing.</p>
+<p><strong>Air-gapped compatibility.</strong> Self-hosted pharma and defense customers run NovoMCP where a vendor's client-side SDK features do not reach. Server-side retrieval sits inside the perimeter. The capability ships with the software, not with an AI-vendor relationship.</p>
+<p><strong>A latent-bug surface.</strong> Retrieval tests discovery in a way name-based tool calls do not. Any enterprise MCP server past 30 tools carries latent gaps in its visibility layer, and retrieval surfaces them.</p>
 <hr />
 <h2 id="the-numbers">The numbers<a class="headerlink" href="#the-numbers" title="Permanent link">&para;</a></h2>
-<p>The endpoint is live. 68 tools indexed in 1.4 seconds at container startup. 420 kilobytes of memory. 25 milliseconds per query end to end. 100 percent recall at ten on a 50-prompt evaluation set, 48 expected tools, 48 found. Keyword fallback on embedding failure, diagnostic status endpoint, manual rebuild for operators. Zero new infrastructure; the embedding call reuses credentials the platform already had.</p>
-<p>The consumer side begins now. NovoWorkbench v1.1 wires the Rust router to <code>/mcp/tool-search</code> and <code>/mcp/prompts/{name}</code>, deprecating the hardcoded tool allowlist that has been drifting from our canonical descriptions. The full 68-tool surface becomes visible to Workbench users without a context-cost penalty, across every model provider they choose.</p>
+<p>The endpoint is live. <code>68 tools indexed in 1.4 seconds</code> at container startup. <code>420 kilobytes</code> of memory. <code>25 milliseconds</code> per query end to end. <code>100 percent recall at ten</code> on a 50-prompt evaluation set, 48 expected tools, 48 found. Keyword fallback on embedding failure, a diagnostic status endpoint, a manual rebuild for operators. Zero new infrastructure; the embedding call reuses credentials the engine already held.</p>
+<p>The consumer side begins now. NovoWorkbench v1.1 wires the Rust router to <code>/mcp/tool-search</code> and <code>/mcp/prompts/{name}</code>, retiring the hardcoded tool allowlist that had drifted from the canonical descriptions. The full 68-tool surface becomes visible to Workbench users with no context-cost penalty, across every model provider they choose.</p>
 <hr />
-<h2 id="what-we-would-do-differently">What we would do differently<a class="headerlink" href="#what-we-would-do-differently" title="Permanent link">&para;</a></h2>
-<p>If we were starting again, we would build the status endpoint and the eval harness first, before the retrieval logic. The status endpoint would fail loudly on configuration problems, not silently. The eval harness would run against mocked embeddings before the real ones existed.</p>
-<p>We would design visibility-layer comparisons with explicit defaults for unknown values, not ad-hoc lookups that raise on miss. Gracefully degrading filters are easier to audit than filters that silently exclude.</p>
-<p>We would not have reused the shared credential client without revalidating it in the target deployment surface. The principle of reusing existing infrastructure is sound; reuse without verification in the specific environment that matters can hide configuration drift that only surfaces under load.</p>
-<p>Everything else held up. The in-memory numpy index was correctly sized. The template-manifest shortcut avoided a class of retrieval misses. The core whitelist floored the worst case. The eval set caught real bugs and set a regression baseline.</p>
-<hr />
-<h2 id="for-other-mcp-platforms">For other MCP platforms<a class="headerlink" href="#for-other-mcp-platforms" title="Permanent link">&para;</a></h2>
-<p>If you are building an MCP server and approaching 30 tools, consider:</p>
+<h2 id="the-standard-novomcp-runs">The standard NovoMCP runs<a class="headerlink" href="#the-standard-novomcp-runs" title="Permanent link">&para;</a></h2>
+<p>Tool search is not a feature bolted onto the platform. It is a discipline the engine applies to its own discovery surface, and it holds for any MCP server approaching 30 tools.</p>
 <ol>
-<li><strong>Do not wait for client-side tool search to arrive.</strong> It may, eventually, and partially. Meanwhile you can build server-side retrieval in an afternoon.</li>
-<li><strong>Use in-memory retrieval until your catalog exceeds roughly ten thousand tools.</strong> Network round-trips to a vector database are expensive on a per-turn query path. Dot products over small arrays are not.</li>
-<li><strong>Build your status endpoint and your eval set before your retrieval logic.</strong> The retrieval logic is the easy part. The failure modes and the regression surface are the hard parts.</li>
-<li><strong>Assume you have latent discovery gaps.</strong> Retrieval workloads will find them. Be ready to fix them across the whole platform, not just the new endpoint.</li>
+<li><strong>Build server-side retrieval now.</strong> Client-side tool search may arrive, eventually and partially. Server-side retrieval is an afternoon of work and reaches every provider.</li>
+<li><strong>Use in-memory retrieval until the catalog exceeds roughly ten thousand tools.</strong> Network round-trips to a vector database are expensive on a per-turn path. Dot products over small arrays are not.</li>
+<li><strong>Ship the status endpoint and the eval set before the retrieval logic.</strong> The retrieval logic is the easy part. The failure modes and the regression surface are the work.</li>
+<li><strong>Assume latent discovery gaps exist.</strong> Retrieval finds them. Fix them across the platform, not only in the new endpoint.</li>
 <li><strong>Treat tool descriptions as versioned code.</strong> Write the eval set that catches their regressions. Commit the baseline. Require it to pass before deploy.</li>
 </ol>
-<p>Capability and capability-that-the-agent-can-find are different properties. The first is the work. The second is the infrastructure that makes the first visible. Both have to ship.</p>
+<p>Capability and capability the agent can find are different properties. The first is the work. The second is the infrastructure that makes the first visible. Both ship.</p>
 <hr />
 <p><em>NovoMCP exposes 68 tools across drug discovery, quantum chemistry, molecular dynamics, and materials science. The tool-search endpoint is live at <code>/mcp/tool-search</code> on both <code>ai.novomcp.com</code> and <code>compute.novomcp.com</code>.</em></p>
 
