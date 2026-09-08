@@ -1,34 +1,34 @@
 # Engineering stories, series index
 
-Long-form reflections on the discipline that shapes research-engineering work at NovoMCP. Each post is a story with a lesson, a concrete engineering situation that produced a principle we now apply across teams.
+The engineering standards that shape research-engineering work at NovoMCP. Each post takes one concrete engineering situation and states the standard it established, now applied across teams.
 
-The posts stand alone but compose into a rough thematic arc: **make silent failures loud**. Every discipline in the series is an instance of that meta-rule at a different layer of the stack.
+The posts stand alone and compose into one thematic arc: **the Loud Failure Standard**. Make silent failures loud. Every discipline in the series is that standard applied at a different layer of the stack.
 
 ## Published
 
-- [Server-side tool search for a 62-tool MCP platform](server-side-tool-search.md), April 23, 2026
+- [Server-side tool search for a 68-tool MCP platform](server-side-tool-search.md), April 23, 2026
 
 ## Drafts (research-engineering discipline series)
 
-Seven posts drawn from a single molecular dynamics engineering effort in the summer of 2026. Each post is self-contained; the series arc is the thematic connection between them.
+Seven posts drawn from a single molecular dynamics engineering effort in the summer of 2026. Each post is self-contained. The series arc is the thematic connection between them.
 
-1. [Predeclared gates in research engineering: why we run more experiments than we need](predeclared-gates.md)
+1. [Predeclared gates in research engineering](predeclared-gates.md)
 2. [Verification doesn't transitively propagate](verification-doesnt-propagate.md)
 3. [Fallback state as a first-class diagnostic field](fallback-state-first-class.md)
 4. [Spec is the source of truth; code reads from it](spec-source-of-truth.md)
 5. [When to pause and when to continue: fatigue discipline in long research-engineering sessions](pause-and-continue.md)
 6. [False-alarm resolution as institutional memory](false-alarm-memory.md)
 
-Each is a draft pending review. The series arc post, synthesizing the meta-rule the seven instances share, is not yet written; it belongs at the end of the series after readers have absorbed the individual patterns.
+Each is a draft pending review. The series arc post, synthesizing the standard the seven instances share, belongs at the end of the series, after readers have absorbed the individual patterns.
 
 ## Drafts (validation series)
 
-Drawn from validating a trajectory diagnostic in the summer of 2026. Same meta-rule, one layer beneath the result — in the measurement setup nobody thought to review.
+Drawn from validating a trajectory diagnostic in the summer of 2026. The same standard, one layer beneath the result, in the measurement setup nobody thought to review.
 
-- [Configuration can produce a confident wrong answer](configuration-is-part-of-the-measurement.md) — co-authored with Dal Marsters
+- [Configuration is part of the measurement](configuration-is-part-of-the-measurement.md): co-authored with Dal Marsters
 
 ## Drafts (free-energy series)
 
-Drawn from reviewing the free-energy correction design in the summer of 2026 — the same meta-rule, applied to written claims before any code exists.
+Drawn from reviewing the free-energy correction design in the summer of 2026. The same standard, applied to written claims before any code exists.
 
-- [Bookkeeping and bookending in the FEP layer](bookkeeping-and-bookending.md) — reviewing design-doc claims against the standard applied to other people's methods
+- [Bookkeeping and bookending in the FEP layer](bookkeeping-and-bookending.md): reviewing design-doc claims against the standard NovoMCP applies to other methods
