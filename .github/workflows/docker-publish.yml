@@ -45,16 +45,29 @@ jobs:
             type=semver,pattern={{major}}.{{minor}}
             type=semver,pattern={{major}}
 
+      # QEMU registers the emulator for cross-arch builds so the arm64 image
+      # can build on an amd64 runner. The engine is pure-Python (rdkit / numpy
+      # / MDAnalysis all publish aarch64 wheels — verified on a GB10 Grace box),
+      # so there's no native compile to slow the emulated build down.
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+
       - name: Set up Buildx
         uses: docker/setup-buildx-action@v3
 
       # Build context is the engine source dir; all COPY paths in the
       # Dockerfile are relative to orchestrator/ (see its header comment).
+      # Multi-arch: amd64 (existing) + arm64 (Apple Silicon, and DGX Spark /
+      # GB10 for the local-full-engine deployment). One manifest; `docker pull`
+      # resolves the caller's arch automatically.
       - name: Build and push
         uses: docker/build-push-action@v6
         with:
           context: orchestrator
           file: orchestrator/Dockerfile
+          platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
