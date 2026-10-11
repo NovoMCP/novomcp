@@ -102,6 +102,7 @@ nav:
       - AWS: deploying-to-cloud/aws.md
       - GCP: deploying-to-cloud/gcp.md
       - Azure: deploying-to-cloud/azure.md
+  - DGX Spark (Novo Station): novo-station-dgx-spark.md
   - Engineering stories:
       - Overview: engineering-stories/README.md
       - Server-side tool search: engineering-stories/server-side-tool-search.md
