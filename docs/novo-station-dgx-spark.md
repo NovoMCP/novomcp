@@ -73,3 +73,4 @@ Images were validated on NVIDIA GB10 (DGX Spark), CUDA 13.0, DGX OS (drivers 580
 - The full field report — what broke, why, and the recipe: [What actually breaks when you port a chemistry stack to DGX Spark](https://www.novomcp.com/news/what-actually-breaks-when-you-port-a-chemistry-stack-to-dgx-spark).
 - The reproducible MACE + GROMACS workload recipe, as a [DGX Spark playbook](https://github.com/NVIDIA/dgx-spark-playbooks).
 - Per-service setup and GPU requirements: [Deploying services](deploying-services/README.md).
+- Use the engine from PubChem pages or Word manuscripts with the [Chrome and Word add-ins](sideload-add-ins.md); an engine on a Spark across your network works with both.
