@@ -2063,6 +2063,7 @@
 <ul>
 <li>An NVIDIA DGX Spark (GB10, aarch64, CUDA 13, driver ≥ 580) or GB10-class box.</li>
 <li>Docker + the NVIDIA Container Toolkit — <code>docker run --gpus all ... nvidia-smi</code> must print the GPU.</li>
+<li>Docker Compose v2 — <code>docker compose version</code> must work. Some GB10 images (e.g. cloud-hosted Sparks on stock Ubuntu 24.04) ship Docker without the Compose plugin; install it with <code>sudo apt-get install docker-compose-v2</code>.</li>
 <li>Disk: the GPU images are large (the NNP CUDA-13 image is ~17 GB); budget ~40 GB for the set.</li>
 </ul>
 <h2 id="1-pull-the-images">1. Pull the images<a class="headerlink" href="#1-pull-the-images" title="Permanent link">&para;</a></h2>
