@@ -2103,7 +2103,7 @@
 <p>The compute core ports in full: MACE / ANI-2x neural-network potentials, the NVIDIA ALCHEMI toolkit, GROMACS GPU molecular dynamics, AutoDock-GPU, xTB / CREST / sTDA, and the 31 ADMET models. (Structure prediction and the generative / free-energy paths aren't in this port — see the <a href="https://www.novomcp.com/news/what-actually-breaks-when-you-port-a-chemistry-stack-to-dgx-spark">field report</a>.)</p>
 <div class="admonition note">
 <p class="admonition-title">Image availability</p>
-<p>Every image in the stack is published for arm64 and resolves automatically on the Spark — the engine, <code>chem-props</code> and <code>addie-models</code> as multi-arch <code>:latest</code>; the compiled GPU/native services (<code>novomcp-nnp</code>, <code>gromacs-md</code>, <code>autodock-gpu</code>, <code>novomcp-qm</code>) as the arm64 <code>:spark</code> tag.</p>
+<p>Every image in the stack is published for arm64 and resolves automatically on the Spark — the engine, <code>chem-props</code>, <code>addie-models</code> and <code>novomcp-properties</code> as multi-arch <code>:latest</code>; the compiled GPU/native services (<code>novomcp-nnp</code>, <code>gromacs-md</code>, <code>autodock-gpu</code>, <code>novomcp-qm</code>) as the arm64 <code>:spark</code> tag.</p>
 </div>
 <h2 id="prerequisites">Prerequisites<a class="headerlink" href="#prerequisites" title="Permanent link">&para;</a></h2>
 <ul>
@@ -2118,12 +2118,13 @@
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>docker<span class="w"> </span>pull<span class="w"> </span>ghcr.io/novomcp/novomcp:latest<span class="w">           </span><span class="c1"># the engine</span>
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>docker<span class="w"> </span>pull<span class="w"> </span>ghcr.io/novomcp/chem-props:latest<span class="w">        </span><span class="c1"># RDKit properties / similarity</span>
 </span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>docker<span class="w"> </span>pull<span class="w"> </span>ghcr.io/novomcp/addie-models:latest<span class="w">      </span><span class="c1"># 31 ADMET models (DGL/GIN)</span>
-</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>
-</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="c1"># GPU / native services (arm64 :spark builds)</span>
-</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>docker<span class="w"> </span>pull<span class="w"> </span>ghcr.io/novomcp/novomcp-nnp:spark<span class="w">        </span><span class="c1"># MACE / ALCHEMI + ANI-2x   (GPU)</span>
-</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>docker<span class="w"> </span>pull<span class="w"> </span>ghcr.io/novomcp/gromacs-md:spark<span class="w">         </span><span class="c1"># GPU molecular dynamics    (GPU)</span>
-</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>docker<span class="w"> </span>pull<span class="w"> </span>ghcr.io/novomcp/autodock-gpu:spark<span class="w">       </span><span class="c1"># GPU docking               (GPU)</span>
-</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>docker<span class="w"> </span>pull<span class="w"> </span>ghcr.io/novomcp/novomcp-qm:spark<span class="w">         </span><span class="c1"># xTB / CREST / sTDA        (CPU)</span>
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>docker<span class="w"> </span>pull<span class="w"> </span>ghcr.io/novomcp/novomcp-properties:latest<span class="w"> </span><span class="c1"># aqueous solubility, bond dissociation energies</span>
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="c1"># GPU / native services (arm64 :spark builds)</span>
+</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>docker<span class="w"> </span>pull<span class="w"> </span>ghcr.io/novomcp/novomcp-nnp:spark<span class="w">        </span><span class="c1"># MACE / ALCHEMI + ANI-2x   (GPU)</span>
+</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>docker<span class="w"> </span>pull<span class="w"> </span>ghcr.io/novomcp/gromacs-md:spark<span class="w">         </span><span class="c1"># GPU molecular dynamics    (GPU)</span>
+</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>docker<span class="w"> </span>pull<span class="w"> </span>ghcr.io/novomcp/autodock-gpu:spark<span class="w">       </span><span class="c1"># GPU docking               (GPU)</span>
+</span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>docker<span class="w"> </span>pull<span class="w"> </span>ghcr.io/novomcp/novomcp-qm:spark<span class="w">         </span><span class="c1"># xTB / CREST / sTDA        (CPU)</span>
 </span></code></pre></div>
 <h2 id="2-bring-the-whole-engine-up">2. Bring the whole engine up<a class="headerlink" href="#2-bring-the-whole-engine-up" title="Permanent link">&para;</a></h2>
 <p>Grab the Spark compose file and start the stack:</p>
