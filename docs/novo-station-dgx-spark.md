@@ -5,7 +5,7 @@
 The compute core ports in full: MACE / ANI-2x neural-network potentials, the NVIDIA ALCHEMI toolkit, GROMACS GPU molecular dynamics, AutoDock-GPU, xTB / CREST / sTDA, and the 31 ADMET models. (Structure prediction and the generative / free-energy paths aren't in this port — see the [field report](https://www.novomcp.com/news/what-actually-breaks-when-you-port-a-chemistry-stack-to-dgx-spark).)
 
 !!! note "Image availability"
-    Every image in the stack is published for arm64 and resolves automatically on the Spark — the engine, `chem-props` and `addie-models` as multi-arch `:latest`; the compiled GPU/native services (`novomcp-nnp`, `gromacs-md`, `autodock-gpu`, `novomcp-qm`) as the arm64 `:spark` tag.
+    Every image in the stack is published for arm64 and resolves automatically on the Spark — the engine, `chem-props`, `addie-models` and `novomcp-properties` as multi-arch `:latest`; the compiled GPU/native services (`novomcp-nnp`, `gromacs-md`, `autodock-gpu`, `novomcp-qm`) as the arm64 `:spark` tag.
 
 ## Prerequisites
 
@@ -23,6 +23,7 @@ Multi-arch images auto-select arm64 on the Spark:
 docker pull ghcr.io/novomcp/novomcp:latest           # the engine
 docker pull ghcr.io/novomcp/chem-props:latest        # RDKit properties / similarity
 docker pull ghcr.io/novomcp/addie-models:latest      # 31 ADMET models (DGL/GIN)
+docker pull ghcr.io/novomcp/novomcp-properties:latest # aqueous solubility, bond dissociation energies
 
 # GPU / native services (arm64 :spark builds)
 docker pull ghcr.io/novomcp/novomcp-nnp:spark        # MACE / ALCHEMI + ANI-2x   (GPU)

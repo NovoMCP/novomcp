@@ -7,9 +7,9 @@
 # itself, no tokens leaving the Spark during a run. The GPU services carry an
 # NVIDIA device reservation and time-share the single GB10 GPU.
 #
-# All images are published for arm64: the engine, chem-props and addie-models are
-# multi-arch `:latest` (docker auto-selects arm64); the compiled GPU/native
-# services use the arm64 `:spark` tag.
+# All images are published for arm64: the engine, chem-props, addie-models and
+# novomcp-properties are multi-arch `:latest` (docker auto-selects arm64); the
+# compiled GPU/native services use the arm64 `:spark` tag.
 
 services:
   engine:
@@ -31,6 +31,7 @@ services:
       AUTODOCK_GPU_URL: http://autodock-gpu:8022
       GROMACS_MD_URL:   http://gromacs-md:8021
       ADDIE_MODELS_URL: http://addie-models:8025
+      NOVOMCP_PROPERTIES_URL: http://novomcp-properties:8030
       REDIS_URL: redis://redis:6379/0
     depends_on: [redis]
     restart: unless-stopped
@@ -64,6 +65,17 @@ services:
     restart: unless-stopped
     # 31 ADMET models (DGL/GIN). Multi-arch; GIN-embedding parity validated vs x86
     # (~1e-6). Weights load from the open Hugging Face backend — no creds. CPU.
+
+  novomcp-properties:
+    image: ghcr.io/novomcp/novomcp-properties:latest
+    container_name: novomcp-properties
+    ports: ["8030:8030"]
+    environment:
+      NOVOMCP_QM_URL: http://novomcp-qm:8031   # charge-based pKa routes + frontier orbitals
+    restart: unless-stopped
+    # Physicochemical properties: aqueous solubility (Chemprop/AqSolDB) and bond
+    # dissociation energies (ALFABET), validated on GB10. Multi-arch; weights from
+    # Hugging Face. CPU.
 
   # ---- GPU services (share the single GB10 GPU) ----
   novomcp-nnp:
