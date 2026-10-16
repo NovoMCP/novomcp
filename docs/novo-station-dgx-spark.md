@@ -11,6 +11,7 @@ The compute core ports in full: MACE / ANI-2x neural-network potentials, the NVI
 
 - An NVIDIA DGX Spark (GB10, aarch64, CUDA 13, driver ≥ 580) or GB10-class box.
 - Docker + the NVIDIA Container Toolkit — `docker run --gpus all ... nvidia-smi` must print the GPU.
+- Docker Compose v2 — `docker compose version` must work. Some GB10 images (e.g. cloud-hosted Sparks on stock Ubuntu 24.04) ship Docker without the Compose plugin; install it with `sudo apt-get install docker-compose-v2`.
 - Disk: the GPU images are large (the NNP CUDA-13 image is ~17 GB); budget ~40 GB for the set.
 
 ## 1. Pull the images
