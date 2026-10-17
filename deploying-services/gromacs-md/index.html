@@ -2220,6 +2220,21 @@
 <td>Job status store (<code>get_job_status</code> reads it)</td>
 </tr>
 <tr>
+<td><code>AUTODOCK_GPU_URL</code></td>
+<td>(unset)</td>
+<td><a href="../autodock-gpu/">autodock-gpu</a> endpoint. Protein-ligand runs dock the ligand first and start MD from the top pose; unset, the ligand is centred on the co-crystallized ligand's site (result field <code>ligand_placement</code>)</td>
+</tr>
+<tr>
+<td><code>MDRUN_GPU_RETRIES</code></td>
+<td><code>2</code></td>
+<td>Retries of a failed GPU <code>mdrun</code> stage on the GPU</td>
+</tr>
+<tr>
+<td><code>MDRUN_CPU_FALLBACK</code></td>
+<td><code>1</code></td>
+<td>After those, rerun the stage once on the CPU (result field <code>mdrun_retries</code>); <code>0</code> fails the job</td>
+</tr>
+<tr>
 <td><code>MAX_CONCURRENT</code></td>
 <td><code>1</code></td>
 <td>Simulations per GPU</td>
