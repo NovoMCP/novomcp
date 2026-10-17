@@ -15084,21 +15084,41 @@ class MCPToolExecutor:
             logger.exception(f"pKa prediction error for {smiles}: {e}")
             return ToolResult(success=False, error=f"pKa prediction failed: {str(e)}")
 
-    def _interpret_pka(self, pka_values: list, groups: list) -> str:
-        """Generate a brief interpretation of pKa results."""
+    # Group names as novomcp-properties reports them. For a base, the pKa is that of
+    # its conjugate acid (pKaH), so the ionized form is the protonated cation.
+    _PKA_ACID_GROUPS = {"carboxylic_acid", "phenol", "sulfonamide", "thiol", "tetrazole", "phosphate"}
+    _PKA_BASE_GROUPS = {"primary_amine", "secondary_amine", "tertiary_amine", "pyridine", "imidazole", "guanidine"}
+
+    def _interpret_pka(self, pka_values: list, groups: list, ph: float = 7.4) -> str:
+        """Generate a brief interpretation of pKa results at physiological pH.
+
+        Whether a pKa means "ionized" depends on whether the site is an acid or a
+        base, which the value alone doesn't say: phenol (pKa ~10) is a neutral acid
+        at pH 7.4, pyridine (pKaH ~5) a neutral base. The service doesn't pair each
+        value with its group, so acid/base wording is used only when every detected
+        group is one kind; otherwise the value is described relative to pH.
+        """
         if not pka_values or groups == ["none_detected"]:
             return "No ionizable groups detected. Molecule expected to be neutral across physiological pH range."
 
+        kinds = {"acid" if g in self._PKA_ACID_GROUPS else "base" if g in self._PKA_BASE_GROUPS else "unknown"
+                 for g in groups}
+        kind = kinds.pop() if len(kinds) == 1 else "unknown"
+
         parts = []
         for val in pka_values:
-            if val < 4:
-                parts.append(f"pKa {val}: strong acid, fully ionized at physiological pH (7.4)")
-            elif val < 7:
-                parts.append(f"pKa {val}: weak acid, partially ionized at physiological pH")
-            elif val < 9:
-                parts.append(f"pKa {val}: near neutral at physiological pH")
+            if kind == "acid":
+                ionized = 100.0 / (1.0 + 10 ** (val - ph))
+                state = "mostly deprotonated (anionic)" if ionized >= 50 else "mostly neutral"
+                parts.append(f"pKa {val}: acidic group, {state} at pH {ph} (~{ionized:.0f}% ionized)")
+            elif kind == "base":
+                ionized = 100.0 / (1.0 + 10 ** (ph - val))
+                state = "mostly protonated (cationic)" if ionized >= 50 else "mostly neutral"
+                parts.append(f"pKa {val} (conjugate acid): basic group, {state} at pH {ph} (~{ionized:.0f}% ionized)")
             else:
-                parts.append(f"pKa {val}: basic group, protonated at physiological pH")
+                side = "below" if val < ph else "above"
+                parts.append(f"pKa {val}: {abs(val - ph):.1f} units {side} pH {ph}; "
+                             "an acid at this site is ionized when pKa < pH, a base when pKa > pH")
 
         return "; ".join(parts)
 
