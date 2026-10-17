@@ -933,7 +933,7 @@ MCP_TOOLS = {
     "cancel_job": {
         "name": "cancel_job",
         "title": "Cancel Async Job",
-        "description": "Cancel a running or queued async job — stop it before it finishes and consumes more compute. Supports gromacs-md jobs (gro_*): deletes the k8s Job on EKS (SIGTERM to the pod), SIGTERM handler writes partial checkpoints to S3, SQL status transitions to cancelling and then to a terminal state (cancelled if SIGTERM caught between stages; failed with the engine's error if SIGTERM caught mid-stage). Use when the user submitted by mistake, the wrong inputs were used, or the job is over budget. Cancelling a completed or failed job is a no-op and returns the current state. Other job types (dock_*, qm_*) will return 'not supported' until their executors implement SIGTERM handling.",
+        "description": "Cancel a running or queued async job — stop it before it finishes and consumes more compute. Supports gromacs-md jobs (gro_*): deletes the k8s Job on EKS (SIGTERM to the pod), SIGTERM handler writes partial checkpoints to S3, SQL status transitions to cancelling and then to a terminal state (cancelled if SIGTERM caught between stages; failed with the engine's error if SIGTERM caught mid-stage). On a local engine (e.g. a DGX Spark) it cancels gromacs-md jobs directly: a queued job never starts, a running one is stopped. Use when the user submitted by mistake, the wrong inputs were used, or the job is over budget. Cancelling a completed or failed job is a no-op and returns the current state. Other job types (dock_*, qm_*) will return 'not supported' until their executors implement SIGTERM handling.",
         "annotations": {
             "readOnlyHint": False,
             "destructiveHint": True
@@ -2869,6 +2869,7 @@ def rest_tool_visible(tool_name: str, user_tier: str) -> bool:
 # visible. Requirements formats:
 #   "env:VARNAME"    → hidden if os.getenv(VARNAME) is empty
 #   "file:PATH"      → hidden if the file doesn't exist
+#   "backend_or_local" → FUNNEL_BACKEND_URL set, or a local engine (NOVO_AUTH=local)
 #   "any"            → always available (no dependency)
 TOOL_LOCAL_REQUIREMENTS: Dict[str, list] = {
     # Enterprise data connectors — subscription-only, hidden from OSS entirely.
@@ -2958,10 +2959,13 @@ TOOL_LOCAL_REQUIREMENTS: Dict[str, list] = {
     "get_file_status":     ["env:FUNNEL_BACKEND_URL"],
     "list_files":          ["env:FUNNEL_BACKEND_URL"],
 
-    # Async job tracking — needs the backend to query.
+    # Async job tracking — needs the backend to query. A local engine polls
+    # and cancels jobs on the services themselves, so get_job_status and
+    # cancel_job are listed there too (without them an MCP client could
+    # submit MD but never see it finish).
     "list_jobs":        ["env:FUNNEL_BACKEND_URL"],
-    "get_job_status":   ["env:FUNNEL_BACKEND_URL"],
-    "cancel_job":       ["env:FUNNEL_BACKEND_URL"],
+    "get_job_status":   ["backend_or_local"],
+    "cancel_job":       ["backend_or_local"],
 
     # Materials Project — free but needs the user's own MP_API_KEY.
     "search_materials_project": ["env:MP_API_KEY"],
@@ -2990,6 +2994,8 @@ def _requirement_met(req: str) -> bool:
     """
     if req == "any":
         return True
+    if req == "backend_or_local":
+        return bool(os.getenv("FUNNEL_BACKEND_URL", "").strip()) or not surfaces_split()
     if req.startswith("env:"):
         names = [n.strip() for n in req[4:].split("|") if n.strip()]
         return any(os.getenv(n, "").strip() for n in names)
@@ -8002,6 +8008,11 @@ class MCPToolExecutor:
                             f"Poll again in 60 seconds, but limit to 2-3 polls per conversation turn."
                         )
 
+
+                elif status in ["cancelled", "canceled"]:
+                    result["completed"] = True
+                    result["cancelled"] = True
+                    result["message"] = "CANCELLED (terminal): the job was cancelled and will not finish. Do NOT poll again."
 
                 elif status in ["failed", "error"]:
                     result["completed"] = True
@@ -13420,6 +13431,8 @@ class MCPToolExecutor:
                     "simulation_ns": duration_ns,
                     "temperature": temperature,
                     "pressure": pressure,
+                    "intent": intent,
+                    "adaptive_equilibration": adaptive_equilibration,
                 }, timeout=60.0)
             except GpuWarmingException:
                 return ToolResult(success=False, error="gromacs-md is not reachable — check GROMACS_MD_URL")
@@ -14475,6 +14488,26 @@ class MCPToolExecutor:
             logger.debug(f"MD dedupe lookup failed: {e}")
             return None
 
+    async def _cancel_local_job(self, job_id: str) -> ToolResult:
+        """Cancel an MD job on a local engine via gromacs-md's /cancel/{job_id}."""
+        if not job_id.startswith("gro_"):
+            return ToolResult(
+                success=False,
+                error="On a local engine, cancel_job supports MD jobs (job IDs starting gro_) only.",
+            )
+        try:
+            resp = await self._call_service("gromacs-md", f"/cancel/{job_id}", {}, timeout=30.0)
+        except GpuWarmingException:
+            return ToolResult(success=False, error="gromacs-md is not reachable — check GROMACS_MD_URL")
+        if resp.status_code == 404:
+            return ToolResult(success=False, error=f"Job not found: {job_id}")
+        if resp.status_code != 200:
+            return ToolResult(success=False, error=f"gromacs-md returned HTTP {resp.status_code}: {resp.text[:300]}")
+        data = resp.json()
+        if data.get("cancelled") and "message" not in data:
+            data["message"] = "Job cancelled. Its processes were stopped and it will not run further."
+        return ToolResult(success=True, data=data, usage={"tool": "cancel_job"})
+
     async def _execute_cancel_job(self, args: Dict[str, Any], context: Dict[str, Any] = None) -> ToolResult:
         """Cancel a running/queued async job (k8s-Job-backed services on EKS).
 
@@ -14495,6 +14528,10 @@ class MCPToolExecutor:
         if not job_id:
             return ToolResult(success=False, error="Missing required parameter: job_id")
         reason = (args.get("reason") or "Cancelled by user")[:300]
+
+        # A local engine has no dashboard or k8s Jobs: the service cancels its own job.
+        if not surfaces_split():
+            return await self._cancel_local_job(job_id)
 
         if not self.dashboard_admin_key:
             return ToolResult(success=False, error="Dashboard auth not configured — cannot cancel jobs")

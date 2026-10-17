@@ -106,6 +106,7 @@ services:
   # gromacs-md:
   #   image: ghcr.io/novomcp/gromacs-md:latest
   #   container_name: novomcp-gromacs-md
+  #   init: true   # reaps processes a cancelled job leaves behind
   #   ports: ["8024:8024"]
   #   environment:
   #     API_KEY: local
