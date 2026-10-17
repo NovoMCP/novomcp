@@ -71,6 +71,9 @@ Or set `email` in the original call to get notified on completion (requires Rese
 | `PORT` | `8024` | HTTP listen port |
 | `API_KEY` | (required) | Key the engine must send; the service refuses jobs without it |
 | `REDIS_URL` | `redis://localhost:6379` | Job status store (`get_job_status` reads it) |
+| `AUTODOCK_GPU_URL` | (unset) | [autodock-gpu](./autodock-gpu.md) endpoint. Protein-ligand runs dock the ligand first and start MD from the top pose; unset, the ligand is centred on the co-crystallized ligand's site (result field `ligand_placement`) |
+| `MDRUN_GPU_RETRIES` | `2` | Retries of a failed GPU `mdrun` stage on the GPU |
+| `MDRUN_CPU_FALLBACK` | `1` | After those, rerun the stage once on the CPU (result field `mdrun_retries`); `0` fails the job |
 | `MAX_CONCURRENT` | `1` | Simulations per GPU |
 | `RESULTS_DIR` | `/results` | Where trajectories land |
 | `RESEND_API_KEY` | (unset) | Email notifications on job completion |
