@@ -94,6 +94,7 @@ services:
   gromacs-md:
     image: ghcr.io/novomcp/gromacs-md:spark
     container_name: novomcp-gromacs-md
+    init: true   # reaps processes a cancelled job leaves behind (sqm under ACPYPE)
     ports: ["8024:8024"]
     environment:
       API_KEY: local                    # the service refuses jobs without one
