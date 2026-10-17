@@ -1990,12 +1990,14 @@
 <ol>
 <li><strong>Templates → New Template</strong>:</li>
 <li><strong>Container Image:</strong> <code>ghcr.io/novomcp/gromacs-md:latest</code> (GHCR is public — no registry credentials needed).</li>
-<li><strong>Expose HTTP Ports:</strong> <code>8021</code>. Runpod's reverse proxy publishes it at a public HTTPS URL; only one HTTP port per pod, which is all this service needs.</li>
+<li><strong>Expose HTTP Ports:</strong> <code>8024</code>.</li>
+<li><strong>Environment Variables:</strong> <code>API_KEY</code> = a long random key. The proxy URL is public, so this key is what keeps it private. Runpod's reverse proxy publishes it at a public HTTPS URL; only one HTTP port per pod, which is all this service needs.</li>
 <li><strong>Deploy</strong> → choose a <strong>GPU pod</strong> (L40S or A100 recommended; L4/A10G is the practical minimum, ~8 GB GPU memory per simulation) → select your template → <strong>Deploy</strong>.</li>
-<li>Once the pod is running, its endpoint is <code>https://&lt;POD_ID&gt;-8021.proxy.runpod.net</code>.</li>
+<li>Once the pod is running, its endpoint is <code>https://&lt;POD_ID&gt;-8024.proxy.runpod.net</code>.</li>
 </ol>
 <h2 id="wire-into-the-engine">Wire into the engine<a class="headerlink" href="#wire-into-the-engine" title="Permanent link">&para;</a></h2>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">GROMACS_MD_URL</span><span class="o">=</span>https://&lt;POD_ID&gt;-8021.proxy.runpod.net
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">GROMACS_MD_URL</span><span class="o">=</span>https://&lt;POD_ID&gt;-8024.proxy.runpod.net
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="nb">export</span><span class="w"> </span><span class="nv">GROMACS_API_KEY</span><span class="o">=</span>&lt;the<span class="w"> </span>same<span class="w"> </span>key&gt;
 </span></code></pre></div>
 <h2 id="verify">Verify<a class="headerlink" href="#verify" title="Permanent link">&para;</a></h2>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>curl<span class="w"> </span>-s<span class="w"> </span><span class="s2">"</span><span class="nv">$GROMACS_MD_URL</span><span class="s2">/health"</span>
