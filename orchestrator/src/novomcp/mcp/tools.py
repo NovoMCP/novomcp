@@ -2799,8 +2799,21 @@ def host_is_compute(host: Optional[str]) -> bool:
     return h.startswith("compute.") or ".compute." in h
 
 
+def surfaces_split() -> bool:
+    """Whether the Novo / Novo Compute host split applies.
+
+    The split exists for the hosted connectors (ai. vs compute.novomcp.com). A
+    local engine (NOVO_AUTH=local: single user, no auth) is one engine on one
+    host, so it serves every tool there — otherwise an MCP client pointed at
+    http://localhost:8018 could never call QM, NNP, docking or MD.
+    """
+    return os.getenv("NOVO_AUTH", "local").lower() != "local"
+
+
 def is_tool_visible(tool_name: str, is_compute_surface: bool) -> bool:
     """Whether a tool is exposed on the surface the request landed on."""
+    if not surfaces_split():
+        return True
     surface = MCP_TOOLS.get(tool_name, {}).get("surface", "core")
     if surface == "compute":
         return is_compute_surface
@@ -13393,6 +13406,52 @@ class MCPToolExecutor:
         # only — the executor mints its own progress and the dashboard's
         # watchdog uses 2x this as the stale threshold.
         estimated_minutes = round(duration_ns * 3) + 12
+
+        # ── Local engine: submit straight to the gromacs-md service ────────
+        # The k8s Job + SQL dispatch below is the hosted control plane. A local
+        # engine (NOVO_AUTH=local, e.g. a DGX Spark) has neither, so it uses the
+        # service's own async API; get_job_status polls its /status/{job_id}.
+        if not surfaces_split():
+            try:
+                resp = await self._call_service("gromacs-md", "/simulate", {
+                    "compound_id": args.get("compound_id"),
+                    "pdb_id": pdb_id.upper() if pdb_id else None,
+                    "ligand_smiles": smiles,
+                    "simulation_ns": duration_ns,
+                    "temperature": temperature,
+                    "pressure": pressure,
+                }, timeout=60.0)
+            except GpuWarmingException:
+                return ToolResult(success=False, error="gromacs-md is not reachable — check GROMACS_MD_URL")
+            if resp.status_code != 200:
+                return ToolResult(success=False, error=f"gromacs-md returned HTTP {resp.status_code}: {resp.text[:300]}")
+            sub = resp.json()
+            job_id = sub["job_id"]
+            est = sub.get("estimated_runtime_minutes") or estimated_minutes
+            return ToolResult(
+                success=True,
+                data={
+                    "job_id": job_id,
+                    "status": sub.get("status", "queued"),
+                    "service": "gromacs-md",
+                    "smiles": smiles,
+                    "pdb_id": pdb_id,
+                    "compound_id": sub.get("compound_id"),
+                    "duration_ns": duration_ns,
+                    "temperature": temperature,
+                    "estimated_minutes": est,
+                    "method": f"GROMACS, {duration_ns}ns at {temperature}K",
+                    "message": (
+                        f"MD simulation submitted to the local gromacs-md service. "
+                        f"Estimated runtime: ~{est} minutes. "
+                        f"Use get_job_status with job_id '{job_id}' — poll every 60s until completed."
+                    ),
+                    "tool_suggestions": [
+                        self._tool_suggestion("get_job_status", f"Check MD job {job_id}"),
+                    ],
+                },
+                usage={"tool": "run_molecular_dynamics"},
+            )
 
         # ── Idempotency: hash canonical inputs to a 16-char dedupe_key ─────
         # An identical retry storm should join the in-flight job rather than

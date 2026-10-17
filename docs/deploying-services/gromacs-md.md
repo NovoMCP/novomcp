@@ -24,7 +24,8 @@ docker compose up gromacs-md
 docker run -d \
   --name novomcp-gromacs-md \
   --gpus all \
-  -p 8021:8021 \
+  -p 8024:8024 \
+  -e API_KEY=<choose-a-key> \
   -v /path/to/persistent/results:/results \
   --restart unless-stopped \
   ghcr.io/novomcp/gromacs-md:latest
@@ -33,15 +34,16 @@ docker run -d \
 ## Wire into the engine
 
 ```bash
-export GROMACS_MD_URL=http://localhost:8021
+export GROMACS_MD_URL=http://localhost:8024
 # or remote:
-export GROMACS_MD_URL=http://gpu-box.local:8021
+export GROMACS_MD_URL=http://gpu-box.local:8024
+export GROMACS_API_KEY=<the same key>   # sent as the API-Key header
 ```
 
 ## Verify
 
 ```bash
-curl -s http://localhost:8021/health
+curl -s http://localhost:8024/health
 # {"status":"healthy","gpu_available":true,"gromacs_version":"2023.5"}
 ```
 
@@ -66,7 +68,9 @@ Or set `email` in the original call to get notified on completion (requires Rese
 
 | Var | Default | Purpose |
 |---|---|---|
-| `PORT` | `8021` | HTTP listen port |
+| `PORT` | `8024` | HTTP listen port |
+| `API_KEY` | (required) | Key the engine must send; the service refuses jobs without it |
+| `REDIS_URL` | `redis://localhost:6379` | Job status store (`get_job_status` reads it) |
 | `MAX_CONCURRENT` | `1` | Simulations per GPU |
 | `RESULTS_DIR` | `/results` | Where trajectories land |
 | `RESEND_API_KEY` | (unset) | Email notifications on job completion |

@@ -135,7 +135,7 @@ export const CONNECTORS: Connector[] = [
     use: 'Validate a binding pose with a short MD run before committing compute.',
     uses: 'Unlocks run_molecular_dynamics and generate_dynamics.',
     guide: 'deploying-services/gromacs-md/',
-    fields: [{ name: 'url', label: 'Service URL', placeholder: 'http://gromacs-md:8021', required: true, hint: 'GPU service endpoint.' }, KEY()],
+    fields: [{ name: 'url', label: 'Service URL', placeholder: 'http://gromacs-md:8024', required: true, hint: 'GPU service endpoint.' }, KEY()],
   },
   {
     id: 'structure', category: 'service', monogram: 'OF', name: 'OpenFold3', urlEnv: 'OPENFOLD3_URL',

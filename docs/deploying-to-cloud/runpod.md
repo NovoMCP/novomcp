@@ -11,14 +11,16 @@ Run the GPU molecular-dynamics service (`gromacs-md`) on a [Runpod](https://runp
 
 1. **Templates → New Template**:
    - **Container Image:** `ghcr.io/novomcp/gromacs-md:latest` (GHCR is public — no registry credentials needed).
-   - **Expose HTTP Ports:** `8021`. Runpod's reverse proxy publishes it at a public HTTPS URL; only one HTTP port per pod, which is all this service needs.
+   - **Expose HTTP Ports:** `8024`.
+   - **Environment Variables:** `API_KEY` = a long random key. The proxy URL is public, so this key is what keeps it private. Runpod's reverse proxy publishes it at a public HTTPS URL; only one HTTP port per pod, which is all this service needs.
 2. **Deploy** → choose a **GPU pod** (L40S or A100 recommended; L4/A10G is the practical minimum, ~8 GB GPU memory per simulation) → select your template → **Deploy**.
-3. Once the pod is running, its endpoint is `https://<POD_ID>-8021.proxy.runpod.net`.
+3. Once the pod is running, its endpoint is `https://<POD_ID>-8024.proxy.runpod.net`.
 
 ## Wire into the engine
 
 ```bash
-export GROMACS_MD_URL=https://<POD_ID>-8021.proxy.runpod.net
+export GROMACS_MD_URL=https://<POD_ID>-8024.proxy.runpod.net
+export GROMACS_API_KEY=<the same key>
 ```
 
 ## Verify
