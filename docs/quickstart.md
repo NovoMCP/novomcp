@@ -144,7 +144,7 @@ curl -s http://localhost:8018/mcp/tools \
   | python3 -m json.tool
 ```
 
-`LocalAuthGate` accepts any bearer token — `x` works fine. Returns the 11 always-available tools; the other 57 in the catalog appear as you wire their backing services (see [tool-availability.md](tool-availability.md)).
+`LocalAuthGate` accepts any bearer token — `x` works fine. Returns the 14 always-available tools; the other 55 in the 69-tool catalog appear as you wire their backing services (see [tool-availability.md](tool-availability.md)).
 
 ### Get a molecule profile (aspirin)
 
