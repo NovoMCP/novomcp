@@ -2568,7 +2568,7 @@ MCP_TOOLS = {
     "run_molecular_dynamics": {
         "name": "run_molecular_dynamics",
         "title": "Run Molecular Dynamics",
-        "description": "Run GPU molecular dynamics simulation using GROMACS. Returns a job_id — use get_job_status to poll for results every 60s until completed. Estimated runtime is included in the response. Omit pdb_id for ligand-only. Results include RMSD, RMSF, radius of gyration. When a ligand is present and the system is soluble (not membrane), results ALSO include: MM-GBSA binding free energy (ΔG_bind) with per-residue decomposition, ligand RMSD, protein-ligand H-bond persistence (with quality threshold: >75% High Quality, <30% False Positive Risk), and pose clustering. Membrane systems skip MM-GBSA (standard GB/PB solver is incorrect with a lipid bilayer) but still get ligand dynamics. GPU COLD START: the first call after idle (>5 min) includes ~2-3 min GPU warm-up before the job actually starts; subsequent calls are fast. If called within a discovery funnel, target_discovery already triggered a background warmup — the GPU should be ready by Step 7.",
+        "description": "Run GPU molecular dynamics simulation using GROMACS. Returns a job_id — use get_job_status to poll for results every 60s until completed. Estimated runtime is included in the response. Omit pdb_id for ligand-only. Results include RMSD, RMSF, radius of gyration. When a ligand is present and the system is soluble (not membrane), results ALSO include: MM-GBSA binding free energy (ΔG_bind) with per-residue decomposition, ligand RMSD, protein-ligand H-bond persistence (per bond, graded on the most persistent: >75% High Quality, <30% False Positive Risk), and pose clustering. Membrane systems skip MM-GBSA (standard GB/PB solver is incorrect with a lipid bilayer) but still get ligand dynamics. LENGTH: use the length the user asks for. If it is shorter than the intent's standard (pose_stability ≥10 ns, mm_gbsa ≥50 ns), run it anyway and say the result is preliminary; do not lengthen a run without asking. Quote the runtime estimate this call returns rather than a typical figure. REFUSALS: unsupported systems (covalent ligands, membrane proteins, heme, Fe-S, catalytic metals, modified residues) are refused at submission with a reason. Before suggesting another PDB ID as an alternative, check it with audit_system (about a second) so you only suggest structures that will run. HOSTED SERVICE ONLY: the first call after idle (>5 min) can add ~2-3 min of GPU warm-up; a local install has none.",
         "annotations": {
             "readOnlyHint": False,
             "destructiveHint": False
@@ -2586,9 +2586,9 @@ MCP_TOOLS = {
                 },
                 "duration_ns": {
                     "type": "number",
-                    "description": "Simulation length in nanoseconds (1-100). Default 10ns (~20 min on A100).",
+                    "description": "Simulation length in nanoseconds (0.1-100). Default 10 ns. Use the length the user asks for; 0.1-0.5 ns suits a smoke test (intent 'smoke_test'). The response carries this deployment's runtime estimate.",
                     "default": 10,
-                    "minimum": 1,
+                    "minimum": 0.1,
                     "maximum": 100
                 },
                 "temperature": {
@@ -7920,7 +7920,8 @@ class MCPToolExecutor:
                         f"This is a successful classification outcome, not an error. "
                         f"Explain the specific reason to the user and note the target "
                         f"is outside the current pipeline's supported scope. Do NOT "
-                        f"poll again or retry."
+                        f"poll again or retry. Check any alternative structure with "
+                        f"audit_system before suggesting it."
                     )
 
                     # Update managed backend so the jobs UI shows refused, not stuck
@@ -13411,6 +13412,8 @@ class MCPToolExecutor:
                 error=f"Invalid intent '{intent}'. Must be one of: {sorted(_valid_intents)}",
             )
         adaptive_equilibration = bool(args.get("adaptive_equilibration", False))
+        if not 0.1 <= duration_ns <= 100:
+            return ToolResult(success=False, error=f"duration_ns must be between 0.1 and 100 (got {duration_ns})")
 
         # Estimate calibrated against typical A100 throughput (~3 min/ns plus
         # ~12 min equilibration/prep/analysis). Used for the user message
@@ -13714,7 +13717,8 @@ class MCPToolExecutor:
                         "message": (
                             f"REFUSED at submission — no simulation is running: {reason}.{suggested_hint} "
                             f"This is a classification outcome, not an error. Explain the specific "
-                            f"reason to the user. Do NOT poll get_job_status or retry the same system."
+                            f"reason to the user. Do NOT poll get_job_status or retry the same system. "
+                            f"Check any alternative structure with audit_system before suggesting it."
                         ),
                     },
                     usage={"tool": "run_molecular_dynamics"},
