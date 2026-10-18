@@ -6297,7 +6297,7 @@ class MCPToolExecutor:
                     return {"status": "failed", "error": err}
             except Exception as e:  # transient poll error — keep trying
                 logger.warning(f"_await_job_terminal poll error for {job_id}: {e}")
-            await asyncio.sleep(interval_s)
+            await asyncio.sleep(self._LOCAL_MD_INTAKE_POLL_S)
 
         return {
             "status": "timeout",
@@ -13441,6 +13441,12 @@ class MCPToolExecutor:
             sub = resp.json()
             job_id = sub["job_id"]
             est = sub.get("estimated_runtime_minutes") or estimated_minutes
+            # Intake refuses unsupported systems within a second or two of
+            # submission. Report that here: a client told "submitted" assumes
+            # the run is underway and may not check status for an hour.
+            early = await self._await_local_md_intake(job_id)
+            if early is not None:
+                return early
             return ToolResult(
                 success=True,
                 data={
@@ -13660,6 +13666,64 @@ class MCPToolExecutor:
             },
             usage={"queries": 1, "tool": "run_molecular_dynamics"}
         )
+
+    # Steps a local gromacs-md job passes through before intake has accepted it
+    _LOCAL_MD_INTAKE_STEPS = ("", "queued", "classify")
+    _LOCAL_MD_INTAKE_WAIT_S = 8.0
+    _LOCAL_MD_INTAKE_POLL_S = 0.5
+
+    async def _await_local_md_intake(self, job_id: str) -> Optional[ToolResult]:
+        """Wait briefly for a just-submitted local MD job to clear intake.
+
+        Returns a terminal ToolResult if the job was refused or failed during
+        intake, or None once it is past intake (or the wait runs out).
+        """
+        deadline = asyncio.get_event_loop().time() + self._LOCAL_MD_INTAKE_WAIT_S
+        while True:
+            try:
+                resp = await self._call_service("gromacs-md", f"/status/{job_id}", {},
+                                                method="GET", timeout=5.0)
+                data = resp.json() if resp.status_code == 200 else {}
+            except Exception as e:
+                logger.debug(f"Intake check for {job_id} failed: {e}")
+                return None
+            status = data.get("status")
+            if status == "refused":
+                refusal = data.get("result") or {}
+                reason = refusal.get("primary_reason", "system outside current pipeline scope")
+                suggested = refusal.get("suggested_branch")
+                suggested_hint = f" Future branch: {suggested}." if suggested else ""
+                return ToolResult(
+                    success=True,
+                    data={
+                        "job_id": job_id,
+                        "service": "gromacs-md",
+                        "status": "refused",
+                        "refused": True,
+                        "completed": True,
+                        "primary_reason": reason,
+                        "reasons": refusal.get("reasons", []),
+                        "suggested_branch": suggested,
+                        "profile": refusal.get("profile", {}),
+                        "message": (
+                            f"REFUSED at submission — no simulation is running: {reason}.{suggested_hint} "
+                            f"This is a classification outcome, not an error. Explain the specific "
+                            f"reason to the user. Do NOT poll get_job_status or retry the same system."
+                        ),
+                    },
+                    usage={"tool": "run_molecular_dynamics"},
+                )
+            if status == "failed":
+                return ToolResult(
+                    success=False,
+                    error=f"MD job {job_id} failed at submission: {data.get('message') or 'unknown error'}",
+                )
+            if status not in ("queued", "processing", "running") or \
+                    data.get("step", "") not in self._LOCAL_MD_INTAKE_STEPS:
+                return None
+            if asyncio.get_event_loop().time() >= deadline:
+                return None
+            await asyncio.sleep(self._LOCAL_MD_INTAKE_POLL_S)
 
     async def _execute_generate_dynamics(self, args: Dict[str, Any], context: Dict[str, Any] = None) -> ToolResult:
         """Generate conformational ensemble via AlphaFlow/ESMFlow."""
