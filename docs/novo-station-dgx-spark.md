@@ -1,6 +1,6 @@
-# Run the whole engine on an NVIDIA DGX Spark
+# Run the NovoMCP compute core on an NVIDIA DGX Spark
 
-**Novo Station** is the NovoMCP engine — GPU compute included — running entirely on one NVIDIA DGX Spark (GB10). You pull prebuilt images and run; you don't build anything. No cloud, no API key for the engine itself, no tokens leaving the box during a run.
+**Novo Station** is the NovoMCP engine's compute core — GPU compute included — running on one NVIDIA DGX Spark (GB10). You pull prebuilt images and run; you don't build anything. Computation runs on the box, and the engine itself needs no API key. Three default tools query public databases (ChEMBL, RCSB and bioRxiv).
 
 The compute core ports in full: MACE / ANI-2x neural-network potentials, the NVIDIA ALCHEMI toolkit, GROMACS GPU molecular dynamics, AutoDock-GPU, xTB / CREST / sTDA, and the 31 ADMET models. (Structure prediction and the generative / free-energy paths aren't in this port — see the [field report](https://www.novomcp.com/news/what-actually-breaks-when-you-port-a-chemistry-stack-to-dgx-spark).)
 
@@ -32,7 +32,7 @@ docker pull ghcr.io/novomcp/autodock-gpu:spark       # GPU docking              
 docker pull ghcr.io/novomcp/novomcp-qm:spark         # xTB / CREST / sTDA        (CPU)
 ```
 
-## 2. Bring the whole engine up
+## 2. Bring the stack up
 
 Grab the Spark compose file and start the stack:
 
@@ -44,9 +44,9 @@ docker compose -f compose.spark.yml ps     # every service "running"
 
 The engine comes up on **http://localhost:8018**, with every compute service wired to it by URL on the internal network. The NNP image sets the two Grace environment fixes (`OMP_NUM_THREADS`, `LD_PRELOAD=libjemalloc`) in its own entrypoint — you don't touch them. The single GB10 GPU is time-shared across the GPU services.
 
-## 3. First run — the whole engine, locally
+## 3. First run
 
-**Point an MCP client at it.** Any MCP-compatible assistant (Claude Desktop, `ollmcp`, an IDE) connects to `http://localhost:8018` and discovers the tools. Pair it with a local LLM (for example Ollama on the same box) and nothing leaves the Spark at all.
+**Point an MCP client at it.** Any MCP-compatible assistant (Claude Desktop, `ollmcp`, an IDE) connects to `http://localhost:8018` and discovers the tools. Pair it with a local LLM (for example Ollama on the same box) and the agent runs on the Spark too. Computation stays local; the three default tools that query public databases (ChEMBL, RCSB and bioRxiv) still reach the network.
 
 **Or call a tool directly** to confirm the GPU path end-to-end — a MACE geometry relaxation of ethanol on the GPU:
 
