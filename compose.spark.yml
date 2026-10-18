@@ -100,6 +100,9 @@ services:
       API_KEY: local                    # the service refuses jobs without one
       REDIS_URL: redis://redis:6379/0   # job status for get_job_status
       AUTODOCK_GPU_URL: http://autodock-gpu:8022   # dock the ligand first: protein-ligand MD starts from the pose
+      LOCAL_RESULTS_DIR: /data/md-results   # no S3 here: keep result.json, trajectory and .xvg per job
+    volumes:
+      - ./md-results:/data/md-results     # one folder per job_id; ~90 MB per protein-ligand ns
     deploy:
       resources:
         reservations:

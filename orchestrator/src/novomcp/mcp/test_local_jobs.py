@@ -128,3 +128,15 @@ def test_ligand_only_job_returns_once_preparing(local, monkeypatch):
     res, polls = _submit(monkeypatch, [{"status": "queued", "step": "queued"},
                                        {"status": "processing", "step": "preparation"}])
     assert res.success and res.data["status"] == "queued" and len(polls) == 2
+
+
+@pytest.mark.parametrize("ns,ok", [(0.05, False), (0.1, True), (100, True), (150, False)])
+def test_duration_bounds(local, monkeypatch, ns, ok):
+    calls = []
+    ex = _executor(monkeypatch, {"/simulate": (200, {"job_id": "gro_mol-1", "status": "queued"}),
+                                 "/status/gro_mol-1": (200, {"status": "processing", "step": "preparation"})},
+                   calls)
+    res = asyncio.run(ex._execute_run_molecular_dynamics({"smiles": "CCO", "duration_ns": ns}))
+    assert res.success is ok
+    if not ok:
+        assert "between 0.1 and 100" in res.error and not calls
