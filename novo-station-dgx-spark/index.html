@@ -78,7 +78,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#run-the-whole-engine-on-an-nvidia-dgx-spark" class="md-skip">
+        <a href="#run-the-novomcp-compute-core-on-an-nvidia-dgx-spark" class="md-skip">
           Skip to content
         </a>
       
@@ -1375,10 +1375,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#2-bring-the-whole-engine-up" class="md-nav__link">
+  <a href="#2-bring-the-stack-up" class="md-nav__link">
     <span class="md-ellipsis">
       
-        2. Bring the whole engine up
+        2. Bring the stack up
       
     </span>
   </a>
@@ -1386,10 +1386,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#3-first-run-the-whole-engine-locally" class="md-nav__link">
+  <a href="#3-first-run" class="md-nav__link">
     <span class="md-ellipsis">
       
-        3. First run — the whole engine, locally
+        3. First run
       
     </span>
   </a>
@@ -2030,10 +2030,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#2-bring-the-whole-engine-up" class="md-nav__link">
+  <a href="#2-bring-the-stack-up" class="md-nav__link">
     <span class="md-ellipsis">
       
-        2. Bring the whole engine up
+        2. Bring the stack up
       
     </span>
   </a>
@@ -2041,10 +2041,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#3-first-run-the-whole-engine-locally" class="md-nav__link">
+  <a href="#3-first-run" class="md-nav__link">
     <span class="md-ellipsis">
       
-        3. First run — the whole engine, locally
+        3. First run
       
     </span>
   </a>
@@ -2098,8 +2098,8 @@
   
 
 
-<h1 id="run-the-whole-engine-on-an-nvidia-dgx-spark">Run the whole engine on an NVIDIA DGX Spark<a class="headerlink" href="#run-the-whole-engine-on-an-nvidia-dgx-spark" title="Permanent link">&para;</a></h1>
-<p><strong>Novo Station</strong> is the NovoMCP engine — GPU compute included — running entirely on one NVIDIA DGX Spark (GB10). You pull prebuilt images and run; you don't build anything. No cloud, no API key for the engine itself, no tokens leaving the box during a run.</p>
+<h1 id="run-the-novomcp-compute-core-on-an-nvidia-dgx-spark">Run the NovoMCP compute core on an NVIDIA DGX Spark<a class="headerlink" href="#run-the-novomcp-compute-core-on-an-nvidia-dgx-spark" title="Permanent link">&para;</a></h1>
+<p><strong>Novo Station</strong> is the NovoMCP engine's compute core — GPU compute included — running on one NVIDIA DGX Spark (GB10). You pull prebuilt images and run; you don't build anything. Computation runs on the box, and the engine itself needs no API key. Three default tools query public databases (ChEMBL, RCSB and bioRxiv).</p>
 <p>The compute core ports in full: MACE / ANI-2x neural-network potentials, the NVIDIA ALCHEMI toolkit, GROMACS GPU molecular dynamics, AutoDock-GPU, xTB / CREST / sTDA, and the 31 ADMET models. (Structure prediction and the generative / free-energy paths aren't in this port — see the <a href="https://www.novomcp.com/news/what-actually-breaks-when-you-port-a-chemistry-stack-to-dgx-spark">field report</a>.)</p>
 <div class="admonition note">
 <p class="admonition-title">Image availability</p>
@@ -2126,15 +2126,15 @@
 </span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>docker<span class="w"> </span>pull<span class="w"> </span>ghcr.io/novomcp/autodock-gpu:spark<span class="w">       </span><span class="c1"># GPU docking               (GPU)</span>
 </span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>docker<span class="w"> </span>pull<span class="w"> </span>ghcr.io/novomcp/novomcp-qm:spark<span class="w">         </span><span class="c1"># xTB / CREST / sTDA        (CPU)</span>
 </span></code></pre></div>
-<h2 id="2-bring-the-whole-engine-up">2. Bring the whole engine up<a class="headerlink" href="#2-bring-the-whole-engine-up" title="Permanent link">&para;</a></h2>
+<h2 id="2-bring-the-stack-up">2. Bring the stack up<a class="headerlink" href="#2-bring-the-stack-up" title="Permanent link">&para;</a></h2>
 <p>Grab the Spark compose file and start the stack:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>curl<span class="w"> </span>-O<span class="w"> </span>https://raw.githubusercontent.com/NovoMCP/novomcp/main/compose.spark.yml
 </span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>docker<span class="w"> </span>compose<span class="w"> </span>-f<span class="w"> </span>compose.spark.yml<span class="w"> </span>up<span class="w"> </span>-d
 </span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>docker<span class="w"> </span>compose<span class="w"> </span>-f<span class="w"> </span>compose.spark.yml<span class="w"> </span>ps<span class="w">     </span><span class="c1"># every service "running"</span>
 </span></code></pre></div>
 <p>The engine comes up on <strong>http://localhost:8018</strong>, with every compute service wired to it by URL on the internal network. The NNP image sets the two Grace environment fixes (<code>OMP_NUM_THREADS</code>, <code>LD_PRELOAD=libjemalloc</code>) in its own entrypoint — you don't touch them. The single GB10 GPU is time-shared across the GPU services.</p>
-<h2 id="3-first-run-the-whole-engine-locally">3. First run — the whole engine, locally<a class="headerlink" href="#3-first-run-the-whole-engine-locally" title="Permanent link">&para;</a></h2>
-<p><strong>Point an MCP client at it.</strong> Any MCP-compatible assistant (Claude Desktop, <code>ollmcp</code>, an IDE) connects to <code>http://localhost:8018</code> and discovers the tools. Pair it with a local LLM (for example Ollama on the same box) and nothing leaves the Spark at all.</p>
+<h2 id="3-first-run">3. First run<a class="headerlink" href="#3-first-run" title="Permanent link">&para;</a></h2>
+<p><strong>Point an MCP client at it.</strong> Any MCP-compatible assistant (Claude Desktop, <code>ollmcp</code>, an IDE) connects to <code>http://localhost:8018</code> and discovers the tools. Pair it with a local LLM (for example Ollama on the same box) and the agent runs on the Spark too. Computation stays local; the three default tools that query public databases (ChEMBL, RCSB and bioRxiv) still reach the network.</p>
 <p><strong>Or call a tool directly</strong> to confirm the GPU path end-to-end — a MACE geometry relaxation of ethanol on the GPU:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>curl<span class="w"> </span>-s<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://localhost:8018/mcp/tools/optimize_geometry_nnp<span class="w"> </span><span class="se">\</span>
 </span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">  </span>-H<span class="w"> </span><span class="s1">'X-API-Key: local'</span><span class="w"> </span>-H<span class="w"> </span><span class="s1">'Content-Type: application/json'</span><span class="w"> </span><span class="se">\</span>
