@@ -2485,7 +2485,7 @@ MCP_TOOLS = {
     "audit_system": {
         "name": "audit_system",
         "title": "Audit System (Free)",
-        "description": "Pre-flight check for molecular dynamics: classify a protein structure without running MD. Returns a structured report: membrane detection (OPM), metal sites with coordination and functional role (MetalPDB + Pfam), heme/Fe-S clusters, and a routing verdict (run_soluble or refused with a specific reason and suggested_branch). Use BEFORE run_molecular_dynamics to qualify targets — if would_route_to='refused', MD will refuse with the same reason and the submission will be wasted. Returns within ~5 seconds. Accepts either pdb_id (RCSB lookup) or pdb_content (direct upload).",
+        "description": "Pre-flight check for molecular dynamics: classify a protein structure without running MD. Returns a structured report: membrane detection (OPM), metal sites with coordination and functional role (MetalPDB + Pfam), heme/Fe-S clusters, covalent ligands, modified residues, and a routing verdict (run_soluble, run_membrane, run_covalent, or refused with a specific reason and suggested_branch). On a local install the verdict comes from the MD service's own submission check. Use BEFORE run_molecular_dynamics to qualify targets — if would_route_to='refused', MD will refuse with the same reason and the submission will be wasted. Returns within ~5 seconds. Accepts either pdb_id (RCSB lookup) or pdb_content (direct upload).",
         "annotations": {
             "readOnlyHint": True,
             "openWorldHint": True
@@ -2568,7 +2568,7 @@ MCP_TOOLS = {
     "run_molecular_dynamics": {
         "name": "run_molecular_dynamics",
         "title": "Run Molecular Dynamics",
-        "description": "Run GPU molecular dynamics simulation using GROMACS. Returns a job_id — use get_job_status to poll for results every 60s until completed. Estimated runtime is included in the response. Omit pdb_id for ligand-only. Results include RMSD, RMSF, radius of gyration. When a ligand is present and the system is soluble (not membrane), results ALSO include: MM-GBSA binding free energy (ΔG_bind) with per-residue decomposition, ligand RMSD, protein-ligand H-bond persistence (per bond, graded on the most persistent: >75% High Quality, <30% False Positive Risk), and pose clustering. Membrane systems skip MM-GBSA (standard GB/PB solver is incorrect with a lipid bilayer) but still get ligand dynamics. LENGTH: use the length the user asks for. If it is shorter than the intent's standard (pose_stability ≥10 ns, mm_gbsa ≥50 ns), run it anyway and say the result is preliminary; do not lengthen a run without asking. Quote the runtime estimate this call returns rather than a typical figure. REFUSALS: unsupported systems (covalent ligands, membrane proteins, heme, Fe-S, catalytic metals, modified residues) are refused at submission with a reason. Before suggesting another PDB ID as an alternative, check it with audit_system (about a second) so you only suggest structures that will run. HOSTED SERVICE ONLY: the first call after idle (>5 min) can add ~2-3 min of GPU warm-up; a local install has none.",
+        "description": "Run GPU molecular dynamics simulation using GROMACS. Returns a job_id — use get_job_status to poll for results every 60s until completed. Estimated runtime is included in the response. Omit pdb_id for ligand-only. Results include RMSD, RMSF, radius of gyration. When a ligand is present and the system is soluble (not membrane), results ALSO include: MM-GBSA binding free energy (ΔG_bind) with per-residue decomposition, ligand RMSD, protein-ligand H-bond persistence (per bond, graded on the most persistent: >75% High Quality, <30% False Positive Risk), and pose clustering. MEMBRANE proteins (found in OPM) run in a POPC bilayer: ~3x the atoms of a soluble system, so expect several hours for 10 ns; they skip MM-GBSA (GB has no membrane term) and add area per lipid and bilayer thickness. COVALENT ligands bonded to a cysteine run with the bond, from the crystal structure (a submitted SMILES isn't used); they skip MM-GBSA and add the bond length. LENGTH: use the length the user asks for. If it is shorter than the intent's standard (pose_stability ≥10 ns, mm_gbsa ≥50 ns), run it anyway and say the result is preliminary; do not lengthen a run without asking. Quote the runtime estimate this call returns rather than a typical figure. REFUSALS: unsupported systems (covalent ligands built from several residues or bonded to anything but a cysteine, heme, Fe-S, catalytic metals, modified residues) are refused at submission with a reason. Before suggesting another PDB ID as an alternative, check it with audit_system (about a second) so you only suggest structures that will run. HOSTED SERVICE ONLY: the first call after idle (>5 min) can add ~2-3 min of GPU warm-up; a local install has none.",
         "annotations": {
             "readOnlyHint": False,
             "destructiveHint": False
@@ -12597,7 +12597,9 @@ class MCPToolExecutor:
             return ToolResult(success=False, error="Provide either pdb_id or pdb_content")
 
         # ── Redis cache (24h by pdb_id, skip for raw pdb_content) ──
-        cache_key = f"audit:result:{pdb_id.upper()}" if pdb_id else None
+        # v2: verdicts cached under v1 came from the engine's own classifier
+        # copy, which had drifted from gromacs-md's (no covalent check)
+        cache_key = f"audit:v2:{pdb_id.upper()}" if pdb_id else None
         if cache_key:
             try:
                 r = await self._get_redis()
@@ -12613,59 +12615,79 @@ class MCPToolExecutor:
             except Exception:
                 pass  # Cache miss or Redis unavailable — proceed normally
 
-        # ── Run the classifier in-process ──
-        try:
+        # ── Local engine: gromacs-md's own /audit ──
+        # The submission gate is gromacs-md's classifier, so a pre-flight that
+        # runs a different copy can disagree with it (it passed 6LU7 while the
+        # gate refused its covalent ligand). Ask the gate itself when it's here;
+        # the in-process copy below stays as the hosted/offline fallback.
+        data = None
+        if not surfaces_split():
             try:
-                from novomcp.core.intake import classify_structure
-            except ImportError as e:
-                logger.error(f"intake module not available: {e}")
-                return ToolResult(
-                    success=False,
-                    error=(
-                        "Audit classifier not available in this deployment. "
-                        "MDAnalysis or the intake module may be missing — "
-                        "rebuild novomcp with the latest requirements.txt."
-                    ),
-                )
+                resp = await self._call_service("gromacs-md", "/audit", {
+                    "pdb_id": pdb_id.upper() if pdb_id else None,
+                    "pdb_content": pdb_content,
+                }, timeout=60.0)
+                if resp.status_code == 200:
+                    data = resp.json()
+                else:
+                    logger.warning(f"gromacs-md /audit HTTP {resp.status_code}; using the in-process classifier")
+            except Exception as e:
+                logger.warning(f"gromacs-md /audit unavailable ({e}); using the in-process classifier")
 
-            # Fetch PDB from RCSB if only pdb_id given (mirrors gromacs-md
-            # /audit behavior — same fetch happens before classification).
-            resolved_content = pdb_content
-            if pdb_id and not resolved_content:
+        # ── Otherwise run the classifier in-process ──
+        try:
+            if data is None:
                 try:
-                    import httpx as _httpx
-                    rcsb_url = f"https://files.rcsb.org/download/{pdb_id.upper()}.pdb"
-                    async with _httpx.AsyncClient(timeout=30.0) as client:
-                        rcsb_resp = await client.get(rcsb_url)
-                    if rcsb_resp.status_code != 200:
-                        return ToolResult(
-                            success=False,
-                            error=f"Failed to fetch {pdb_id} from RCSB: HTTP {rcsb_resp.status_code}",
-                        )
-                    resolved_content = rcsb_resp.text
-                except Exception as e:
+                    from novomcp.core.intake import classify_structure
+                except ImportError as e:
+                    logger.error(f"intake module not available: {e}")
                     return ToolResult(
                         success=False,
-                        error=f"Failed to fetch {pdb_id} from RCSB: {str(e)[:200]}",
+                        error=(
+                            "Audit classifier not available in this deployment. "
+                            "MDAnalysis or the intake module may be missing — "
+                            "rebuild novomcp with the latest requirements.txt."
+                        ),
                     )
 
-            redis_client = await self._get_redis()
-            decision = await classify_structure(
-                pdb_content=resolved_content,
-                pdb_id=pdb_id,
-                redis_client=redis_client,
-            )
+                # Fetch PDB from RCSB if only pdb_id given (mirrors gromacs-md
+                # /audit behavior — same fetch happens before classification).
+                resolved_content = pdb_content
+                if pdb_id and not resolved_content:
+                    try:
+                        import httpx as _httpx
+                        rcsb_url = f"https://files.rcsb.org/download/{pdb_id.upper()}.pdb"
+                        async with _httpx.AsyncClient(timeout=30.0) as client:
+                            rcsb_resp = await client.get(rcsb_url)
+                        if rcsb_resp.status_code != 200:
+                            return ToolResult(
+                                success=False,
+                                error=f"Failed to fetch {pdb_id} from RCSB: HTTP {rcsb_resp.status_code}",
+                            )
+                        resolved_content = rcsb_resp.text
+                    except Exception as e:
+                        return ToolResult(
+                            success=False,
+                            error=f"Failed to fetch {pdb_id} from RCSB: {str(e)[:200]}",
+                        )
 
-            # Mirror the /audit endpoint's response shape so the rest of this
-            # function (reading `route`, `profile`, etc.) works unchanged.
-            data = {
-                "status": "audited",
-                "would_route_to": decision.route,
-                "suggested_branch": decision.suggested_branch,
-                "primary_reason": decision.reasons[0] if decision.reasons else None,
-                "reasons": decision.reasons,
-                "profile": decision.profile.model_dump(),
-            }
+                redis_client = await self._get_redis()
+                decision = await classify_structure(
+                    pdb_content=resolved_content,
+                    pdb_id=pdb_id,
+                    redis_client=redis_client,
+                )
+
+                # Mirror the /audit endpoint's response shape so the rest of this
+                # function (reading `route`, `profile`, etc.) works unchanged.
+                data = {
+                    "status": "audited",
+                    "would_route_to": decision.route,
+                    "suggested_branch": decision.suggested_branch,
+                    "primary_reason": decision.reasons[0] if decision.reasons else None,
+                    "reasons": decision.reasons,
+                    "profile": decision.profile.model_dump(),
+                }
 
             route = data.get("would_route_to", "unknown")
             suggested = data.get("suggested_branch")
@@ -12680,18 +12702,33 @@ class MCPToolExecutor:
                     "No membrane, no metals, no exotic cofactors detected."
                 )
             elif route == "run_membrane":
-                # run_membrane is a LIVE accept route (CHARMM36m + packmol-memgen bilayer).
-                # Note in classifier.py:190 — "no longer a suggestion — it's the actual route."
-                # Don't lump it with `refused` (future-branch) — that guidance is wrong here.
+                # A live accept route, not a future branch: don't lump it with `refused`.
                 headline = (
                     f"{pdb_id or 'Structure'} passes intake — MD simulation supported "
-                    f"via the membrane branch (CHARMM36m + packmol-memgen bilayer)."
+                    f"via the membrane branch (OPM-oriented, POPC bilayer; AMBER ff14SB + Lipid21)."
                 )
                 guidance = (
                     "This structure routes to the membrane MD branch automatically when "
-                    "run_molecular_dynamics is called. Note: MM-GBSA is skipped for membrane "
-                    "systems (the standard GB/PB solver is incorrect with a lipid bilayer); "
-                    "ligand dynamics, RMSD, RMSF, and pose clustering still run normally."
+                    "run_molecular_dynamics is called. The protein is oriented from OPM, packed in "
+                    "a POPC bilayer with water and 0.15 M NaCl, and equilibrated in six stages "
+                    "(~1.9 ns) before production. A membrane system is ~3x the atoms of a soluble "
+                    "one: expect several hours for 10 ns, and suggest a shorter run unless the "
+                    "user asks for more. MM-GBSA is skipped (GB has no membrane term); ligand "
+                    "RMSD, H-bonds, pose clustering, area per lipid and bilayer thickness are "
+                    "reported. The chain is simulated as deposited: fusion partners (e.g. the T4 "
+                    "lysozyme in 2RH1) stay in, and crystal HETATMs (cholesterol, palmitate, "
+                    "additives) are not."
+                )
+            elif route == "run_covalent":
+                headline = (
+                    f"{pdb_id or 'Structure'} passes intake — MD simulation supported via the "
+                    f"covalent branch (the crystal's ligand bonded to its cysteine)."
+                )
+                guidance = (
+                    "run_molecular_dynamics simulates the crystal's covalently bound ligand with "
+                    "its cysteine as one residue (ff14SB + GAFF2); a submitted SMILES is not used. "
+                    "MM-GBSA is skipped (a binding free energy doesn't apply to a bonded ligand); "
+                    "the covalent bond length, ligand RMSD and H-bonds are reported."
                 )
             else:  # refused
                 headline = (
@@ -12701,6 +12738,9 @@ class MCPToolExecutor:
                 branch_names = {
                     "mcpb_distal": "our upcoming MCPB distal-metal branch",
                     "qmmm_active_site": "our upcoming QM/MM active-site branch",
+                    "covalent_ligand": "covalent-ligand support beyond what the pipeline handles "
+                                       "(the reason says which part)",
+                    "modified_residues": "parameters for modified residues",
                     # charmm36m_membrane intentionally omitted — it's live (see
                     # run_membrane branch above). Listing it here would mis-name
                     # a shipped branch as "upcoming".
