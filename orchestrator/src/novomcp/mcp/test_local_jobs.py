@@ -140,3 +140,60 @@ def test_duration_bounds(local, monkeypatch, ns, ok):
     assert res.success is ok
     if not ok:
         assert "between 0.1 and 100" in res.error and not calls
+
+
+COVALENT_AUDIT = {
+    "status": "audited", "would_route_to": "refused", "suggested_branch": "covalent_ligand",
+    "primary_reason": "covalent ligand bonded to the protein (PJE C5 C20 - CYS A145 SG (1.79 A)): "
+                      "3 covalent ligand links",
+    "reasons": ["covalent ligand bonded to the protein ..."],
+    "profile": {"covalent_links": ["PJE C5 C20 - CYS A145 SG (1.79 A)"], "metal_sites": []},
+}
+
+
+def _audit_executor(monkeypatch, response, calls):
+    ex = _executor(monkeypatch, {"/audit": response}, calls)
+
+    async def no_redis():
+        return None
+    monkeypatch.setattr(ex, "_get_redis", no_redis, raising=False)
+    return ex
+
+
+def test_audit_asks_the_md_service_that_gates_submissions(local, monkeypatch):
+    calls = []
+    ex = _audit_executor(monkeypatch, (200, COVALENT_AUDIT), calls)
+    res = asyncio.run(ex._execute_audit_system({"pdb_id": "6lu7"}))
+    assert calls[0][:2] == ("gromacs-md", "/audit") and calls[0][2]["pdb_id"] == "6LU7"
+    assert res.success and res.data["would_route_to"] == "refused"
+    assert res.data["suggested_branch"] == "covalent_ligand"
+
+
+def test_audit_falls_back_to_the_in_process_classifier(local, monkeypatch):
+    import sys
+    import types
+
+    class Decision:
+        route, suggested_branch, reasons = "run_soluble", None, ["happy path"]
+
+        class profile:
+            @staticmethod
+            def model_dump():
+                return {"metal_sites": []}
+
+    async def classify_structure(**kwargs):
+        return Decision()
+
+    monkeypatch.setitem(sys.modules, "novomcp.core.intake",
+                        types.SimpleNamespace(classify_structure=classify_structure))
+
+    class FakeRCSB:
+        def __init__(self, *a, **k): pass
+        async def __aenter__(self): return self
+        async def __aexit__(self, *a): pass
+        async def get(self, url): return httpx.Response(200, text="ATOM\n")
+    monkeypatch.setattr(httpx, "AsyncClient", FakeRCSB)
+
+    ex = _audit_executor(monkeypatch, (503, {"detail": "down"}), [])
+    res = asyncio.run(ex._execute_audit_system({"pdb_id": "181l"}))
+    assert res.success and res.data["would_route_to"] == "run_soluble"
