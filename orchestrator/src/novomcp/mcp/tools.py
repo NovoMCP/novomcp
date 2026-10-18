@@ -13667,8 +13667,14 @@ class MCPToolExecutor:
             usage={"queries": 1, "tool": "run_molecular_dynamics"}
         )
 
-    # Steps a local gromacs-md job passes through before intake has accepted it
-    _LOCAL_MD_INTAKE_STEPS = ("", "queued", "classify")
+    # First steps a local gromacs-md job reaches once intake has accepted it.
+    # Until one of these (or a terminal status) shows up the job may still be
+    # refused; any other step, e.g. fetch_pdb or classify, keeps us waiting.
+    _LOCAL_MD_PAST_INTAKE_STEPS = (
+        "repair", "repair_done", "preparation", "placement", "pdb2gmx",
+        "ligand_topology", "editconf", "solvate", "genion", "em",
+        "bilayer_build", "production",
+    )
     _LOCAL_MD_INTAKE_WAIT_S = 8.0
     _LOCAL_MD_INTAKE_POLL_S = 0.5
 
@@ -13719,7 +13725,7 @@ class MCPToolExecutor:
                     error=f"MD job {job_id} failed at submission: {data.get('message') or 'unknown error'}",
                 )
             if status not in ("queued", "processing", "running") or \
-                    data.get("step", "") not in self._LOCAL_MD_INTAKE_STEPS:
+                    data.get("step", "") in self._LOCAL_MD_PAST_INTAKE_STEPS:
                 return None
             if asyncio.get_event_loop().time() >= deadline:
                 return None
