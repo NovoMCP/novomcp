@@ -97,12 +97,13 @@ def test_refusal_is_returned_at_submission(local, monkeypatch):
     refusal = {"status": "refused", "result": {
         "primary_reason": "covalent ligand: Cys145 SG to ligand C (1.79 A)",
         "reasons": ["covalent ligand"], "suggested_branch": "covalent_ligand"}}
-    res, polls = _submit(monkeypatch, [{"status": "queued", "step": ""},
+    res, polls = _submit(monkeypatch, [{"status": "queued", "step": "queued"},
+                                       {"status": "processing", "step": "fetch_pdb"},
                                        {"status": "processing", "step": "classify"}, refusal])
     assert res.success and res.data["status"] == "refused" and res.data["refused"]
     assert res.data["suggested_branch"] == "covalent_ligand"
     assert "no simulation is running" in res.data["message"]
-    assert len(polls) == 3
+    assert len(polls) == 4
 
 
 def test_failure_during_intake_is_returned_at_submission(local, monkeypatch):
@@ -121,3 +122,9 @@ def test_slow_intake_does_not_block_submission(local, monkeypatch):
     res, polls = _submit(monkeypatch, [{"status": "processing", "step": "classify"}])
     assert res.success and res.data["status"] == "queued"
     assert 1 < len(polls) <= 25  # gave up after the wait
+
+
+def test_ligand_only_job_returns_once_preparing(local, monkeypatch):
+    res, polls = _submit(monkeypatch, [{"status": "queued", "step": "queued"},
+                                       {"status": "processing", "step": "preparation"}])
+    assert res.success and res.data["status"] == "queued" and len(polls) == 2
