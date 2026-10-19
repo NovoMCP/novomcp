@@ -197,3 +197,19 @@ def test_audit_falls_back_to_the_in_process_classifier(local, monkeypatch):
     ex = _audit_executor(monkeypatch, (503, {"detail": "down"}), [])
     res = asyncio.run(ex._execute_audit_system({"pdb_id": "181l"}))
     assert res.success and res.data["would_route_to"] == "run_soluble"
+
+
+def test_running_md_status_relays_the_finish_time(local, monkeypatch):
+    running = {"status": "processing", "progress": 87, "message": "Production MD (10.0ns): 8.84 ns done",
+               "estimated_remaining_minutes": 26, "estimated_total_minutes": 236, "elapsed_minutes": 210,
+               "estimated_completion_at": "2026-10-18T23:54:00+00:00"}
+    ex = _executor(monkeypatch, {"/status/gro_2RH1-ligand_1": (200, running)}, [])
+    res = asyncio.run(ex._execute_get_job_status({"job_id": "gro_2RH1-ligand_1"}))
+    assert res.success and res.data["estimated_completion_at"] == "2026-10-18T23:54:00+00:00"
+    assert "Estimated finish: 2026-10-18T23:54:00+00:00 (UTC)" in res.data["message"]
+    assert "user's current time zone" in res.data["message"]
+
+    del running["estimated_completion_at"]  # an older gromacs-md: no finish time, no hint
+    res = asyncio.run(ex._execute_get_job_status({"job_id": "gro_2RH1-ligand_1"}))
+    assert "estimated_completion_at" not in res.data and "Estimated finish" not in res.data["message"]
+    assert "~26 minutes remaining" in res.data["message"]
