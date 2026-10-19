@@ -7957,6 +7957,11 @@ class MCPToolExecutor:
                         result["estimated_total_minutes"] = est_total
                     if elapsed is not None:
                         result["elapsed_minutes"] = elapsed
+                    # the finish time in UTC with its zone marked; relaying it
+                    # beats the model adding minutes to a clock it may have wrong
+                    finish_at = data.get("estimated_completion_at")
+                    if finish_at:
+                        result["estimated_completion_at"] = finish_at
 
                     # Pass through the service's live heartbeat message and
                     # current step. The engine writes these every ~30s with
@@ -7985,7 +7990,10 @@ class MCPToolExecutor:
                             f"{head}STILL RUNNING — this is expected, not an error. "
                             f"~{est_remaining} minutes remaining "
                             f"(elapsed: {elapsed or '?'} min / est. total: {est_total or '?'} min). "
-                            f"You MUST call get_job_status again in {poll_interval}."
+                            + (f"Estimated finish: {finish_at} (UTC). When giving a clock time, convert "
+                               f"this to the user's current time zone; if you don't know it, give the "
+                               f"time remaining instead. " if finish_at else "")
+                            + f"You MUST call get_job_status again in {poll_interval}."
                         )
                     else:
                         extra = ""
