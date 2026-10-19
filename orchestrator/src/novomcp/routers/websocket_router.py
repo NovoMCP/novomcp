@@ -10,7 +10,7 @@ Provides WebSocket endpoints for:
 
 import logging
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, Any, List, Set
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from novomcp.config import settings
@@ -205,7 +205,7 @@ async def campaign_stream(websocket: WebSocket, campaign_id: str):
 
                 # Handle different message types
                 if message.get("type") == "ping" or data == "ping":
-                    await websocket.send_json({"type": "pong", "timestamp": datetime.utcnow().isoformat()})
+                    await websocket.send_json({"type": "pong", "timestamp": datetime.now(timezone.utc).isoformat()})
                 elif message.get("type") == "subscribe":
                     # Subscribe to specific event types
                     event_types = message.get("events", ["all"])
@@ -213,10 +213,10 @@ async def campaign_stream(websocket: WebSocket, campaign_id: str):
                     await websocket.send_json({
                         "type": "subscription_confirmed",
                         "events": event_types,
-                        "timestamp": datetime.utcnow().isoformat()
+                        "timestamp": datetime.now(timezone.utc).isoformat()
                     })
                 elif message.get("type") == "heartbeat":
-                    await websocket.send_json({"type": "heartbeat_ack", "timestamp": datetime.utcnow().isoformat()})
+                    await websocket.send_json({"type": "heartbeat_ack", "timestamp": datetime.now(timezone.utc).isoformat()})
 
             except json.JSONDecodeError:
                 # Handle plain text messages
@@ -279,13 +279,13 @@ async def global_stream(websocket: WebSocket):
 
                 # Handle different message types
                 if message.get("type") == "ping" or data == "ping":
-                    await websocket.send_json({"type": "pong", "timestamp": datetime.utcnow().isoformat()})
+                    await websocket.send_json({"type": "pong", "timestamp": datetime.now(timezone.utc).isoformat()})
                 elif message.get("type") == "subscribe_all":
                     global_ws_manager.subscribe_all(websocket)
                     await websocket.send_json({
                         "type": "subscription_confirmed",
                         "scope": "global",
-                        "timestamp": datetime.utcnow().isoformat()
+                        "timestamp": datetime.now(timezone.utc).isoformat()
                     })
                 elif message.get("type") == "subscribe_campaigns":
                     campaign_ids = message.get("campaign_ids", [])
@@ -293,7 +293,7 @@ async def global_stream(websocket: WebSocket):
                     await websocket.send_json({
                         "type": "subscription_confirmed",
                         "campaigns": campaign_ids,
-                        "timestamp": datetime.utcnow().isoformat()
+                        "timestamp": datetime.now(timezone.utc).isoformat()
                     })
                 elif message.get("type") == "subscribe_events":
                     events = message.get("events", ["all"])
@@ -301,10 +301,10 @@ async def global_stream(websocket: WebSocket):
                     await websocket.send_json({
                         "type": "subscription_confirmed",
                         "events": events,
-                        "timestamp": datetime.utcnow().isoformat()
+                        "timestamp": datetime.now(timezone.utc).isoformat()
                     })
                 elif message.get("type") == "heartbeat":
-                    await websocket.send_json({"type": "heartbeat_ack", "timestamp": datetime.utcnow().isoformat()})
+                    await websocket.send_json({"type": "heartbeat_ack", "timestamp": datetime.now(timezone.utc).isoformat()})
 
             except json.JSONDecodeError:
                 # Handle plain text messages
@@ -336,7 +336,7 @@ async def broadcast_global_update(event_type: str, data: Dict[str, Any]):
     message = {
         "type": event_type,
         "data": data,
-        "timestamp": datetime.utcnow().isoformat()
+        "timestamp": datetime.now(timezone.utc).isoformat()
     }
 
     # Publish to Redis for cross-task broadcasting

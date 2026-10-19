@@ -1,5 +1,6 @@
 """Local engine (NOVO_AUTH=local): MD jobs can be polled, cancelled and given an intent."""
 import asyncio
+from datetime import datetime, timedelta, timezone
 
 import httpx
 import pytest
@@ -209,7 +210,33 @@ def test_running_md_status_relays_the_finish_time(local, monkeypatch):
     assert "Estimated finish: 2026-10-18T23:54:00+00:00 (UTC)" in res.data["message"]
     assert "user's current time zone" in res.data["message"]
 
-    del running["estimated_completion_at"]  # an older gromacs-md: no finish time, no hint
+    assert res.data["message"].count("Estimated finish") == 1
+
+    del running["estimated_completion_at"]  # an older gromacs-md: the engine works it out
     res = asyncio.run(ex._execute_get_job_status({"job_id": "gro_2RH1-ligand_1"}))
-    assert "estimated_completion_at" not in res.data and "Estimated finish" not in res.data["message"]
-    assert "~26 minutes remaining" in res.data["message"]
+    finish = datetime.fromisoformat(res.data["estimated_completion_at"])
+    assert abs((finish - datetime.now(timezone.utc) - timedelta(minutes=26)).total_seconds()) < 5
+    assert "Estimated finish" in res.data["message"] and "~26 minutes remaining" in res.data["message"]
+
+
+def test_job_times_are_marked_utc_for_every_service():
+    data = {"status": "running", "completed": False, "last_updated": "2026-10-18T23:27:55.747561",
+            "submitted_at": "2026-10-18T19:56:57Z", "started_at": "not a time",
+            "estimated_remaining_minutes": 26,
+            "message": "STILL RUNNING. ~26 min remaining. You MUST call get_job_status again in 60 seconds.",
+            "results": {"created_at": "2026-10-18T10:00:00"}}
+    out = tools._job_times_in_utc(data)
+    assert out["last_updated"] == "2026-10-18T23:27:55.747561+00:00"
+    assert out["submitted_at"] == "2026-10-18T19:56:57+00:00"
+    assert out["started_at"] == "not a time"
+    assert out["results"]["created_at"] == "2026-10-18T10:00:00"  # result payloads untouched
+    # the hint goes before the polling instruction
+    assert out["message"].index("Estimated finish") < out["message"].index("You MUST call")
+    assert tools._FINISH_HINT in out["message"]
+
+
+def test_finished_or_unestimated_jobs_get_no_finish_time():
+    done = tools._job_times_in_utc({"completed": True, "estimated_remaining_minutes": 5, "message": "done"})
+    assert "estimated_completion_at" not in done and done["message"] == "done"
+    unknown = tools._job_times_in_utc({"completed": False, "message": "Job is queued."})
+    assert "estimated_completion_at" not in unknown and unknown["message"] == "Job is queued."

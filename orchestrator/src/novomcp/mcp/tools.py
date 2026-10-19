@@ -25,7 +25,7 @@ import logging
 import os
 import json
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Any, Optional
 from dataclasses import dataclass, field
 from enum import Enum
@@ -3709,6 +3709,50 @@ class GpuWarmingException(BaseException):
         super().__init__(f"{service} is cold-starting (retry in {retry_after_s}s)")
 
 
+# ---- job times: UTC, zone marked, for every job type ------------------------
+# Services and SQL write naive UTC; a client reading an unmarked time as its
+# own local time reports the wrong clock time to the user. get_job_status marks
+# them and states the finish time, so the model converts one marked time to the
+# user's zone instead of adding minutes to a clock it may have wrong.
+_FINISH_HINT = ("When giving a clock time, convert this to the user's current time zone; "
+                "if you don't know it, give the time remaining instead.")
+
+
+def _utc_stamp(value):
+    """An ISO timestamp with its zone marked; naive ones are UTC. Anything
+    else is returned unchanged."""
+    if not isinstance(value, str) or not value:
+        return value
+    try:
+        t = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return value
+    return (t if t.tzinfo else t.replace(tzinfo=timezone.utc)).isoformat()
+
+
+def _job_times_in_utc(data: Dict[str, Any]) -> Dict[str, Any]:
+    """Mark the zone on a job status's top-level times, add the estimated
+    finish time when the time remaining is known, and say how to report it.
+    Result payloads are left as the service wrote them."""
+    for key in list(data):
+        if key == "last_updated" or key == "timestamp" or key.endswith("_at"):
+            data[key] = _utc_stamp(data[key])
+    if data.get("completed"):
+        return data
+    remaining = data.get("estimated_remaining_minutes")
+    if not data.get("estimated_completion_at") and isinstance(remaining, (int, float)) and remaining > 0:
+        data["estimated_completion_at"] = (
+            datetime.now(timezone.utc) + timedelta(minutes=remaining)).replace(microsecond=0).isoformat()
+    finish = data.get("estimated_completion_at")
+    message = data.get("message")
+    if finish and isinstance(message, str) and "Estimated finish" not in message:
+        hint = f"Estimated finish: {finish} (UTC). {_FINISH_HINT} "
+        cut = message.find("You MUST call")
+        data["message"] = (message[:cut] + hint + message[cut:]) if cut >= 0 else f"{message.rstrip()} {hint.rstrip()}"
+    return data
+
+
+
 class MCPToolExecutor:
     """
     Executes MCP tools with proper data flow:
@@ -7245,6 +7289,13 @@ class MCPToolExecutor:
             )
 
     async def _execute_get_job_status(self, args: Dict[str, Any], context: Dict[str, Any] = None) -> ToolResult:
+        """Status of any async job, with its times in UTC (see _job_times_in_utc)."""
+        res = await self._job_status(args, context)
+        if res.success and isinstance(res.data, dict):
+            _job_times_in_utc(res.data)
+        return res
+
+    async def _job_status(self, args: Dict[str, Any], context: Dict[str, Any] = None) -> ToolResult:
         """
         Universal job status checker for all async NovoMCP operations.
 
@@ -7957,11 +8008,9 @@ class MCPToolExecutor:
                         result["estimated_total_minutes"] = est_total
                     if elapsed is not None:
                         result["elapsed_minutes"] = elapsed
-                    # the finish time in UTC with its zone marked; relaying it
-                    # beats the model adding minutes to a clock it may have wrong
-                    finish_at = data.get("estimated_completion_at")
-                    if finish_at:
-                        result["estimated_completion_at"] = finish_at
+                    # the service's own finish time (UTC); _job_times_in_utc adds the hint
+                    if data.get("estimated_completion_at"):
+                        result["estimated_completion_at"] = data["estimated_completion_at"]
 
                     # Pass through the service's live heartbeat message and
                     # current step. The engine writes these every ~30s with
@@ -7990,10 +8039,7 @@ class MCPToolExecutor:
                             f"{head}STILL RUNNING — this is expected, not an error. "
                             f"~{est_remaining} minutes remaining "
                             f"(elapsed: {elapsed or '?'} min / est. total: {est_total or '?'} min). "
-                            + (f"Estimated finish: {finish_at} (UTC). When giving a clock time, convert "
-                               f"this to the user's current time zone; if you don't know it, give the "
-                               f"time remaining instead. " if finish_at else "")
-                            + f"You MUST call get_job_status again in {poll_interval}."
+                            f"You MUST call get_job_status again in {poll_interval}."
                         )
                     else:
                         extra = ""
