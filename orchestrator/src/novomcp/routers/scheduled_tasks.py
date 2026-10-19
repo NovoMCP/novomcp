@@ -6,7 +6,7 @@ Handles background jobs triggered by AWS EventBridge
 from fastapi import APIRouter, HTTPException, Request, Depends, Header
 from typing import Dict, Any, List, Optional
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 import asyncio
 import os
 
@@ -156,7 +156,7 @@ async def scheduled_literature_ingestion(
             "message": "Literature ingestion started in background",
             "targets_queued": len(all_targets),
             "duration_seconds": duration,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         }
 
     except Exception as e:
@@ -183,7 +183,7 @@ async def scheduled_cleanup(
         return {
             "status": "success",
             "message": "Cleanup completed",
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         }
 
     except Exception as e:
@@ -200,5 +200,5 @@ async def scheduled_health_check():
     return {
         "status": "healthy",
         "service": "novomcp-scheduled-tasks",
-        "timestamp": datetime.utcnow().isoformat()
+        "timestamp": datetime.now(timezone.utc).isoformat()
     }

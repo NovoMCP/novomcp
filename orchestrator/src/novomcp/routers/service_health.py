@@ -8,7 +8,7 @@ from typing import Dict, Any, List
 import logging
 import asyncio
 import httpx
-from datetime import datetime
+from datetime import datetime, timezone
 
 logger = logging.getLogger(__name__)
 
@@ -276,7 +276,7 @@ async def check_all_services(request: Request = None):
 
         return {
             "status": overall_status,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "summary": {
                 "total_services": total,
                 "healthy": healthy,
@@ -309,7 +309,7 @@ async def test_molecule_pipeline(request: Request = None):
 
         pipeline_results = {
             "test_molecule": test_smiles,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "steps": []
         }
 

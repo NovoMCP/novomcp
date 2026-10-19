@@ -36,7 +36,7 @@ import json
 import logging
 import os
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, Any, List, Optional
 from contextlib import asynccontextmanager
 
@@ -813,7 +813,7 @@ async def health():
         "status": "healthy",
         "service": SERVICE_NAME,
         "version": _engine_version,
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "redis": "connected" if REDIS_ENABLED else "disabled",
         "services_available": len(SERVICE_REGISTRY),
         # Full tool catalog size — surfaces (e.g. the dashboard) render
@@ -1140,7 +1140,7 @@ async def orchestrate(request: OrchestrationRequest):
         "workflow_type": request.workflow_type,
         "execution": "parallel" if request.parallel else "sequential",
         "results": results,
-        "timestamp": datetime.utcnow().isoformat()
+        "timestamp": datetime.now(timezone.utc).isoformat()
     }
 
 # Execute custom workflow
@@ -1199,7 +1199,7 @@ async def execute_workflow(request: WorkflowRequest):
         "steps_executed": len(results),
         "results": results,
         "context": context,
-        "timestamp": datetime.utcnow().isoformat()
+        "timestamp": datetime.now(timezone.utc).isoformat()
     }
 
 # Proxy endpoint for direct service access
@@ -1283,7 +1283,7 @@ async def metrics():
         "uptime": "healthy",
         "redis": "connected" if REDIS_ENABLED else "disabled",
         "services_registered": len(SERVICE_REGISTRY),
-        "timestamp": datetime.utcnow().isoformat()
+        "timestamp": datetime.now(timezone.utc).isoformat()
     }
 
 # =============================================================================
