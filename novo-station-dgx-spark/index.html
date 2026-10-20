@@ -1397,6 +1397,28 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#4-open-the-dashboard" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Open the dashboard
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-add-compliance-screening-optional-paid" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Add compliance screening (optional, paid)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#known-limits-on-gb10-measured" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2052,6 +2074,28 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#4-open-the-dashboard" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Open the dashboard
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-add-compliance-screening-optional-paid" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Add compliance screening (optional, paid)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#known-limits-on-gb10-measured" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2099,11 +2143,11 @@
 
 
 <h1 id="run-the-novomcp-compute-core-on-an-nvidia-dgx-spark">Run the NovoMCP compute core on an NVIDIA DGX Spark<a class="headerlink" href="#run-the-novomcp-compute-core-on-an-nvidia-dgx-spark" title="Permanent link">&para;</a></h1>
-<p><strong>Novo Station</strong> is the NovoMCP engine's compute core — GPU compute included — running on one NVIDIA DGX Spark (GB10). You pull prebuilt images and run; you don't build anything. Computation runs on the box, and the engine itself needs no API key. Three default tools query public databases (ChEMBL, RCSB and bioRxiv).</p>
+<p><strong>Novo Station</strong> is the NovoMCP engine's compute core — GPU compute included — running on one NVIDIA DGX Spark (GB10), with the web dashboard alongside it. You pull prebuilt images and run; you don't build anything. Computation runs on the box, and the engine itself needs no API key. Three default tools query public databases (ChEMBL, RCSB and bioRxiv), and compliance screening, if you add it, is called on the paid API at api.novomcp.com.</p>
 <p>The compute core ports in full: MACE / ANI-2x neural-network potentials, the NVIDIA ALCHEMI toolkit, GROMACS GPU molecular dynamics, AutoDock-GPU, xTB / CREST / sTDA, and the 31 ADMET models. (Structure prediction and the generative / free-energy paths aren't in this port — see the <a href="https://www.novomcp.com/news/what-actually-breaks-when-you-port-a-chemistry-stack-to-dgx-spark">field report</a>.)</p>
 <div class="admonition note">
 <p class="admonition-title">Image availability</p>
-<p>Every image in the stack is published for arm64 and resolves automatically on the Spark — the engine, <code>chem-props</code>, <code>addie-models</code> and <code>novomcp-properties</code> as multi-arch <code>:latest</code>; the compiled GPU/native services (<code>novomcp-nnp</code>, <code>gromacs-md</code>, <code>autodock-gpu</code>, <code>novomcp-qm</code>) as the arm64 <code>:spark</code> tag.</p>
+<p>Every image in the stack is published for arm64 and resolves automatically on the Spark — the engine, the dashboard (<code>web</code>), <code>chem-props</code>, <code>addie-models</code> and <code>novomcp-properties</code> as multi-arch <code>:latest</code>; the compiled GPU/native services (<code>novomcp-nnp</code>, <code>gromacs-md</code>, <code>autodock-gpu</code>, <code>novomcp-qm</code>) as the arm64 <code>:spark</code> tag.</p>
 </div>
 <h2 id="prerequisites">Prerequisites<a class="headerlink" href="#prerequisites" title="Permanent link">&para;</a></h2>
 <ul>
@@ -2116,15 +2160,16 @@
 <p>Multi-arch images auto-select arm64 on the Spark:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="c1"># Engine + CPU services (multi-arch :latest)</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>docker<span class="w"> </span>pull<span class="w"> </span>ghcr.io/novomcp/novomcp:latest<span class="w">           </span><span class="c1"># the engine</span>
-</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>docker<span class="w"> </span>pull<span class="w"> </span>ghcr.io/novomcp/chem-props:latest<span class="w">        </span><span class="c1"># RDKit properties / similarity</span>
-</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>docker<span class="w"> </span>pull<span class="w"> </span>ghcr.io/novomcp/addie-models:latest<span class="w">      </span><span class="c1"># 31 ADMET models (DGL/GIN)</span>
-</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>docker<span class="w"> </span>pull<span class="w"> </span>ghcr.io/novomcp/novomcp-properties:latest<span class="w"> </span><span class="c1"># aqueous solubility, bond dissociation energies</span>
-</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>
-</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="c1"># GPU / native services (arm64 :spark builds)</span>
-</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>docker<span class="w"> </span>pull<span class="w"> </span>ghcr.io/novomcp/novomcp-nnp:spark<span class="w">        </span><span class="c1"># MACE / ALCHEMI + ANI-2x   (GPU)</span>
-</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>docker<span class="w"> </span>pull<span class="w"> </span>ghcr.io/novomcp/gromacs-md:spark<span class="w">         </span><span class="c1"># GPU molecular dynamics    (GPU)</span>
-</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>docker<span class="w"> </span>pull<span class="w"> </span>ghcr.io/novomcp/autodock-gpu:spark<span class="w">       </span><span class="c1"># GPU docking               (GPU)</span>
-</span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>docker<span class="w"> </span>pull<span class="w"> </span>ghcr.io/novomcp/novomcp-qm:spark<span class="w">         </span><span class="c1"># xTB / CREST / sTDA        (CPU)</span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>docker<span class="w"> </span>pull<span class="w"> </span>ghcr.io/novomcp/web:latest<span class="w">               </span><span class="c1"># the web dashboard</span>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>docker<span class="w"> </span>pull<span class="w"> </span>ghcr.io/novomcp/chem-props:latest<span class="w">        </span><span class="c1"># RDKit properties / similarity</span>
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>docker<span class="w"> </span>pull<span class="w"> </span>ghcr.io/novomcp/addie-models:latest<span class="w">      </span><span class="c1"># 31 ADMET models (DGL/GIN)</span>
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>docker<span class="w"> </span>pull<span class="w"> </span>ghcr.io/novomcp/novomcp-properties:latest<span class="w"> </span><span class="c1"># aqueous solubility, bond dissociation energies</span>
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>
+</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="c1"># GPU / native services (arm64 :spark builds)</span>
+</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>docker<span class="w"> </span>pull<span class="w"> </span>ghcr.io/novomcp/novomcp-nnp:spark<span class="w">        </span><span class="c1"># MACE / ALCHEMI + ANI-2x   (GPU)</span>
+</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>docker<span class="w"> </span>pull<span class="w"> </span>ghcr.io/novomcp/gromacs-md:spark<span class="w">         </span><span class="c1"># GPU molecular dynamics    (GPU)</span>
+</span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>docker<span class="w"> </span>pull<span class="w"> </span>ghcr.io/novomcp/autodock-gpu:spark<span class="w">       </span><span class="c1"># GPU docking               (GPU)</span>
+</span><span id="__span-0-12"><a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>docker<span class="w"> </span>pull<span class="w"> </span>ghcr.io/novomcp/novomcp-qm:spark<span class="w">         </span><span class="c1"># xTB / CREST / sTDA        (CPU)</span>
 </span></code></pre></div>
 <h2 id="2-bring-the-stack-up">2. Bring the stack up<a class="headerlink" href="#2-bring-the-stack-up" title="Permanent link">&para;</a></h2>
 <p>Grab the Spark compose file and start the stack:</p>
@@ -2132,7 +2177,7 @@
 </span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>docker<span class="w"> </span>compose<span class="w"> </span>-f<span class="w"> </span>compose.spark.yml<span class="w"> </span>up<span class="w"> </span>-d
 </span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>docker<span class="w"> </span>compose<span class="w"> </span>-f<span class="w"> </span>compose.spark.yml<span class="w"> </span>ps<span class="w">     </span><span class="c1"># every service "running"</span>
 </span></code></pre></div>
-<p>The engine comes up on <strong>http://localhost:8018</strong>, with every compute service wired to it by URL on the internal network. The NNP image sets the two Grace environment fixes (<code>OMP_NUM_THREADS</code>, <code>LD_PRELOAD=libjemalloc</code>) in its own entrypoint — you don't touch them. The single GB10 GPU is time-shared across the GPU services.</p>
+<p>The engine comes up on <strong>http://localhost:8018</strong> and the dashboard on <strong>http://localhost:3000</strong>, with every compute service wired to both by URL on the internal network. The NNP image sets the two Grace environment fixes (<code>OMP_NUM_THREADS</code>, <code>LD_PRELOAD=libjemalloc</code>) in its own entrypoint — you don't touch them. The single GB10 GPU is time-shared across the GPU services.</p>
 <h2 id="3-first-run">3. First run<a class="headerlink" href="#3-first-run" title="Permanent link">&para;</a></h2>
 <p><strong>Point an MCP client at it.</strong> Any MCP-compatible assistant (Claude Desktop, <code>ollmcp</code>, an IDE) connects to <code>http://localhost:8018</code> and discovers the tools. Pair it with a local LLM (for example Ollama on the same box) and the agent runs on the Spark too. Computation stays local; the three default tools that query public databases (ChEMBL, RCSB and bioRxiv) still reach the network.</p>
 <p><strong>Or call a tool directly</strong> to confirm the GPU path end-to-end — a MACE geometry relaxation of ethanol on the GPU:</p>
@@ -2141,7 +2186,31 @@
 </span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">  </span>-d<span class="w"> </span><span class="s1">'{"arguments": {"smiles": "CCO", "method": "mace"}}'</span>
 </span></code></pre></div>
 <p>It returns a relaxed energy near <strong>−46.2 eV</strong> — the MACE-MPA-0 reference. A quantum single point (<code>run_qm_calculation</code>, GFN2-xTB) and GPU docking (<code>dock_molecules</code>) work the same way.</p>
-<p><strong>The autonomous funnel.</strong> The engine's agent loop (<code>POST /v1/agent/chat</code>) can drive a full pipeline. On-box, the materials funnel runs entirely local — an on-device model calls the NNP and QM tools on the GPU and ranks candidates, with every step written to the local audit log. (The drug-discovery funnel additionally needs the cloud data layer — omics, literature, compliance — which isn't on the Spark.)</p>
+<p><strong>The autonomous funnel.</strong> The engine's agent loop (<code>POST /v1/agent/chat</code>) can drive a full pipeline. On-box, the materials funnel runs entirely local — an on-device model calls the NNP and QM tools on the GPU and ranks candidates, with every step written to the local audit log. (The drug-discovery funnel additionally needs the cloud data layer — omics and literature — which isn't on the Spark. Compliance comes from NovoMCP's service on the paid API; see step 5.)</p>
+<h2 id="4-open-the-dashboard">4. Open the dashboard<a class="headerlink" href="#4-open-the-dashboard" title="Permanent link">&para;</a></h2>
+<p>Open <strong>http://localhost:3000</strong> on the Spark. If the Spark is remote, forward the port over SSH and open the same address on your own machine:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>ssh<span class="w"> </span>-L<span class="w"> </span><span class="m">3000</span>:localhost:3000<span class="w"> </span>-L<span class="w"> </span><span class="m">8018</span>:localhost:8018<span class="w"> </span>you@your-spark
+</span></code></pre></div>
+<ul>
+<li><strong>Dashboard</strong> shows the engine, how many tools are unlocked, and a tile per capability. On a fresh Novo Station the on-box services (ADMET, docking, dynamics, quantum, NN potentials) show as on, because the compose file wires them all.</li>
+<li><strong>Connections</strong> lists every service with its live status. The services under <em>Self-hosted compute</em> are the ones running on the box. Structure prediction (OpenFold3) shows as not configured: it isn't part of the Spark port.</li>
+<li><strong>Profile</strong> computes properties for a SMILES, with ADMET from the on-box ADMET service and an on-demand compliance check once compliance is connected.</li>
+</ul>
+<p>What you save in Connections is written to <code>credentials.env</code> on the shared <code>novomcp-audit</code> volume, which the engine loads at startup. After saving, restart the engine:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>docker<span class="w"> </span>compose<span class="w"> </span>-f<span class="w"> </span>compose.spark.yml<span class="w"> </span>restart<span class="w"> </span>engine
+</span></code></pre></div>
+<h2 id="5-add-compliance-screening-optional-paid">5. Add compliance screening (optional, paid)<a class="headerlink" href="#5-add-compliance-screening-optional-paid" title="Permanent link">&para;</a></h2>
+<p>NovoMCP's compliance service — controlled-substance and regulatory screening — is closed source and isn't on the box. The engine calls it on the paid API, and each check is billed to the account that owns your API key.</p>
+<p>In the dashboard: <strong>Connections → NovoMCP compliance</strong>, set</p>
+<ul>
+<li><strong>Service URL:</strong> <code>https://api.novomcp.com/v1/compliance</code></li>
+<li><strong>API key:</strong> your <code>nmcp_…</code> key</li>
+</ul>
+<p>then restart the engine as above. The tile turns <strong>connected</strong> once the key is accepted (a bad key shows <strong>key rejected</strong>; checking the key costs nothing). <code>check_compliance</code> then appears in the tool list, and Profile gets a <strong>Run compliance check</strong> button.</p>
+<p>Without the dashboard, add the same two values to the engine's environment in <code>compose.spark.yml</code> and run <code>docker compose -f compose.spark.yml up -d</code>:</p>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="w">      </span><span class="nt">NOVOMCP_COMPLIANCE_URL</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">https://api.novomcp.com/v1/compliance</span>
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="w">      </span><span class="nt">NOVOMCP_COMPLIANCE_API_KEY</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nmcp_...</span>
+</span></code></pre></div>
 <h2 id="known-limits-on-gb10-measured">Known limits on GB10 (measured)<a class="headerlink" href="#known-limits-on-gb10-measured" title="Permanent link">&para;</a></h2>
 <div class="admonition info">
 <p class="admonition-title">Measured on GB10</p>

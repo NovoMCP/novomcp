@@ -898,6 +898,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="The web dashboard">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-runs-where" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What runs where
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -2282,6 +2299,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="The web dashboard">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-runs-where" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What runs where
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -2471,6 +2505,40 @@
 </div>
 </div>
 <p>Once connected, the dashboard shows <strong>Tools available: 14 of 69</strong> — the 14 that work with nothing wired, out of the full catalog. That count climbs as you <a href="../deploying-services/">deploy services</a>; the dashboard lists which env var unlocks each capability. See <a href="../tool-availability/">Tool availability</a> for the full map.</p>
+<h3 id="what-runs-where">What runs where<a class="headerlink" href="#what-runs-where" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Where it runs</th>
+<th>How you connect it</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Engine, RDKit properties, the 14 default tools</td>
+<td>Your machine</td>
+<td>Nothing to do</td>
+</tr>
+<tr>
+<td>Compute services: ADMET, docking, MD, QM, NN potentials, properties, structure, molecule index</td>
+<td>Your hardware, or a DGX Spark (<a href="../novo-station-dgx-spark/">Novo Station</a>, which runs all of them plus the dashboard)</td>
+<td><strong>Connections → Self-hosted compute</strong>: the service's URL</td>
+</tr>
+<tr>
+<td>Compliance screening (closed source)</td>
+<td>The paid API, api.novomcp.com</td>
+<td><strong>Connections → NovoMCP compliance</strong>: <code>https://api.novomcp.com/v1/compliance</code> and your API key; each check is billed to that key's account</td>
+</tr>
+<tr>
+<td>LLM, data connectors, observability</td>
+<td>The provider you choose</td>
+<td><strong>Connections</strong>, under each category</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Connections</strong> saves to <code>~/.novo/credentials.env</code>, which the engine loads at startup: restart the engine after saving. Each tile's status is live — <em>connected</em> means the service answered, <em>unreachable</em> that it didn't, and for compliance <em>key rejected</em> or <em>needs API key</em> point at the key. With <code>docker compose up</code>, the engine and the dashboard share that file through the <code>novomcp-audit</code> volume.</p>
+<p>The dashboard checks services from where it runs, so service URLs must be reachable from there. In Docker, <code>http://addie-models:8025</code>-style names work inside the compose network; for services on another machine, such as a Spark on your network, use that machine's address.</p>
 <h2 id="what-next">What next<a class="headerlink" href="#what-next" title="Permanent link">&para;</a></h2>
 <ul>
 <li><strong><a href="../configuring-llm/">Configure an LLM provider</a></strong> — enable intent recognition, orchestration planning, and semantic tool search</li>
