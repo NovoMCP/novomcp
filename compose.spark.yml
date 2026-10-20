@@ -2,14 +2,30 @@
 #
 #   docker compose -f compose.spark.yml up -d
 #
-# Engine at http://localhost:8018. Every compute service runs locally on the same
-# box and is env-var-wired to the engine — no cloud, no API key for the engine
-# itself, no tokens leaving the Spark during a run. The GPU services carry an
-# NVIDIA device reservation and time-share the single GB10 GPU.
+# Engine at http://localhost:8018, dashboard at http://localhost:3000. Every
+# compute service runs locally on the same box and is env-var-wired to the
+# engine — no cloud, no API key for the engine itself, no tokens leaving the
+# Spark during a run. The GPU services carry an NVIDIA device reservation and
+# time-share the single GB10 GPU.
 #
-# All images are published for arm64: the engine, chem-props, addie-models and
-# novomcp-properties are multi-arch `:latest` (docker auto-selects arm64); the
-# compiled GPU/native services use the arm64 `:spark` tag.
+# All images are published for arm64: the engine, the dashboard, chem-props,
+# addie-models and novomcp-properties are multi-arch `:latest` (docker
+# auto-selects arm64); the compiled GPU/native services use the arm64 `:spark` tag.
+#
+# Compliance screening is the one piece that isn't on the box: it's closed source
+# and served from api.novomcp.com. Add its URL and your API key in the
+# dashboard (Connections -> NovoMCP compliance), then restart the engine.
+
+# The compute services' URLs, shared by the engine (which calls them) and the
+# dashboard (which shows whether each one answers).
+x-service-urls: &service-urls
+  CHEM_PROPS_URL:   http://chem-props:8003
+  NOVOMCP_NNP_URL:  http://novomcp-nnp:8032
+  NOVOMCP_QM_URL:   http://novomcp-qm:8031
+  AUTODOCK_GPU_URL: http://autodock-gpu:8022
+  GROMACS_MD_URL:   http://gromacs-md:8024
+  ADDIE_MODELS_URL: http://addie-models:8025
+  NOVOMCP_PROPERTIES_URL: http://novomcp-properties:8030
 
 services:
   engine:
@@ -18,23 +34,37 @@ services:
     ports:
       - "8018:8018"
     volumes:
+      # Audit log + credentials.env (keys and URLs saved from the dashboard).
       - novomcp-audit:/root/.novo
     environment:
+      <<: *service-urls                # compute services, all local on this box
       NOVO_AUTH: local
       NOVO_METER: local
       NOVO_AUDIT: local
       NOVO_AUDIT_PATH: /root/.novo/audit.jsonl
-      # Compute services, all local on this box:
-      CHEM_PROPS_URL:   http://chem-props:8003
-      NOVOMCP_NNP_URL:  http://novomcp-nnp:8032
-      NOVOMCP_QM_URL:   http://novomcp-qm:8031
-      AUTODOCK_GPU_URL: http://autodock-gpu:8022
-      GROMACS_MD_URL:   http://gromacs-md:8024
       GROMACS_API_KEY:  local          # must match gromacs-md's API_KEY below
-      ADDIE_MODELS_URL: http://addie-models:8025
-      NOVOMCP_PROPERTIES_URL: http://novomcp-properties:8030
       REDIS_URL: redis://redis:6379/0
     depends_on: [redis]
+    restart: unless-stopped
+
+  # Web dashboard: status of every service, Profile, Connections (LLM keys,
+  # NovoMCP compliance), the audit log. It shares /root/.novo with the engine so
+  # what you save in Connections is what the engine loads on its next start,
+  # and runs as root to write there (the volume is root-owned).
+  web:
+    image: ghcr.io/novomcp/web:latest
+    container_name: novomcp-web
+    user: "0:0"
+    ports:
+      - "3000:3000"
+    volumes:
+      - novomcp-audit:/root/.novo
+    environment:
+      <<: *service-urls
+      NOVOMCP_ENGINE_URL: http://engine:8018
+      NOVO_AUTH: local
+      HOME: /root
+    depends_on: [engine]
     restart: unless-stopped
 
   redis:
