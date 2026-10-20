@@ -1838,15 +1838,15 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#v1-out-of-the-box-tools-11" class="md-nav__link">
+  <a href="#out-of-the-box-tools-15" class="md-nav__link">
     <span class="md-ellipsis">
       
-        v1 out-of-the-box tools (11)
+        Out-of-the-box tools (15)
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="v1 out-of-the-box tools (11)">
+    <nav class="md-nav" aria-label="Out-of-the-box tools (15)">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -2130,15 +2130,15 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#v1-out-of-the-box-tools-11" class="md-nav__link">
+  <a href="#out-of-the-box-tools-15" class="md-nav__link">
     <span class="md-ellipsis">
       
-        v1 out-of-the-box tools (11)
+        Out-of-the-box tools (15)
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="v1 out-of-the-box tools (11)">
+    <nav class="md-nav" aria-label="Out-of-the-box tools (15)">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -2350,14 +2350,15 @@
 </tbody>
 </table>
 <p>Once you set the env var for a hidden tool's dependency, it appears in <code>tools/list</code> on the next <code>initialize</code> handshake. No restart required for MCP clients if they refresh their tool list.</p>
-<h2 id="v1-out-of-the-box-tools-11">v1 out-of-the-box tools (11)<a class="headerlink" href="#v1-out-of-the-box-tools-11" title="Permanent link">&para;</a></h2>
+<h2 id="out-of-the-box-tools-15">Out-of-the-box tools (15)<a class="headerlink" href="#out-of-the-box-tools-15" title="Permanent link">&para;</a></h2>
 <p>Install the engine (<code>pip install -r requirements.txt &amp;&amp; python main_https.py</code>), and you get:</p>
 <ul>
 <li><strong>RDKit-backed cheminformatics on user-supplied SMILES</strong> — <code>calculate_properties</code>, <code>get_molecule_info</code>, <code>get_molecule_profile</code> (basic path), <code>batch_profile</code>, <code>screen_library</code></li>
-<li><strong>Public-API integrations</strong> (open APIs, no keys required) — <code>search_chembl</code>, <code>search_clinical_trials</code>, <code>search_biorxiv</code>. Transient network failures possible; these hit external services.</li>
+<li><strong>Public-API integrations</strong> (open APIs, no keys required) — <code>search_chembl</code>, <code>search_clinical_trials</code>, <code>search_biorxiv</code>, <code>search_literature</code> (PubMed; <code>PINECONE_API_KEY</code> adds a curated semantic index on top). Transient network failures possible; these hit external services.</li>
 <li><strong>MD pre-flight (RCSB structure classification)</strong> — <code>audit_system</code></li>
+<li><strong>Job tracking</strong> — <code>get_job_status</code>, <code>cancel_job</code></li>
 <li><strong>Platform meta</strong> — <code>get_platform_info</code></li>
-<li><strong>Autonomous discovery mode</strong> — <code>run_novo_ag</code> (<code>agm</code>). In v1 with no compute stack wired, it returns a setup-guide message pointing to which services unlock the full funnel plus a manual-workflow recipe using the always-available tools. Once you configure <code>NOVOMCP_DB_HOST</code> + <code>ADDIE_MODELS_URL</code> + <code>AUTODOCK_GPU_URL</code> + <code>GROMACS_MD_URL</code>, it runs the full 11-stage funnel.</li>
+<li><strong>Autonomous modes</strong> — <code>run_materials_ag</code> (<code>mgm</code>), which returns the materials screening protocol or a setup guide, and <code>run_novo_ag</code> (<code>agm</code>). In v1 with no compute stack wired, it returns a setup-guide message pointing to which services unlock the full funnel plus a manual-workflow recipe using the always-available tools. Once you configure <code>NOVOMCP_DB_HOST</code> + <code>ADDIE_MODELS_URL</code> + <code>AUTODOCK_GPU_URL</code> + <code>GROMACS_MD_URL</code>, it runs the full 11-stage funnel.</li>
 </ul>
 <p>No API keys, no databases, no compute services. Every one works on a laptop with just Python + internet.</p>
 <h3 id="whats-not-in-v1-but-ships-in-the-codebase-hidden">What's NOT in v1 (but ships in the codebase, hidden)<a class="headerlink" href="#whats-not-in-v1-but-ships-in-the-codebase-hidden" title="Permanent link">&para;</a></h3>
