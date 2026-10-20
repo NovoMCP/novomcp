@@ -154,8 +154,8 @@ export default function ProfilePage() {
 
       {!result && !error && !loading && (
         <div className="border border-dashed border-[var(--border)] rounded-lg px-6 py-12 mt-5 text-center text-sm text-[var(--text-muted)]">
-          Enter a SMILES above and press Profile. Properties are computed locally by the engine; ADMET and compliance
-          panels appear when those services are connected.
+          Enter a SMILES above and press Profile. Properties are computed locally by the engine; ADMET needs your
+          ADMET service, and compliance checks need NovoMCP compliance or another compliance service, both set in Connections.
         </div>
       )}
 
@@ -213,18 +213,24 @@ export default function ProfilePage() {
                 ))}
               </div>
             ) : (
-              <NotWired text="ADMET predictions need the ADMET service." wired={admetWired} />
+              <NotWired text="ADMET predictions need the ADMET service. It is open source: run it on your own hardware or a DGX Spark and connect it." wired={admetWired} />
             )}
           </Panel>
 
           {/* Compliance */}
           <Panel title="Compliance" icon={<ShieldCheck className="h-3.5 w-3.5" />}>
             {complianceWired ? (
-              <p className="text-sm text-[var(--text-soft)]">
-                A compliance service is connected. Regulatory screening runs against it for known molecules.
-              </p>
+              <ComplianceCheck
+                key={result.smiles}
+                smiles={result.smiles}
+                hosted={caps?.compliance?.hosted ?? false}
+                keyRejected={caps?.compliance?.keyAccepted === false}
+              />
             ) : (
-              <NotWired text="Regulatory screening and structural alerts need a compliance service." wired={false} />
+              <NotWired
+                text="Regulatory screening needs a compliance service: NovoMCP's at api.novomcp.com with an API key, or any compatible endpoint."
+                wired={false}
+              />
             )}
           </Panel>
         </div>
@@ -244,6 +250,140 @@ function Panel({ title, note, icon, children }: { title: string; note?: string; 
         {note && <span className="text-xs text-[var(--text-muted)] font-mono">{note}</span>}
       </div>
       <div className="px-6 py-5">{children}</div>
+    </div>
+  );
+}
+
+// check_compliance on demand, never on Profile: on api.novomcp.com each check
+// is billed. Reads the hosted result shape (overall_status, base_compliance,
+// recommendations) and shows any other service's response as JSON.
+const JURISDICTIONS = ['US', 'EU', 'UK', 'JP', 'GLOBAL'];
+const USES = ['research', 'pharmaceutical'];
+// The hosted service reports PROCEED / CAUTION / STOP; its raw statuses
+// (PASS, CONDITIONAL, REVIEW_REQUIRED, BLOCKED, ...) are listed for services
+// that pass them through.
+const STATUS_TONE: Record<string, string> = {
+  PROCEED: 'text-emerald-500 border-emerald-500/30 bg-emerald-500/10',
+  CAUTION: 'text-amber-500 border-amber-500/30 bg-amber-500/10',
+  STOP: 'text-[var(--destructive)] border-[var(--destructive)]/30 bg-[var(--destructive)]/10',
+  PASS: 'text-emerald-500 border-emerald-500/30 bg-emerald-500/10',
+  PASS_WITH_WARNINGS: 'text-amber-500 border-amber-500/30 bg-amber-500/10',
+  CONDITIONAL: 'text-amber-500 border-amber-500/30 bg-amber-500/10',
+  REVIEW_REQUIRED: 'text-amber-500 border-amber-500/30 bg-amber-500/10',
+  BLOCKED: 'text-[var(--destructive)] border-[var(--destructive)]/30 bg-[var(--destructive)]/10',
+};
+
+function ComplianceCheck({ smiles, hosted, keyRejected }: { smiles: string; hosted: boolean; keyRejected: boolean }) {
+  const [jurisdiction, setJurisdiction] = useState('US');
+  const [intendedUse, setIntendedUse] = useState('research');
+  const [running, setRunning] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [report, setReport] = useState<Record<string, unknown> | null>(null);
+
+  async function check() {
+    setRunning(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/local/tools/check_compliance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ arguments: { smiles, context: { intended_use: intendedUse, jurisdiction } } }),
+      });
+      const data = await res.json().catch(() => null);
+      const detail = data?.detail;
+      if (!res.ok || !data?.result) {
+        setError((typeof detail === 'string' ? detail : detail?.error) || data?.error || `Check failed (${res.status})`);
+        setReport(null);
+      } else {
+        setReport((data.result.compliance ?? data.result) as Record<string, unknown>);
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Request failed');
+    } finally {
+      setRunning(false);
+    }
+  }
+
+  if (keyRejected) {
+    return (
+      <div className="flex flex-col items-start gap-3">
+        <p className="text-sm text-amber-500">The compliance service refused the API key, so checks would fail.</p>
+        <Link href="/connections" className="inline-flex items-center gap-1.5 text-sm text-[var(--accent)] hover:underline">
+          Update the key in Connections <ArrowRight className="h-3.5 w-3.5" />
+        </Link>
+      </div>
+    );
+  }
+
+  const status = report ? String(report.overall_status ?? report.status ?? '') : '';
+  const base = (report?.base_compliance ?? {}) as Record<string, unknown>;
+  // The flag list is the one field whose name ends in _flags.
+  const flagsOf = (o: Record<string, unknown> | null | undefined) =>
+    o ? Object.entries(o).find(([k]) => k.endsWith('_flags'))?.[1] : undefined;
+  const rawFlags = flagsOf(base) ?? flagsOf(report);
+  const flags = Array.isArray(rawFlags) ? rawFlags.map(String) : rawFlags ? String(rawFlags).split(/[,;]\s*/).filter(Boolean) : [];
+  const recs = Array.isArray(report?.recommendations) ? (report?.recommendations as unknown[]).map(String) : [];
+  const select =
+    'px-2.5 py-1.5 bg-[var(--bg-warm)] border border-[var(--border)] rounded text-sm text-[var(--text)] focus:outline-none focus:border-[var(--accent)]';
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-wrap items-end gap-3">
+        <label className="text-[11px] uppercase tracking-wider text-[var(--text-muted)] flex flex-col gap-1.5">
+          Jurisdiction
+          <select value={jurisdiction} onChange={(e) => setJurisdiction(e.target.value)} className={select}>
+            {JURISDICTIONS.map((j) => <option key={j} value={j}>{j}</option>)}
+          </select>
+        </label>
+        <label className="text-[11px] uppercase tracking-wider text-[var(--text-muted)] flex flex-col gap-1.5">
+          Intended use
+          <select value={intendedUse} onChange={(e) => setIntendedUse(e.target.value)} className={select}>
+            {USES.map((u) => <option key={u} value={u}>{u}</option>)}
+          </select>
+        </label>
+        <button
+          type="button"
+          onClick={check}
+          disabled={running}
+          className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-[var(--accent)] rounded hover:brightness-105 transition disabled:opacity-50"
+        >
+          {running ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
+          {running ? 'Checking…' : 'Run compliance check'}
+        </button>
+      </div>
+      {hosted && (
+        <p className="text-xs text-[var(--text-muted)]">NovoMCP compliance on api.novomcp.com: each check is billed to the account that owns your API key.</p>
+      )}
+      {error && (
+        <p className="flex items-start gap-1.5 text-sm text-[var(--destructive)]">
+          <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+          {error}
+        </p>
+      )}
+      {report && (
+        <div className="flex flex-col gap-3">
+          {status && (
+            <div className="flex flex-wrap items-center gap-2">
+              <span className={`text-xs font-medium px-2 py-0.5 rounded-full border ${STATUS_TONE[status] ?? STATUS_TONE.REVIEW_REQUIRED}`}>
+                {status.replace(/_/g, ' ')}
+              </span>
+              {flags.map((f) => (
+                <span key={f} className="text-xs font-mono px-2 py-0.5 rounded border border-[var(--border)] text-[var(--text-soft)]">{f}</span>
+              ))}
+            </div>
+          )}
+          {recs.length > 0 && (
+            <ul className="list-disc pl-5 text-sm text-[var(--text-soft)] space-y-1">
+              {recs.map((r, i) => <li key={i}>{r}</li>)}
+            </ul>
+          )}
+          {!status && (
+            <pre className="text-xs font-mono text-[var(--text-soft)] bg-[var(--bg-warm)] border border-[var(--border)] rounded p-3 overflow-x-auto max-h-64">
+              {JSON.stringify(report, null, 2)}
+            </pre>
+          )}
+        </div>
+      )}
     </div>
   );
 }

@@ -33,7 +33,7 @@ export interface Connector {
 export const CATEGORIES: { id: Category | 'all'; name: string }[] = [
   { id: 'all', name: 'All' },
   { id: 'ai', name: 'AI providers' },
-  { id: 'service', name: 'NovoMCP services' },
+  { id: 'service', name: 'Self-hosted compute' },
   { id: 'data', name: 'Data connectors' },
   { id: 'compliance', name: 'Compliance' },
   { id: 'observability', name: 'Observability' },
@@ -41,7 +41,7 @@ export const CATEGORIES: { id: Category | 'all'; name: string }[] = [
 
 export const CATEGORY_LABEL: Record<Category, string> = {
   ai: 'AI provider',
-  service: 'NovoMCP service',
+  service: 'Self-hosted compute',
   data: 'Data connector',
   compliance: 'Compliance',
   observability: 'Observability',
@@ -106,7 +106,9 @@ export const CONNECTORS: Connector[] = [
     ],
   },
 
-  // ── NovoMCP compute services ────────────────────────────────────
+  // ── Self-hosted compute ─────────────────────────────────────────
+  // Open source: run these on your own hardware or a DGX Spark and point the
+  // engine at them. api.novomcp.com does not serve them.
   {
     id: 'admet', category: 'service', monogram: 'AD', name: 'ADDIE models', urlEnv: 'ADDIE_MODELS_URL',
     role: '31 ADMET predictions',
@@ -215,16 +217,22 @@ export const CONNECTORS: Connector[] = [
   },
 
   // ── Compliance ──────────────────────────────────────────────────
+  // NovoMCP's compliance service is closed source and served only from the
+  // paid API; the engine bundles no ruleset, so any compatible endpoint can
+  // stand in for it.
   {
-    id: 'compliance', category: 'compliance', monogram: 'CO', name: 'Compliance service',
-    role: 'Controlled-substance & regulatory screening',
-    what: 'A compliance service the engine forwards molecules to — ours, or any compatible endpoint.',
+    id: 'compliance', category: 'compliance', monogram: 'CO', name: 'NovoMCP compliance',
+    role: 'Controlled-substance & regulatory screening · paid API',
+    what: "NovoMCP's compliance service, served from api.novomcp.com with an API key. The engine bundles no ruleset of its own; any compatible compliance endpoint works in its place.",
     use: 'Screen a molecule against controlled-substance and regulatory rules before you act on it.',
-    uses: 'Unlocks check_compliance; the engine bundles no ruleset of its own.',
+    uses: 'Unlocks check_compliance and the compliance check on Profile. On api.novomcp.com each check is billed to the account that owns the key.',
     guide: 'tool-availability/',
     fields: [
-      { name: 'url', label: 'Service URL', placeholder: 'https://compliance.example.com', required: true },
-      KEY('API key', 'optional'),
+      {
+        name: 'url', label: 'Service URL', placeholder: 'https://api.novomcp.com/v1/compliance', required: true,
+        hint: 'NovoMCP: https://api.novomcp.com/v1/compliance. Or the URL of any compatible compliance service.',
+      },
+      KEY('API key', 'nmcp_… — required for api.novomcp.com'),
     ],
   },
 

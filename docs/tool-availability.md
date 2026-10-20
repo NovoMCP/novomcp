@@ -27,7 +27,7 @@ No API keys, no databases, no compute services. Every one works on a laptop with
 ### What's NOT in v1 (but ships in the codebase, hidden)
 
 - `search_similar`, `filter_molecules`, and the tree-guided retrieval tools (`explore_chemical_space`, `drill_into_cluster`, `vector_search`, `compare_candidates`) — need a molecule index. Hidden until `NOVOMCP_MOLECULE_INDEX_URL` is set; point it at a self-hosted parquet index of your own.
-- `check_compliance` — a generic, unbranded compliance hook. Hidden until `NOVOMCP_COMPLIANCE_URL` is set; the engine bundles no ruleset of its own.
+- `check_compliance` — a generic compliance hook. Hidden until `NOVOMCP_COMPLIANCE_URL` is set; the engine bundles no ruleset of its own. Point it at NovoMCP's compliance service on the paid API (`https://api.novomcp.com/v1/compliance` with an API key) or at your own service.
 
 ### A note on env-var naming
 
@@ -76,7 +76,7 @@ Wire your own backend via the pluggable spine (`NOVO_AUDIT=custom`).
 
 ### Compliance hook
 
-Requires: `NOVOMCP_COMPLIANCE_URL` pointing at any compliance service.
+Requires: `NOVOMCP_COMPLIANCE_URL` pointing at a compliance service: NovoMCP's, at `https://api.novomcp.com/v1/compliance` (set `NOVOMCP_COMPLIANCE_API_KEY` to your API key; each check is billed to its account), or any compatible service.
 
 Unlocks: `check_compliance` — a generic, unbranded hook that forwards the molecule + context to your configured service.
 

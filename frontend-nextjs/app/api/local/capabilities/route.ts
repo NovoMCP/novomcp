@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server';
+import { engineConfigLookup } from '@/core/secrets/localStore';
 
 const NOVOMCP_ENGINE_URL = process.env.NOVOMCP_ENGINE_URL || 'http://localhost:8018';
 const PING_TIMEOUT_MS = 4000;
 
-// The wireable NovoMCP compute services, keyed by capability. `env` is the var a
-// self-hoster sets to the service URL; the Connections page surfaces these names
-// for any service that isn't wired. Keep in sync with the providers map in
-// /api/local/health.
+// The open-source compute services a self-hoster runs and wires in, keyed by
+// capability. `env` is the var that holds the service URL; the Connections page
+// surfaces these names for any service that isn't wired. Keep in sync with the
+// providers map in /api/local/health.
 const SERVICE_CATALOG: { key: string; label: string; env: string }[] = [
   { key: 'admet', label: 'ADMET (addie-models)', env: 'ADDIE_MODELS_URL' },
   { key: 'nnp', label: 'Neural-net potentials', env: 'NOVOMCP_NNP_URL' },
@@ -33,13 +34,37 @@ async function ping(url: string): Promise<boolean> {
   }
 }
 
+// A /health answer only says the host is up. For a keyed compliance service,
+// also check the key: POST /api/check with no SMILES. The service authenticates
+// first, so 401/403 means the key was refused; any other answer means it was
+// accepted, and no check runs, so nothing is billed (NovoMCP's service at
+// api.novomcp.com/v1/compliance returns 422 here). null = not checked.
+async function complianceKeyAccepted(url: string, key: string): Promise<boolean | null> {
+  try {
+    const res = await fetch(`${url.replace(/\/$/, '')}/api/check`, {
+      method: 'POST',
+      cache: 'no-store',
+      headers: { 'Content-Type': 'application/json', 'X-API-Key': key },
+      body: '{}',
+      signal: AbortSignal.timeout(PING_TIMEOUT_MS),
+    });
+    if (res.status === 401 || res.status === 403) return false;
+    return true;
+  } catch {
+    return null;
+  }
+}
+
 // Capability map for the whole UI. Every surface gates on capability presence:
 // a compliance service wired -> show the compliance panel; a GPU service
-// reachable -> enable that tool; spineMode hosted -> show keys/team. The web
-// build reports all native.* false; a Tauri wrapper overrides these on the
-// client.
+// reachable -> enable that tool; spineMode hosted -> show keys/team. Values come
+// from this server's env, then the credential file Connections writes, the same
+// order the engine loads them. The web build reports all native.* false; a
+// Tauri wrapper overrides these on the client.
 export async function GET() {
-  const complianceUrl = process.env.NOVOMCP_COMPLIANCE_URL;
+  const lookup = await engineConfigLookup();
+  const complianceUrl = lookup('NOVOMCP_COMPLIANCE_URL');
+  const complianceKey = lookup('NOVOMCP_COMPLIANCE_API_KEY');
 
   // Engine health + version.
   const engineHealth = await fetch(`${NOVOMCP_ENGINE_URL}/health`, {
@@ -53,7 +78,7 @@ export async function GET() {
   const services: Record<string, { wired: boolean; reachable: boolean; label: string; env: string }> = {};
   await Promise.all(
     SERVICE_CATALOG.map(async ({ key, label, env }) => {
-      const url = process.env[env];
+      const url = lookup(env);
       const wired = !!url;
       services[key] = {
         wired,
@@ -66,6 +91,8 @@ export async function GET() {
 
   const complianceWired = !!complianceUrl;
   const complianceReachable = complianceWired ? await ping(complianceUrl as string) : false;
+  const complianceKeyOk =
+    complianceReachable && complianceKey ? await complianceKeyAccepted(complianceUrl as string, complianceKey) : null;
 
   return NextResponse.json({
     engine: {
@@ -75,7 +102,23 @@ export async function GET() {
     },
     spineMode: process.env.NOVO_AUTH === 'hosted' ? 'hosted' : 'local',
     services,
-    compliance: { wired: complianceWired, reachable: complianceReachable, env: 'NOVOMCP_COMPLIANCE_URL' },
+    compliance: {
+      wired: complianceWired,
+      reachable: complianceReachable,
+      keyAccepted: complianceKeyOk,
+      hosted: complianceWired && isHostedCompliance(complianceUrl as string),
+      env: 'NOVOMCP_COMPLIANCE_URL',
+    },
     native: { isTauri: false, localFs: false, pymol: false },
   });
+}
+
+// NovoMCP's compliance service on the paid API: checks are billed to the key's
+// api.novomcp.com account.
+function isHostedCompliance(url: string): boolean {
+  try {
+    return new URL(url).hostname === 'api.novomcp.com';
+  } catch {
+    return false;
+  }
 }
