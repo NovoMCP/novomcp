@@ -12,15 +12,16 @@ NovoMCP ships a 69-tool catalog. Which ones are actually usable depends on what 
 
 Once you set the env var for a hidden tool's dependency, it appears in `tools/list` on the next `initialize` handshake. No restart required for MCP clients if they refresh their tool list.
 
-## v1 out-of-the-box tools (11)
+## Out-of-the-box tools (15)
 
 Install the engine (`pip install -r requirements.txt && python main_https.py`), and you get:
 
 - **RDKit-backed cheminformatics on user-supplied SMILES** — `calculate_properties`, `get_molecule_info`, `get_molecule_profile` (basic path), `batch_profile`, `screen_library`
-- **Public-API integrations** (open APIs, no keys required) — `search_chembl`, `search_clinical_trials`, `search_biorxiv`. Transient network failures possible; these hit external services.
+- **Public-API integrations** (open APIs, no keys required) — `search_chembl`, `search_clinical_trials`, `search_biorxiv`, `search_literature` (PubMed; `PINECONE_API_KEY` adds a curated semantic index on top). Transient network failures possible; these hit external services.
 - **MD pre-flight (RCSB structure classification)** — `audit_system`
+- **Job tracking** — `get_job_status`, `cancel_job`
 - **Platform meta** — `get_platform_info`
-- **Autonomous discovery mode** — `run_novo_ag` (`agm`). In v1 with no compute stack wired, it returns a setup-guide message pointing to which services unlock the full funnel plus a manual-workflow recipe using the always-available tools. Once you configure `NOVOMCP_DB_HOST` + `ADDIE_MODELS_URL` + `AUTODOCK_GPU_URL` + `GROMACS_MD_URL`, it runs the full 11-stage funnel.
+- **Autonomous modes** — `run_materials_ag` (`mgm`), which returns the materials screening protocol or a setup guide, and `run_novo_ag` (`agm`). In v1 with no compute stack wired, it returns a setup-guide message pointing to which services unlock the full funnel plus a manual-workflow recipe using the always-available tools. Once you configure `NOVOMCP_DB_HOST` + `ADDIE_MODELS_URL` + `AUTODOCK_GPU_URL` + `GROMACS_MD_URL`, it runs the full 11-stage funnel.
 
 No API keys, no databases, no compute services. Every one works on a laptop with just Python + internet.
 
