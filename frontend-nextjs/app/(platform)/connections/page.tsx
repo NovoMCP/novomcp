@@ -37,18 +37,20 @@ export default function ConnectionsPage() {
     data: Set<string>;
     services: Set<string>;
     compliance: boolean;
+    engineTools: Set<string> | null; // tools the running engine exposes; null if unknown
   } | null>(null);
   const [active, setActive] = useState<Category | 'all'>('all');
   const [selected, setSelected] = useState<Connector | null>(null);
 
   const loadCfg = useCallback(async () => {
     const get = (u: string) => fetch(u, { cache: 'no-store' }).then((r) => r.json()).catch(() => null);
-    const [llm, obs, conn, svc, comp] = await Promise.all([
+    const [llm, obs, conn, svc, comp, health] = await Promise.all([
       get('/api/local/llm-config'),
       get('/api/local/observability-config'),
       get('/api/local/connections'),
       get('/api/local/service-config'),
       get('/api/local/compliance-config'),
+      get('/api/local/health'),
     ]);
     const ai: Record<string, boolean> = {
       openai: !!llm?.providers?.openai?.keySet,
@@ -62,6 +64,7 @@ export default function ConnectionsPage() {
       data: new Set<string>((conn?.connections || []).map((x: { type: string }) => x.type)),
       services: new Set<string>(svc?.configured || []),
       compliance: !!comp?.url,
+      engineTools: health?.engine_reachable && Array.isArray(health?.tool_names) ? new Set<string>(health.tool_names) : null,
     });
   }, []);
   useEffect(() => {
@@ -89,6 +92,10 @@ export default function ConnectionsPage() {
       } else if (c.category === 'compliance') {
         const s = caps?.compliance;
         if (s?.wired) reach = s.reachable;
+        // Saved, but the running engine loaded its config before that: it only
+        // reads credentials.env at startup, so check_compliance isn't live yet.
+        if (cfg?.compliance && cfg.engineTools && !cfg.engineTools.has('check_compliance'))
+          return { tone: 'warn', label: 'restart engine' };
         // Reachable but the key was refused: every check would fail with 401.
         if (s?.reachable && s.keyAccepted === false) return { tone: 'warn', label: 'key rejected' };
         if (s?.reachable && s.hosted && s.keyAccepted === null) return { tone: 'warn', label: 'needs API key' };
