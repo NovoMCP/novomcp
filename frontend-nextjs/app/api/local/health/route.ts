@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { engineConfigLookup } from '@/core/secrets/localStore';
 
 const NOVOMCP_ENGINE_URL = process.env.NOVOMCP_ENGINE_URL || 'http://localhost:8018';
 
@@ -8,6 +9,7 @@ const NOVOMCP_ENGINE_URL = process.env.NOVOMCP_ENGINE_URL || 'http://localhost:8
 // Fails soft: any sub-fetch that errors returns null instead of failing the
 // whole endpoint, so the dashboard can render partial state.
 export async function GET() {
+  const lookup = await engineConfigLookup();
   const [health, tools, openapi, platform] = await Promise.all([
     fetch(`${NOVOMCP_ENGINE_URL}/health`, { cache: 'no-store' })
       .then((r) => (r.ok ? r.json() : null))
@@ -46,21 +48,21 @@ export async function GET() {
     tool_names: (tools?.tools ?? []).map((t: any) => t.name),
     rest_paths: openapi?.paths ? Object.keys(openapi.paths).length : null,
     update_status: platform?.result?.update_status ?? null,
-    // Which optional services are wired locally. Read from Next.js env
-    // (server-side) so the dashboard can render capability chips without
-    // pinging each service.
+    // Which optional services are wired: this server's env, then the
+    // credential file Connections writes (the order the engine loads them), so
+    // the dashboard agrees with Connections without pinging each service.
     providers: {
-      admet: !!process.env.ADDIE_MODELS_URL,
-      docking: !!process.env.AUTODOCK_GPU_URL,
-      md: !!process.env.GROMACS_MD_URL,
-      structure: !!process.env.OPENFOLD3_URL,
-      qm: !!process.env.NOVOMCP_QM_URL,
-      nnp: !!process.env.NOVOMCP_NNP_URL,
-      compliance: !!process.env.NOVOMCP_COMPLIANCE_URL,
-      molecule_index: !!process.env.NOVOMCP_MOLECULE_INDEX_URL,
-      omics: !!process.env.NOVOMCP_DB_HOST,
-      literature: !!process.env.PINECONE_API_KEY,
-      materials: !!process.env.MP_API_KEY,
+      admet: !!lookup('ADDIE_MODELS_URL'),
+      docking: !!lookup('AUTODOCK_GPU_URL'),
+      md: !!lookup('GROMACS_MD_URL'),
+      structure: !!lookup('OPENFOLD3_URL'),
+      qm: !!lookup('NOVOMCP_QM_URL'),
+      nnp: !!lookup('NOVOMCP_NNP_URL'),
+      compliance: !!lookup('NOVOMCP_COMPLIANCE_URL'),
+      molecule_index: !!lookup('NOVOMCP_MOLECULE_INDEX_URL'),
+      omics: !!lookup('NOVOMCP_DB_HOST'),
+      literature: !!lookup('PINECONE_API_KEY'),
+      materials: !!lookup('MP_API_KEY'),
     },
   });
 }
