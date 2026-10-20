@@ -51,6 +51,15 @@ export async function readCredentials(): Promise<Record<string, string>> {
   }
 }
 
+// What the engine will see for a config key: the process env first, then the
+// credential file — the engine loads the file with override=False, so an
+// exported variable wins. Lets status checks match what the engine runs with,
+// including values saved from Connections that aren't in this server's env.
+export async function engineConfigLookup(): Promise<(key: string) => string | undefined> {
+  const file = await readCredentials().catch(() => ({} as Record<string, string>));
+  return (key) => process.env[key] || file[key] || undefined;
+}
+
 // Merge updates into the existing file. A null/empty value removes the key.
 // Other keys in the file (e.g. service URLs set elsewhere) are preserved.
 export async function updateCredentials(updates: Record<string, string | null>): Promise<void> {

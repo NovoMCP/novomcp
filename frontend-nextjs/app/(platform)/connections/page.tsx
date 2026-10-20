@@ -89,6 +89,9 @@ export default function ConnectionsPage() {
       } else if (c.category === 'compliance') {
         const s = caps?.compliance;
         if (s?.wired) reach = s.reachable;
+        // Reachable but the key was refused: every check would fail with 401.
+        if (s?.reachable && s.keyAccepted === false) return { tone: 'warn', label: 'key rejected' };
+        if (s?.reachable && s.hosted && s.keyAccepted === null) return { tone: 'warn', label: 'needs API key' };
       }
 
       if (reach === true) return { tone: 'ok', label: 'connected' };
@@ -125,8 +128,11 @@ export default function ConnectionsPage() {
             Connections
           </h1>
           <p className="text-sm text-[var(--text-muted)] mt-1 max-w-xl">
-            Plug in a service and NovoMCP starts using it — ours or your own. Set a value, save, and the tools it
-            unlocks appear.
+            Plug in a service and NovoMCP starts using it. Set a value, save, and the tools it unlocks appear.
+          </p>
+          <p className="text-[13px] text-[var(--text-muted)] mt-2 max-w-2xl">
+            Compute is open source: run those services on your own hardware or a DGX Spark and point NovoMCP at them.
+            Compliance screening is closed source and comes from the paid API at api.novomcp.com, with an API key.
           </p>
         </div>
         <div className="flex items-center gap-4 shrink-0">

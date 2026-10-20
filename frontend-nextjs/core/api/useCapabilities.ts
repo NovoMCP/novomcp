@@ -13,7 +13,9 @@ export interface Capabilities {
   engine: { url: string; reachable: boolean; version: string | null };
   spineMode: 'local' | 'hosted';
   services: Record<string, ServiceCapability>;
-  compliance: { wired: boolean; reachable: boolean; env: string };
+  // keyAccepted: null when no key is set or the check couldn't run. hosted:
+  // NovoMCP's compliance service at api.novomcp.com, where each check is billed to the key's account.
+  compliance: { wired: boolean; reachable: boolean; keyAccepted: boolean | null; hosted: boolean; env: string };
   native: { isTauri: boolean; localFs: boolean; pymol: boolean };
 }
 

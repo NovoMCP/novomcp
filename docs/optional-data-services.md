@@ -94,10 +94,18 @@ Without a compliance service configured:
 - Basic path (RDKit properties + structural alerts via RDKit FilterCatalog) still works
 - `check_compliance` is hidden from `tools/list` and returns a structured 503 if called directly
 
-To wire:
+To wire NovoMCP's compliance service (closed source, on the paid API; each check is billed to the account that owns the key):
+```bash
+export NOVOMCP_COMPLIANCE_URL=https://api.novomcp.com/v1/compliance
+export NOVOMCP_COMPLIANCE_API_KEY=nmcp_...
+```
+
+Or your own service:
 ```bash
 export NOVOMCP_COMPLIANCE_URL=http://localhost:8004  # or wherever your service runs
 ```
+
+The engine posts `{"smiles", "context"}` to `$NOVOMCP_COMPLIANCE_URL/api/check` with the key in `X-API-Key`; the dashboard shows the service as connected when `$NOVOMCP_COMPLIANCE_URL/health` answers.
 
 ### Molecule index (similarity + filter)
 
