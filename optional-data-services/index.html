@@ -2308,15 +2308,20 @@
 <p>Without a compliance service configured:
 - Basic path (RDKit properties + structural alerts via RDKit FilterCatalog) still works
 - <code>check_compliance</code> is hidden from <code>tools/list</code> and returns a structured 503 if called directly</p>
-<p>To wire:
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">NOVOMCP_COMPLIANCE_URL</span><span class="o">=</span>http://localhost:8004<span class="w">  </span><span class="c1"># or wherever your service runs</span>
+<p>To wire NovoMCP's compliance service (closed source, on the paid API; each check is billed to the account that owns the key):
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">NOVOMCP_COMPLIANCE_URL</span><span class="o">=</span>https://api.novomcp.com/v1/compliance
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="nb">export</span><span class="w"> </span><span class="nv">NOVOMCP_COMPLIANCE_API_KEY</span><span class="o">=</span>nmcp_...
 </span></code></pre></div></p>
+<p>Or your own service:
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">NOVOMCP_COMPLIANCE_URL</span><span class="o">=</span>http://localhost:8004<span class="w">  </span><span class="c1"># or wherever your service runs</span>
+</span></code></pre></div></p>
+<p>The engine posts <code>{"smiles", "context"}</code> to <code>$NOVOMCP_COMPLIANCE_URL/api/check</code> with the key in <code>X-API-Key</code>; the dashboard shows the service as connected when <code>$NOVOMCP_COMPLIANCE_URL/health</code> answers.</p>
 <h3 id="molecule-index-similarity-filter">Molecule index (similarity + filter)<a class="headerlink" href="#molecule-index-similarity-filter" title="Permanent link">&para;</a></h3>
 <p>Tools that consult it: <code>search_similar</code>, <code>filter_molecules</code>.</p>
 <p>The engine treats molecule indexing as a <strong>capability</strong>, not a specific vendor. Any service that indexes molecules and returns similarity/filter results is valid. Options:</p>
 <ol>
 <li><strong>Reference index server</strong> — <a href="https://github.com/NovoMCP/similarity-index"><code>NovoMCP/similarity-index</code></a>: FPSim2 exact-Tanimoto search over the open corpus, free and self-hosted. Build an index from the public corpus and serve it in one Docker command:
-   <div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>docker<span class="w"> </span>run<span class="w"> </span>-p<span class="w"> </span><span class="m">8080</span>:8080<span class="w"> </span>-v<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/corpus:/data"</span><span class="w"> </span>ghcr.io/novomcp/similarity-index<span class="w"> </span>serve<span class="w"> </span>--index<span class="w"> </span>/data/index
+   <div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>docker<span class="w"> </span>run<span class="w"> </span>-p<span class="w"> </span><span class="m">8080</span>:8080<span class="w"> </span>-v<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/corpus:/data"</span><span class="w"> </span>ghcr.io/novomcp/similarity-index<span class="w"> </span>serve<span class="w"> </span>--index<span class="w"> </span>/data/index
 </span></code></pre></div>
    Measured latency is threshold-dependent (sub-second at typical thresholds ≥0.7; looser thresholds grow with corpus size). See the repo's README to build the index.</li>
 <li><strong>Your own service</strong> — any implementation of the index protocol (<code>POST /api/search/similar</code>, <code>POST /api/search/filter</code>).</li>
@@ -2324,15 +2329,15 @@
 <p>Note: the <strong>tree-guided retrieval</strong> tools (<code>explore_chemical_space</code>, <code>drill_into_cluster</code>, <code>vector_search</code>, <code>compare_candidates</code>) rely on an approximate vector index + cluster summaries, which the exact-Tanimoto reference server does not provide — they stay hidden unless you wire a backend that implements them.</p>
 <p>Without any molecule index configured, the index-backed tools are hidden from <code>tools/list</code>. The RDKit-in-process path still handles user-supplied SMILES (<code>calculate_properties</code>, <code>get_molecule_profile</code> basic path, <code>batch_profile</code>, <code>screen_library</code>).</p>
 <p>To wire (any backend):
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">NOVOMCP_MOLECULE_INDEX_URL</span><span class="o">=</span>http://localhost:8080
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">NOVOMCP_MOLECULE_INDEX_URL</span><span class="o">=</span>http://localhost:8080
 </span></code></pre></div></p>
 <h3 id="literature-patent-search-pinecone-v12x-adds-public-pubmed-fallback">Literature + patent search — Pinecone (v1.2.x adds public PubMed fallback)<a class="headerlink" href="#literature-patent-search-pinecone-v12x-adds-public-pubmed-fallback" title="Permanent link">&para;</a></h3>
 <p>Tools that need it: <code>search_literature</code>, <code>search_patents</code>.</p>
 <p>These query a Pinecone vector index of curated papers and USPTO patents. Without a Pinecone key, both tools are hidden from <code>tools/list</code>. <code>search_biorxiv</code> and <code>search_clinical_trials</code> use public APIs and don't need Pinecone — they work out of the box.</p>
 <p>To wire:
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">PINECONE_API_KEY</span><span class="o">=</span>your-key
-</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="nb">export</span><span class="w"> </span><span class="nv">PINECONE_LITERATURE_INDEX</span><span class="o">=</span>novomcp-literature-v2
-</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="nb">export</span><span class="w"> </span><span class="nv">PINECONE_PATENTS_INDEX</span><span class="o">=</span>novomcp-patents-v1
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">PINECONE_API_KEY</span><span class="o">=</span>your-key
+</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="nb">export</span><span class="w"> </span><span class="nv">PINECONE_LITERATURE_INDEX</span><span class="o">=</span>novomcp-literature-v2
+</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="nb">export</span><span class="w"> </span><span class="nv">PINECONE_PATENTS_INDEX</span><span class="o">=</span>novomcp-patents-v1
 </span></code></pre></div></p>
 <h2 id="whats-not-optional">What's not optional<a class="headerlink" href="#whats-not-optional" title="Permanent link">&para;</a></h2>
 <p>The following are self-contained in the engine and require no external services beyond what's listed in <code>requirements.txt</code>:</p>

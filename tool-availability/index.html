@@ -2363,7 +2363,7 @@
 <h3 id="whats-not-in-v1-but-ships-in-the-codebase-hidden">What's NOT in v1 (but ships in the codebase, hidden)<a class="headerlink" href="#whats-not-in-v1-but-ships-in-the-codebase-hidden" title="Permanent link">&para;</a></h3>
 <ul>
 <li><code>search_similar</code>, <code>filter_molecules</code>, and the tree-guided retrieval tools (<code>explore_chemical_space</code>, <code>drill_into_cluster</code>, <code>vector_search</code>, <code>compare_candidates</code>) — need a molecule index. Hidden until <code>NOVOMCP_MOLECULE_INDEX_URL</code> is set; point it at a self-hosted parquet index of your own.</li>
-<li><code>check_compliance</code> — a generic, unbranded compliance hook. Hidden until <code>NOVOMCP_COMPLIANCE_URL</code> is set; the engine bundles no ruleset of its own.</li>
+<li><code>check_compliance</code> — a generic compliance hook. Hidden until <code>NOVOMCP_COMPLIANCE_URL</code> is set; the engine bundles no ruleset of its own. Point it at NovoMCP's compliance service on the paid API (<code>https://api.novomcp.com/v1/compliance</code> with an API key) or at your own service.</li>
 </ul>
 <h3 id="a-note-on-env-var-naming">A note on env-var naming<a class="headerlink" href="#a-note-on-env-var-naming" title="Permanent link">&para;</a></h3>
 <p>The engine treats molecule indexing and compliance as capabilities, not vendors. Any self-hosted parquet index or your own service works — the engine only ever sees the generic <code>NOVOMCP_*</code> env var. Point it at whichever backend you have.</p>
@@ -2432,7 +2432,7 @@
 <p>Unlocks: <code>save_funnel_stage</code>, <code>save_funnel_context</code>, <code>save_funnel_memory</code>, <code>search_prior_runs</code>, <code>list_funnels</code>, <code>get_funnel_audit</code>, <code>get_funnel_context</code>, <code>get_pipeline_audit</code>, <code>get_credit_usage</code>, <code>generate_upload_url</code>, <code>get_file_status</code>, <code>list_files</code>, <code>list_jobs</code>, <code>get_job_status</code>, <code>cancel_job</code>.</p>
 <p>Wire your own backend via the pluggable spine (<code>NOVO_AUDIT=custom</code>).</p>
 <h3 id="compliance-hook">Compliance hook<a class="headerlink" href="#compliance-hook" title="Permanent link">&para;</a></h3>
-<p>Requires: <code>NOVOMCP_COMPLIANCE_URL</code> pointing at any compliance service.</p>
+<p>Requires: <code>NOVOMCP_COMPLIANCE_URL</code> pointing at a compliance service: NovoMCP's, at <code>https://api.novomcp.com/v1/compliance</code> (set <code>NOVOMCP_COMPLIANCE_API_KEY</code> to your API key; each check is billed to its account), or any compatible service.</p>
 <p>Unlocks: <code>check_compliance</code> — a generic, unbranded hook that forwards the molecule + context to your configured service.</p>
 <h3 id="enterprise-data-connectors">Enterprise data connectors<a class="headerlink" href="#enterprise-data-connectors" title="Permanent link">&para;</a></h3>
 <p>Hidden from OSS entirely. <code>push_to_destination</code>, <code>pull_from_source</code> (Snowflake, Databricks, BigQuery, Supabase) are hosted-only tools; no OSS user should see them in <code>tools/list</code>.</p>
