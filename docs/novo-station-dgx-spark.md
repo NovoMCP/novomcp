@@ -1,11 +1,11 @@
 # Run the NovoMCP compute core on an NVIDIA DGX Spark
 
-**Novo Station** is the NovoMCP engine's compute core — GPU compute included — running on one NVIDIA DGX Spark (GB10). You pull prebuilt images and run; you don't build anything. Computation runs on the box, and the engine itself needs no API key. Three default tools query public databases (ChEMBL, RCSB and bioRxiv).
+**Novo Station** is the NovoMCP engine's compute core — GPU compute included — running on one NVIDIA DGX Spark (GB10), with the web dashboard alongside it. You pull prebuilt images and run; you don't build anything. Computation runs on the box, and the engine itself needs no API key. Three default tools query public databases (ChEMBL, RCSB and bioRxiv), and compliance screening, if you add it, is called on the paid API at api.novomcp.com.
 
 The compute core ports in full: MACE / ANI-2x neural-network potentials, the NVIDIA ALCHEMI toolkit, GROMACS GPU molecular dynamics, AutoDock-GPU, xTB / CREST / sTDA, and the 31 ADMET models. (Structure prediction and the generative / free-energy paths aren't in this port — see the [field report](https://www.novomcp.com/news/what-actually-breaks-when-you-port-a-chemistry-stack-to-dgx-spark).)
 
 !!! note "Image availability"
-    Every image in the stack is published for arm64 and resolves automatically on the Spark — the engine, `chem-props`, `addie-models` and `novomcp-properties` as multi-arch `:latest`; the compiled GPU/native services (`novomcp-nnp`, `gromacs-md`, `autodock-gpu`, `novomcp-qm`) as the arm64 `:spark` tag.
+    Every image in the stack is published for arm64 and resolves automatically on the Spark — the engine, the dashboard (`web`), `chem-props`, `addie-models` and `novomcp-properties` as multi-arch `:latest`; the compiled GPU/native services (`novomcp-nnp`, `gromacs-md`, `autodock-gpu`, `novomcp-qm`) as the arm64 `:spark` tag.
 
 ## Prerequisites
 
@@ -21,6 +21,7 @@ Multi-arch images auto-select arm64 on the Spark:
 ```bash
 # Engine + CPU services (multi-arch :latest)
 docker pull ghcr.io/novomcp/novomcp:latest           # the engine
+docker pull ghcr.io/novomcp/web:latest               # the web dashboard
 docker pull ghcr.io/novomcp/chem-props:latest        # RDKit properties / similarity
 docker pull ghcr.io/novomcp/addie-models:latest      # 31 ADMET models (DGL/GIN)
 docker pull ghcr.io/novomcp/novomcp-properties:latest # aqueous solubility, bond dissociation energies
@@ -42,7 +43,7 @@ docker compose -f compose.spark.yml up -d
 docker compose -f compose.spark.yml ps     # every service "running"
 ```
 
-The engine comes up on **http://localhost:8018**, with every compute service wired to it by URL on the internal network. The NNP image sets the two Grace environment fixes (`OMP_NUM_THREADS`, `LD_PRELOAD=libjemalloc`) in its own entrypoint — you don't touch them. The single GB10 GPU is time-shared across the GPU services.
+The engine comes up on **http://localhost:8018** and the dashboard on **http://localhost:3000**, with every compute service wired to both by URL on the internal network. The NNP image sets the two Grace environment fixes (`OMP_NUM_THREADS`, `LD_PRELOAD=libjemalloc`) in its own entrypoint — you don't touch them. The single GB10 GPU is time-shared across the GPU services.
 
 ## 3. First run
 
@@ -58,7 +59,43 @@ curl -s -X POST http://localhost:8018/mcp/tools/optimize_geometry_nnp \
 
 It returns a relaxed energy near **−46.2 eV** — the MACE-MPA-0 reference. A quantum single point (`run_qm_calculation`, GFN2-xTB) and GPU docking (`dock_molecules`) work the same way.
 
-**The autonomous funnel.** The engine's agent loop (`POST /v1/agent/chat`) can drive a full pipeline. On-box, the materials funnel runs entirely local — an on-device model calls the NNP and QM tools on the GPU and ranks candidates, with every step written to the local audit log. (The drug-discovery funnel additionally needs the cloud data layer — omics, literature, compliance — which isn't on the Spark.)
+**The autonomous funnel.** The engine's agent loop (`POST /v1/agent/chat`) can drive a full pipeline. On-box, the materials funnel runs entirely local — an on-device model calls the NNP and QM tools on the GPU and ranks candidates, with every step written to the local audit log. (The drug-discovery funnel additionally needs the cloud data layer — omics and literature — which isn't on the Spark. Compliance comes from NovoMCP's service on the paid API; see step 5.)
+
+## 4. Open the dashboard
+
+Open **http://localhost:3000** on the Spark. If the Spark is remote, forward the port over SSH and open the same address on your own machine:
+
+```bash
+ssh -L 3000:localhost:3000 -L 8018:localhost:8018 you@your-spark
+```
+
+- **Dashboard** shows the engine, how many tools are unlocked, and a tile per capability. On a fresh Novo Station the on-box services (ADMET, docking, dynamics, quantum, NN potentials) show as on, because the compose file wires them all.
+- **Connections** lists every service with its live status. The services under *Self-hosted compute* are the ones running on the box. Structure prediction (OpenFold3) shows as not configured: it isn't part of the Spark port.
+- **Profile** computes properties for a SMILES, with ADMET from the on-box ADMET service and an on-demand compliance check once compliance is connected.
+
+What you save in Connections is written to `credentials.env` on the shared `novomcp-audit` volume, which the engine loads at startup. After saving, restart the engine:
+
+```bash
+docker compose -f compose.spark.yml restart engine
+```
+
+## 5. Add compliance screening (optional, paid)
+
+NovoMCP's compliance service — controlled-substance and regulatory screening — is closed source and isn't on the box. The engine calls it on the paid API, and each check is billed to the account that owns your API key.
+
+In the dashboard: **Connections → NovoMCP compliance**, set
+
+- **Service URL:** `https://api.novomcp.com/v1/compliance`
+- **API key:** your `nmcp_…` key
+
+then restart the engine as above. The tile turns **connected** once the key is accepted (a bad key shows **key rejected**; checking the key costs nothing). `check_compliance` then appears in the tool list, and Profile gets a **Run compliance check** button.
+
+Without the dashboard, add the same two values to the engine's environment in `compose.spark.yml` and run `docker compose -f compose.spark.yml up -d`:
+
+```yaml
+      NOVOMCP_COMPLIANCE_URL: https://api.novomcp.com/v1/compliance
+      NOVOMCP_COMPLIANCE_API_KEY: nmcp_...
+```
 
 ## Known limits on GB10 (measured)
 

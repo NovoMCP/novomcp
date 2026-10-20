@@ -214,6 +214,19 @@ The engine and the dashboard are **two separate processes**. The dashboard's ser
 
 Once connected, the dashboard shows **Tools available: 14 of 69** — the 14 that work with nothing wired, out of the full catalog. That count climbs as you [deploy services](deploying-services/README.md); the dashboard lists which env var unlocks each capability. See [Tool availability](tool-availability.md) for the full map.
 
+### What runs where
+
+| | Where it runs | How you connect it |
+|---|---|---|
+| Engine, RDKit properties, the 14 default tools | Your machine | Nothing to do |
+| Compute services: ADMET, docking, MD, QM, NN potentials, properties, structure, molecule index | Your hardware, or a DGX Spark ([Novo Station](novo-station-dgx-spark.md), which runs all of them plus the dashboard) | **Connections → Self-hosted compute**: the service's URL |
+| Compliance screening (closed source) | The paid API, api.novomcp.com | **Connections → NovoMCP compliance**: `https://api.novomcp.com/v1/compliance` and your API key; each check is billed to that key's account |
+| LLM, data connectors, observability | The provider you choose | **Connections**, under each category |
+
+**Connections** saves to `~/.novo/credentials.env`, which the engine loads at startup: restart the engine after saving. Each tile's status is live — *connected* means the service answered, *unreachable* that it didn't, and for compliance *key rejected* or *needs API key* point at the key. With `docker compose up`, the engine and the dashboard share that file through the `novomcp-audit` volume.
+
+The dashboard checks services from where it runs, so service URLs must be reachable from there. In Docker, `http://addie-models:8025`-style names work inside the compose network; for services on another machine, such as a Spark on your network, use that machine's address.
+
 ## What next
 
 - **[Configure an LLM provider](configuring-llm.md)** — enable intent recognition, orchestration planning, and semantic tool search
