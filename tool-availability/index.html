@@ -1944,10 +1944,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#enterprise-data-connectors" class="md-nav__link">
+  <a href="#data-warehouses-snowflake-databricks-beta" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Enterprise data connectors
+        Data warehouses — Snowflake, Databricks (beta)
       
     </span>
   </a>
@@ -2236,10 +2236,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#enterprise-data-connectors" class="md-nav__link">
+  <a href="#data-warehouses-snowflake-databricks-beta" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Enterprise data connectors
+        Data warehouses — Snowflake, Databricks (beta)
       
     </span>
   </a>
@@ -2436,8 +2436,9 @@
 <h3 id="compliance-hook">Compliance hook<a class="headerlink" href="#compliance-hook" title="Permanent link">&para;</a></h3>
 <p>Requires: <code>NOVOMCP_COMPLIANCE_URL</code> pointing at a compliance service: NovoMCP's, at <code>https://api.novomcp.com/v1/compliance</code> (set <code>NOVOMCP_COMPLIANCE_API_KEY</code> to your API key; each check is billed to its account), or any compatible service.</p>
 <p>Unlocks: <code>check_compliance</code> — a generic, unbranded hook that forwards the molecule + context to your configured service.</p>
-<h3 id="enterprise-data-connectors">Enterprise data connectors<a class="headerlink" href="#enterprise-data-connectors" title="Permanent link">&para;</a></h3>
-<p>Hidden from OSS entirely. <code>push_to_destination</code>, <code>pull_from_source</code> (Snowflake, Databricks, BigQuery, Supabase) are hosted-only tools; no OSS user should see them in <code>tools/list</code>.</p>
+<h3 id="data-warehouses-snowflake-databricks-beta">Data warehouses — Snowflake, Databricks (beta)<a class="headerlink" href="#data-warehouses-snowflake-databricks-beta" title="Permanent link">&para;</a></h3>
+<p>Requires: a Snowflake or Databricks connection saved on the dashboard's <strong>Connections</strong> page (stored in <code>~/.novo/connectors.json</code>; set <code>NOVO_CONNECTORS_PATH</code> to move it).</p>
+<p>Unlocks: <code>push_to_destination</code> (send results, or a run's audit trail, to a table; the table is created if missing) and <code>pull_from_source</code> (read a compound table, run tools over it, and optionally push the enriched rows back). Restart your MCP client after saving the connection so it picks the tools up. See <a href="../optional-data-services/#data-warehouses-snowflake-databricks">Optional data services</a>.</p>
 <h3 id="materials-project-user-brings-api-key">Materials Project — user brings API key<a class="headerlink" href="#materials-project-user-brings-api-key" title="Permanent link">&para;</a></h3>
 <p>Requires: <code>MP_API_KEY</code> (free, sign up at <a href="https://materialsproject.org/">materialsproject.org</a>).</p>
 <p>Unlocks: <code>search_materials_project</code>.</p>

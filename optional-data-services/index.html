@@ -1894,6 +1894,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#data-warehouses-snowflake-databricks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Data warehouses — Snowflake, Databricks
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -2169,6 +2180,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#data-warehouses-snowflake-databricks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Data warehouses — Snowflake, Databricks
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -2339,6 +2361,20 @@
 </span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="nb">export</span><span class="w"> </span><span class="nv">PINECONE_LITERATURE_INDEX</span><span class="o">=</span>novomcp-literature-v2
 </span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="nb">export</span><span class="w"> </span><span class="nv">PINECONE_PATENTS_INDEX</span><span class="o">=</span>novomcp-patents-v1
 </span></code></pre></div></p>
+<h3 id="data-warehouses-snowflake-databricks">Data warehouses — Snowflake, Databricks<a class="headerlink" href="#data-warehouses-snowflake-databricks" title="Permanent link">&para;</a></h3>
+<p>Tools that need it: <code>push_to_destination</code>, <code>pull_from_source</code>. Also <strong>Send to warehouse</strong> on the dashboard's Activity page.</p>
+<p>Add the connection on the dashboard's <strong>Connections</strong> page (Data connectors), then <strong>Test</strong> it. The engine reads it from <code>~/.novo/connectors.json</code> (the dashboard and engine share this folder in both compose files), so there's nothing to export.</p>
+<ul>
+<li><strong>Snowflake:</strong> account, database, and optionally warehouse, schema (default <code>PUBLIC</code>) and role; a username and password.</li>
+<li><strong>Databricks:</strong> server hostname, HTTP path, and optionally catalog (default <code>main</code>) and schema (default <code>default</code>); a personal access token.</li>
+</ul>
+<p>What it does:</p>
+<ul>
+<li><strong>Push</strong> writes rows to <code>table</code>, <code>schema.table</code> or <code>database.schema.table</code>, creating the table from the rows if it doesn't exist. Each row also gets <code>_exported_by</code>, <code>_export_id</code> and <code>_exported_at</code>. Ask your MCP client to "send these results to Snowflake", or to export a run's audit trail by its run id. Exports are recorded in the local audit log.</li>
+<li><strong>Pull</strong> reads a table (up to 10,000 rows), with filters but no raw SQL. <code>execute_pipeline</code> runs <code>predict_admet</code>, <code>check_compliance</code>, <code>optimize_molecule</code> or <code>calculate_properties</code> over each row's SMILES and can push the enriched rows to another table.</li>
+<li><strong>Activity → Send to warehouse</strong> writes the filtered calls (<code>novomcp_activity</code>) or one run's timeline (<code>novomcp_run_audit</code>).</li>
+</ul>
+<p>Table and column names are checked against a strict pattern and every value is bound as a parameter. Nothing is metered by NovoMCP; Snowflake and Databricks bill their own usage on your account. This is in beta until it has been run against live accounts.</p>
 <h2 id="whats-not-optional">What's not optional<a class="headerlink" href="#whats-not-optional" title="Permanent link">&para;</a></h2>
 <p>The following are self-contained in the engine and require no external services beyond what's listed in <code>requirements.txt</code>:</p>
 <ul>
