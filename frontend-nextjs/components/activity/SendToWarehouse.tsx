@@ -13,6 +13,16 @@ interface Conn {
   id: string;
   type: string;
   displayName: string;
+  config?: Record<string, string>;
+}
+
+// "Snowflake · NOVOMCP" — the warehouse plus where its tables go, so two
+// connections of one type (or ones saved without a name) can be told apart.
+function connLabel(c: Conn): string {
+  const kind = c.type === 'snowflake' ? 'Snowflake' : 'Databricks';
+  const where = c.config?.database || c.config?.catalog || c.config?.account || c.config?.server_hostname || '';
+  const named = c.displayName && c.displayName.toLowerCase() !== c.type ? c.displayName : '';
+  return [named || kind, named ? kind : '', where].filter(Boolean).join(' · ');
 }
 
 type Payload = { kind: 'calls'; filters: Record<string, string> } | { kind: 'run'; runId: string };
@@ -130,7 +140,7 @@ export default function SendToWarehouse({
                 >
                   {conns.map((c) => (
                     <option key={c.id} value={c.id}>
-                      {c.displayName} ({c.type === 'snowflake' ? 'Snowflake' : 'Databricks'})
+                      {connLabel(c)}
                     </option>
                   ))}
                 </select>
