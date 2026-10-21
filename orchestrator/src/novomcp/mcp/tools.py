@@ -620,7 +620,7 @@ MCP_TOOLS = {
     "push_to_destination": {
         "name": "push_to_destination",
         "title": "Push to Destination",
-        "description": "Push tool results, or a run's audit trail, to a connected data warehouse (Snowflake, Databricks). Actions: list_connections, discover_schema (tables at the destination), preview_mapping (how fields will land), export (write rows; creates the table if it doesn't exist).",
+        "description": "Push tool results, or a run's audit trail, to the user's Snowflake or Databricks warehouse through the connection saved in NovoMCP (no separate Snowflake or Databricks connector needed). Actions: list_connections, discover_schema (tables at the destination), preview_mapping (how fields will land), export (write rows; creates the table if it doesn't exist).",
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -665,7 +665,7 @@ MCP_TOOLS = {
     "pull_from_source": {
         "name": "pull_from_source",
         "title": "Pull from Source",
-        "description": "Pull compound data from a connected data warehouse (Snowflake, Databricks), run ADMET/compliance/optimization, and optionally push enriched results back. Actions: preview (inspect table), pull (read rows), estimate_pipeline (cost estimate), execute_pipeline (run full pipeline).",
+        "description": "Read compound tables from the user's Snowflake or Databricks warehouse through the connection saved in NovoMCP (no separate Snowflake or Databricks connector needed), run ADMET/compliance/optimization/properties over each SMILES, and optionally push enriched results back. Actions: preview (inspect table), pull (read rows), estimate_pipeline (cost estimate), execute_pipeline (run full pipeline).",
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -9483,6 +9483,7 @@ class MCPToolExecutor:
         if self.bridge_url:
             return await self.client.post(f"{self.bridge_url}{path}", json=json, headers=headers, timeout=timeout)
         from .connectors import local_bridge
+        started = time.monotonic()
         try:
             data = await local_bridge.handle(path, _sanitize_for_json(json))
         except asyncio.TimeoutError:
@@ -9502,6 +9503,9 @@ class MCPToolExecutor:
                     "success": bool(data.get("success")),
                     "error": data.get("error"),
                     "export_id": (data.get("details") or {}).get("export_id"),
+                    "created_table": (data.get("details") or {}).get("created_table"),
+                    "rows_sent": len(json.get("data") or []) if isinstance(json.get("data"), list) else 1,
+                    "execution_time_ms": int((time.monotonic() - started) * 1000),
                 },
                 json,
             )

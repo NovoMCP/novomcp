@@ -198,6 +198,7 @@ async def test_push_exports_rows_and_records_the_export(executor, saved):
 
     rec = _events(saved / "audit.jsonl", "data_export")[-1]
     assert (rec["rows_written"], rec["target_location"], rec["source_tool"]) == (2, "SQLITE:main.screened", "screen_library")
+    assert rec["rows_sent"] == 2 and rec["created_table"] is True and rec["execution_time_ms"] >= 0
 
     pulled = await _call(executor, "pull_from_source", {"action": "pull", "connection_id": "conn_1", "table": "screened"})
     assert pulled.success, pulled.error
