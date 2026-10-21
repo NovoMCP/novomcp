@@ -65,4 +65,4 @@ If none of your work touches molecules, this isn't for you — and that's fine. 
 
 - **[Quickstart](quickstart.md)** — boot the engine and run the first calls
 - **[Architecture](architecture.md)** — how the pieces fit together
-- **[Tool availability](tool-availability.md)** — the 15 always-local tools and what each service unlocks
+- **[Tool availability](tool-availability.md)** — the 18 always-local tools and what each service unlocks

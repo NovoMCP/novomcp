@@ -144,7 +144,7 @@ curl -s http://localhost:8018/mcp/tools \
   | python3 -m json.tool
 ```
 
-`LocalAuthGate` accepts any bearer token — `x` works fine. Returns the 15 always-available tools; the other 55 in the 69-tool catalog appear as you wire their backing services (see [tool-availability.md](tool-availability.md)).
+`LocalAuthGate` accepts any bearer token — `x` works fine. Returns the 18 always-available tools; the other 55 in the 69-tool catalog appear as you wire their backing services (see [tool-availability.md](tool-availability.md)).
 
 ### Get a molecule profile (aspirin)
 
@@ -186,7 +186,7 @@ Every tool call is logged as a JSON-lines row: `ts`, `event`, and a `payload` wi
 - `arguments`: what was run, enough to repeat the call. Keys that look like secrets (API keys, tokens, passwords) are stored as `<redacted>`; a very large value, such as a long SMILES list, keeps only its length and a sample.
 - `outcome`: a short result. For `check_compliance`, the verdict and its flags; for property and ADMET tools, the headline numbers.
 
-The file is the whole record: copy it to keep or share a history. In the dashboard, **Activity** lists every call, filters by tool, result or run, opens a call to copy it and run it again, and downloads the history as a CSV for a spreadsheet or as the raw log for scripts. For analysis, load the file directly, for example `pandas.read_json("~/.novo/audit.jsonl", lines=True)`.
+The file is the whole record: copy it to keep or share a history. In the dashboard, **Activity** lists every call, filters by tool, result or run, opens a call to copy it and run it again, and downloads the history as a CSV for a spreadsheet or as the raw log for scripts. Its **Runs** tab shows each run as a timeline: the calls it made, plus the stages a discovery funnel saved with `save_funnel_stage` (molecules in and out, what was filtered and why, and the human decisions). Those stages are kept in the same file, as `funnel_stage` events. For analysis, load the file directly, for example `pandas.read_json("~/.novo/audit.jsonl", lines=True)`.
 
 ## The web dashboard
 
@@ -217,7 +217,7 @@ The engine and the dashboard are **two separate processes**. The dashboard's ser
 
     Open **http://localhost:3000**. Set `NOVOMCP_ENGINE_URL` if your engine runs somewhere other than `http://localhost:8018`.
 
-Once connected, the dashboard shows **Tools available: 15 of 69** — the 15 that work with nothing wired, out of the full catalog. That count climbs as you [deploy services](deploying-services/README.md); the dashboard lists which env var unlocks each capability. See [Tool availability](tool-availability.md) for the full map.
+Once connected, the dashboard shows **Tools available: 18 of 69** — the 18 that work with nothing wired, out of the full catalog. That count climbs as you [deploy services](deploying-services/README.md); the dashboard lists which env var unlocks each capability. See [Tool availability](tool-availability.md) for the full map.
 
 ### What runs where
 

@@ -12,7 +12,7 @@ NovoMCP ships a 69-tool catalog. Which ones are actually usable depends on what 
 
 Once you set the env var for a hidden tool's dependency, it appears in `tools/list` on the next `initialize` handshake. No restart required for MCP clients if they refresh their tool list.
 
-## Out-of-the-box tools (15)
+## Out-of-the-box tools (18)
 
 Install the engine (`pip install -r requirements.txt && python main_https.py`), and you get:
 
@@ -20,6 +20,7 @@ Install the engine (`pip install -r requirements.txt && python main_https.py`), 
 - **Public-API integrations** (open APIs, no keys required) — `search_chembl`, `search_clinical_trials`, `search_biorxiv`, `search_literature` (PubMed; `PINECONE_API_KEY` adds a curated semantic index on top). Transient network failures possible; these hit external services.
 - **MD pre-flight (RCSB structure classification)** — `audit_system`
 - **Job tracking** — `get_job_status`, `cancel_job`
+- **Run audit trails** — `save_funnel_stage`, `get_funnel_audit`, `list_funnels`. A run's tool calls and its saved stages are kept in the local audit file (`~/.novo/audit.jsonl`); the dashboard's Activity → Runs shows them as a timeline.
 - **Platform meta** — `get_platform_info`
 - **Autonomous modes** — `run_materials_ag` (`mgm`), which returns the materials screening protocol or a setup guide, and `run_novo_ag` (`agm`). In v1 with no compute stack wired, it returns a setup-guide message pointing to which services unlock the full funnel plus a manual-workflow recipe using the always-available tools. Once you configure `NOVOMCP_DB_HOST` + `ADDIE_MODELS_URL` + `AUTODOCK_GPU_URL` + `GROMACS_MD_URL`, it runs the full 11-stage funnel.
 
@@ -71,7 +72,7 @@ Each service is a Docker image (`ghcr.io/novomcp/<service>:latest`). Point the e
 
 Requires: `FUNNEL_BACKEND_URL` pointing at an audit/usage-ledger service.
 
-Unlocks: `save_funnel_stage`, `save_funnel_context`, `save_funnel_memory`, `search_prior_runs`, `list_funnels`, `get_funnel_audit`, `get_funnel_context`, `get_pipeline_audit`, `get_credit_usage`, `generate_upload_url`, `get_file_status`, `list_files`, `list_jobs`, `get_job_status`, `cancel_job`.
+Unlocks: `save_funnel_context`, `save_funnel_memory`, `search_prior_runs`, `get_funnel_context`, `get_pipeline_audit`, `get_credit_usage`, `generate_upload_url`, `get_file_status`, `list_files`, `list_jobs`. With a backend set, `save_funnel_stage`, `get_funnel_audit`, `list_funnels`, `get_job_status` and `cancel_job` use it too; without one, a local engine keeps runs and jobs locally (see Out-of-the-box tools).
 
 Wire your own backend via the pluggable spine (`NOVO_AUDIT=custom`).
 
