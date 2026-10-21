@@ -157,7 +157,7 @@ What it does:
 - **Pull** reads a table (up to 10,000 rows), with filters but no raw SQL. `execute_pipeline` runs `predict_admet`, `check_compliance`, `optimize_molecule` or `calculate_properties` over each row's SMILES and can push the enriched rows to another table.
 - **Activity → Send to warehouse** writes the filtered calls (`novomcp_activity`) or one run's timeline (`novomcp_run_audit`).
 
-Table and column names are checked against a strict pattern and every value is bound as a parameter. Nothing is metered by NovoMCP; Snowflake and Databricks bill their own usage on your account. This is in beta until it has been run against live accounts.
+Table and column names are checked against a strict pattern and every value is bound as a parameter. Nothing is metered by NovoMCP; Snowflake and Databricks bill their own usage on your account. Verified against live Snowflake and Databricks accounts (export, preview, and a pull pipeline that pushes enriched rows back).
 
 ## What's not optional
 

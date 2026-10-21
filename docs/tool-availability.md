@@ -82,7 +82,7 @@ Requires: `NOVOMCP_COMPLIANCE_URL` pointing at a compliance service: NovoMCP's, 
 
 Unlocks: `check_compliance` — a generic, unbranded hook that forwards the molecule + context to your configured service.
 
-### Data warehouses — Snowflake, Databricks (beta)
+### Data warehouses — Snowflake, Databricks
 
 Requires: a Snowflake or Databricks connection saved on the dashboard's **Connections** page (stored in `~/.novo/connectors.json`; set `NOVO_CONNECTORS_PATH` to move it).
 
