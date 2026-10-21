@@ -1,20 +1,29 @@
 import type { Metadata } from "next";
-import { Cormorant_Garamond, Inter } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 import { AuthProvider } from "@/core/auth/provider";
 import { QueryProvider } from "@/core/providers/QueryProvider";
 import { ThemeProvider } from "@/core/providers/ThemeProvider";
 
-const cormorant = Cormorant_Garamond({
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
+// Fonts ship with the app (app/fonts, SIL Open Font License) rather than via
+// next/font/google, so building and running need no call to Google: builds
+// work offline and in CI, and a self-hosted install never reaches out for them.
+const cormorant = localFont({
+  src: [
+    { path: "./fonts/cormorant-garamond-latin-wght-normal.woff2", style: "normal" },
+    { path: "./fonts/cormorant-garamond-latin-wght-italic.woff2", style: "italic" },
+  ],
+  weight: "300 700",
   variable: "--font-cormorant",
   display: "swap",
 });
 
-const inter = Inter({
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
+const inter = localFont({
+  src: [
+    { path: "./fonts/inter-latin-wght-normal.woff2", style: "normal" },
+    { path: "./fonts/inter-latin-wght-italic.woff2", style: "italic" },
+  ],
+  weight: "100 900",
   variable: "--font-inter",
   display: "swap",
 });
