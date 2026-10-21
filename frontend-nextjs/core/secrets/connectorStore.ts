@@ -52,6 +52,24 @@ export async function removeConnection(id: string): Promise<boolean> {
   return true;
 }
 
+// Rename a connection or change its settings. Credentials left blank keep
+// their stored value, so a form never has to show a secret to edit around it.
+export async function updateConnection(
+  id: string,
+  patch: { displayName?: string; config?: Record<string, string>; credentials?: Record<string, string> }
+): Promise<Connection | undefined> {
+  const list = await readConnections();
+  const conn = list.find((c) => c.id === id);
+  if (!conn) return undefined;
+  if (patch.displayName !== undefined) conn.displayName = patch.displayName.trim() || conn.type;
+  if (patch.config) conn.config = patch.config;
+  if (patch.credentials) {
+    for (const [k, v] of Object.entries(patch.credentials)) if (v) conn.credentials[k] = v;
+  }
+  await writeConnections(list);
+  return conn;
+}
+
 export async function getConnection(id: string): Promise<Connection | undefined> {
   return (await readConnections()).find((c) => c.id === id);
 }
