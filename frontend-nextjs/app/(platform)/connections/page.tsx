@@ -212,6 +212,7 @@ export default function ConnectionsPage() {
                 <span className="flex items-center gap-1.5">
                   <StatusPill tone={st.tone} label={st.label} />
                   {c.planned && <PlannedTag />}
+                  {c.billedBy && <BilledTag />}
                 </span>
                 <span className="text-xs text-[var(--accent)] opacity-0 group-hover:opacity-100 transition-opacity">
                   Configure →
@@ -254,6 +255,16 @@ function PlannedTag() {
   return (
     <span className="inline-flex items-center text-[11px] px-2 py-0.5 rounded-full border border-[var(--accent)]/30 text-[var(--accent)]">
       Planned
+    </span>
+  );
+}
+
+// Marks a paid third-party API: the provider bills its usage to the user's own
+// account. NovoMCP charges nothing for using it from a self-hosted install.
+function BilledTag() {
+  return (
+    <span className="inline-flex items-center text-[11px] px-2 py-0.5 rounded-full border border-[var(--border)] text-[var(--text-muted)]">
+      Paid API
     </span>
   );
 }
@@ -353,6 +364,7 @@ function Detail({
                 <span className="flex items-center gap-1.5">
                   <StatusPill tone={status.tone} label={status.label} />
                   {connector.planned && <PlannedTag />}
+                  {connector.billedBy && <BilledTag />}
                 </span>
               </div>
             </div>
@@ -365,6 +377,12 @@ function Detail({
             <div className="mt-2 text-sm text-[var(--text-soft)] bg-[var(--accent)]/10 border border-[var(--accent)]/20 rounded-md px-3.5 py-3 leading-relaxed">
               {connector.uses}
             </div>
+            {connector.billedBy && (
+              <p className="mt-2 text-xs text-[var(--text-muted)] leading-relaxed">
+                Paid API: {connector.billedBy} bills its usage to your own account with them. NovoMCP doesn&rsquo;t charge for
+                using it from a self-hosted install.
+              </p>
+            )}
           </div>
 
           <form

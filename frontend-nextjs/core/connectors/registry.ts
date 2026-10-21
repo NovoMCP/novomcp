@@ -28,6 +28,7 @@ export interface Connector {
   guide: string; // path under https://docs.novomcp.com/
   urlEnv?: string; // service category: the engine env var it writes
   planned?: boolean; // saves settings, but nothing in the open-source engine uses them yet
+  billedBy?: string; // a paid third-party API: the provider bills its usage to the user's own account
   fields: Field[];
 }
 
@@ -60,7 +61,7 @@ const KEY = (label = 'API key', ph = 'optional', required = false): Field => ({
 export const CONNECTORS: Connector[] = [
   // ── AI providers ────────────────────────────────────────────────
   {
-    id: 'openai', category: 'ai', monogram: 'AI', name: 'OpenAI',
+    id: 'openai', category: 'ai', monogram: 'AI', name: 'OpenAI', billedBy: 'OpenAI',
     role: 'Intent, planning & semantic tool search',
     what: 'The reasoning model behind intent recognition, orchestration planning, and semantic tool search.',
     use: 'Turn a plain-language request into the right sequence of tool calls.',
@@ -73,7 +74,7 @@ export const CONNECTORS: Connector[] = [
     ],
   },
   {
-    id: 'anthropic', category: 'ai', monogram: 'AN', name: 'Anthropic',
+    id: 'anthropic', category: 'ai', monogram: 'AN', name: 'Anthropic', billedBy: 'Anthropic',
     role: 'Claude models for planning',
     what: "Anthropic's Claude models as the engine's planning and reasoning provider.",
     use: 'Same planning role as OpenAI, on Claude.',
@@ -94,7 +95,7 @@ export const CONNECTORS: Connector[] = [
     ],
   },
   {
-    id: 'azure', category: 'ai', monogram: 'AZ', name: 'Azure OpenAI',
+    id: 'azure', category: 'ai', monogram: 'AZ', name: 'Azure OpenAI', billedBy: 'Microsoft Azure',
     role: 'OpenAI models on Azure',
     what: 'OpenAI models served through your Azure deployment.',
     use: 'When your org standardizes on Azure for model access.',
@@ -188,7 +189,7 @@ export const CONNECTORS: Connector[] = [
 
   // ── Data connectors ─────────────────────────────────────────────
   {
-    id: 'snowflake', category: 'data', monogram: 'SF', name: 'Snowflake', planned: true,
+    id: 'snowflake', category: 'data', monogram: 'SF', name: 'Snowflake', planned: true, billedBy: 'Snowflake',
     role: 'Warehouse export',
     what: 'Push NovoMCP results into a Snowflake warehouse.',
     use: 'Land ADMET / docking results next to the rest of your data.',
@@ -203,7 +204,7 @@ export const CONNECTORS: Connector[] = [
     ],
   },
   {
-    id: 'databricks', category: 'data', monogram: 'DB', name: 'Databricks', planned: true,
+    id: 'databricks', category: 'data', monogram: 'DB', name: 'Databricks', planned: true, billedBy: 'Databricks',
     role: 'Lakehouse SQL',
     what: 'Read from and write to a Databricks SQL warehouse.',
     use: 'Bidirectional pipeline with your lakehouse.',
