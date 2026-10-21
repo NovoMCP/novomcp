@@ -21,6 +21,9 @@ permissions:
 jobs:
   image:
     runs-on: ubuntu-latest
+    # A normal build takes ~10 min; the emulated arm64 build occasionally
+    # hangs, and without a limit it would block for GitHub's 6-hour default.
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
 
@@ -78,6 +81,9 @@ jobs:
   # Spark, so it's multi-arch like the engine. Same tags as the engine image.
   web:
     runs-on: ubuntu-latest
+    # A normal build takes ~10 min; the emulated arm64 build occasionally
+    # hangs, and without a limit it would block for GitHub's 6-hour default.
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
 
