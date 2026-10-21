@@ -10,7 +10,7 @@ const NOVOMCP_ENGINE_URL = process.env.NOVOMCP_ENGINE_URL || 'http://localhost:8
 // whole endpoint, so the dashboard can render partial state.
 export async function GET() {
   const lookup = await engineConfigLookup();
-  const [health, tools, openapi, platform] = await Promise.all([
+  const [health, tools, openapi, updateStatus] = await Promise.all([
     fetch(`${NOVOMCP_ENGINE_URL}/health`, { cache: 'no-store' })
       .then((r) => (r.ok ? r.json() : null))
       .catch(() => null),
@@ -23,15 +23,10 @@ export async function GET() {
     fetch(`${NOVOMCP_ENGINE_URL}/v1/openapi.json`, { cache: 'no-store' })
       .then((r) => (r.ok ? r.json() : null))
       .catch(() => null),
-    fetch(`${NOVOMCP_ENGINE_URL}/mcp/tools/get_platform_info`, {
-      method: 'POST',
-      cache: 'no-store',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: 'Bearer local-dev',
-      },
-      body: JSON.stringify({ arguments: { info_type: 'update' } }),
-    })
+    // Update check from the engine's /update-status, not the get_platform_info
+    // tool: a tool call is audited, so polling it on every dashboard load filled
+    // Activity with calls the user never made.
+    fetch(`${NOVOMCP_ENGINE_URL}/update-status`, { cache: 'no-store' })
       .then((r) => (r.ok ? r.json() : null))
       .catch(() => null),
   ]);
@@ -47,7 +42,7 @@ export async function GET() {
     tools_total: health?.tools_total ?? null,
     tool_names: (tools?.tools ?? []).map((t: any) => t.name),
     rest_paths: openapi?.paths ? Object.keys(openapi.paths).length : null,
-    update_status: platform?.result?.update_status ?? null,
+    update_status: updateStatus ?? null,
     // Which optional services are wired: this server's env, then the
     // credential file Connections writes (the order the engine loads them), so
     // the dashboard agrees with Connections without pinging each service.

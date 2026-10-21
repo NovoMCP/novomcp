@@ -823,6 +823,22 @@ async def health():
     }
 
 
+@app.get("/update-status")
+async def update_status():
+    """Whether a newer engine release exists, for the dashboard's status checks.
+
+    Not a tool: the dashboard polls this on every load, and running the
+    get_platform_info tool for it wrote an audit entry each time, filling the
+    user's Activity history with calls they never made. The GitHub check
+    behind it is cached (core/updater.py).
+    """
+    try:
+        from novomcp.core.updater import get_update_status
+        return await get_update_status()
+    except Exception as e:
+        return {"current_version": _engine_version, "error": str(e)}
+
+
 # Dedicated, bounded thread pool for the synchronous warehouse connector SDKs.
 # A wedged connector thread (e.g. a firewalled Snowflake/Databricks host whose
 # driver keeps blocking past our 45s deadline) is confined here and can never
