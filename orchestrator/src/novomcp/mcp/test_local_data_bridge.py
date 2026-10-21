@@ -241,3 +241,26 @@ async def test_pull_pipeline_processes_rows_and_pushes_them_back(executor, saved
     assert pushed == 2
     rec = _events(saved / "audit.jsonl", "data_pipeline")[-1]
     assert (rec["status"], rec["rows_pulled"], rec["rows_pushed"]) == ("completed", 2, 2)
+
+
+async def test_multirow_inserts_batch_rows_and_fall_back_per_row(tmp_path):
+    from dataclasses import replace
+
+    class Multi(SqliteWarehouse):
+        dialect = replace(SQLITE, multirow_params=6)  # 2 columns → 3 rows per statement
+
+    wh = Multi({"path": str(tmp_path / "w.db")}, {})
+    statements = []
+    real = wh._get_connection()
+    real.set_trace_callback(statements.append)
+    out = await wh.write_data("t", [{"a": i, "b": str(i)} for i in range(7)])
+    assert out.success and out.rows_written == 7
+    inserts = [s for s in statements if s.startswith("INSERT")]
+    assert len(inserts) == 3  # 3 + 3 + 1 rows
+    assert await wh.count_rows("t") == 7
+    await wh.close()
+
+
+def test_multirow_insert_sql():
+    stmt = sql.insert_sql(sql.DATABRICKS, ["c", "s", "t"], ["a", "b"], rows=2)
+    assert stmt == "INSERT INTO `c`.`s`.`t` (`a`, `b`) VALUES (?, ?), (?, ?)"

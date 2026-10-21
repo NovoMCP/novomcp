@@ -33,10 +33,14 @@ class Dialect:
     param: the driver's positional placeholder.
     types: native column type for each Python value type, used when a table
       is created from the rows being written.
+    multirow_params: when set, writes send many rows per INSERT (up to this
+      many bound values per statement) instead of the driver's executemany,
+      which for Databricks is one round trip per row.
     """
     quote: str
     param: str
     types: Dict[str, str]
+    multirow_params: int = 0
 
     def name(self, name: str, what: str = "name") -> str:
         return f"{self.quote}{check_name(name, what)}{self.quote}"
@@ -50,7 +54,7 @@ SNOWFLAKE = Dialect(quote="", param="%s", types={
 })
 DATABRICKS = Dialect(quote="`", param="?", types={
     "bool": "BOOLEAN", "int": "BIGINT", "float": "DOUBLE", "str": "STRING",
-})
+}, multirow_params=250)
 
 
 def where_clause(d: Dialect, filters: Optional[List[Dict[str, Any]]]) -> Tuple[str, List[Any]]:
@@ -98,9 +102,10 @@ def count_sql(d: Dialect, table: Sequence[str], filters: Optional[List[Dict[str,
     return f"SELECT COUNT(*) FROM {d.table(table)}{where}", values
 
 
-def insert_sql(d: Dialect, table: Sequence[str], columns: List[str]) -> str:
+def insert_sql(d: Dialect, table: Sequence[str], columns: List[str], rows: int = 1) -> str:
     cols = ", ".join(d.name(c, "column") for c in columns)
-    return f"INSERT INTO {d.table(table)} ({cols}) VALUES ({', '.join([d.param] * len(columns))})"
+    one = f"({', '.join([d.param] * len(columns))})"
+    return f"INSERT INTO {d.table(table)} ({cols}) VALUES {', '.join([one] * rows)}"
 
 
 def _type_key(value: Any) -> Optional[str]:
