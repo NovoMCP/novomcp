@@ -11,6 +11,7 @@ import {
   type Category,
 } from '@/core/connectors/registry';
 import { loadConnector, saveConnector } from '@/core/connectors/io';
+import DataConnectionsPanel from '@/components/connections/DataConnectionsPanel';
 
 // Connections — a connector marketplace. Every service NovoMCP can talk to
 // (ours or third-party) is a tile with live status; clicking one opens a detail
@@ -389,63 +390,67 @@ function Detail({
             )}
           </div>
 
-          <form
-            className="mt-7 flex flex-col gap-4"
-            onSubmit={(e) => {
-              e.preventDefault();
-              submit();
-            }}
-          >
-            {loading ? (
-              <div className="h-24 bg-[var(--bg-warm)] animate-pulse rounded" />
-            ) : (
-              connector.fields.map((f) => (
-                <div key={f.name}>
-                  <label htmlFor={f.name} className="block text-xs text-[var(--text-soft)] mb-1.5">
-                    {f.label}{' '}
-                    {f.required ? (
-                      <span className="text-[var(--accent)]">*</span>
-                    ) : (
-                      <span className="text-[var(--text-muted)]">(optional)</span>
-                    )}
-                  </label>
-                  <input
-                    id={f.name}
-                    type={f.secret ? 'password' : 'text'}
-                    value={values[f.name] ?? ''}
-                    onChange={(e) => set(f.name, e.target.value)}
-                    placeholder={f.secret && keySet ? '•••• set — leave blank to keep' : f.placeholder}
-                    autoComplete="off"
-                    className="w-full bg-[var(--bg-warm)] border border-[var(--border)] text-[var(--text)] font-mono text-[13px] px-3 py-2.5 rounded focus:outline-none focus:border-[var(--accent)]"
-                  />
-                  {f.hint && <p className="text-[11.5px] text-[var(--text-muted)] mt-1.5">{f.hint}</p>}
-                </div>
-              ))
-            )}
-
-            {err && (
-              <p className="flex items-start gap-1.5 text-[13px] text-[var(--destructive)]">
-                <AlertTriangle className="h-4 w-4 mt-px shrink-0" />
-                {err}
-              </p>
-            )}
-
-            <button
-              type="submit"
-              disabled={saving || loading}
-              className="mt-1 inline-flex items-center justify-center gap-2 bg-[var(--accent)] text-white font-medium text-sm px-4 py-2.5 rounded hover:brightness-105 transition disabled:opacity-60"
+          {connector.category === 'data' ? (
+            <DataConnectionsPanel connector={connector} onChanged={onSaved} />
+          ) : (
+            <form
+              className="mt-7 flex flex-col gap-4"
+              onSubmit={(e) => {
+                e.preventDefault();
+                submit();
+              }}
             >
-              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-              Save &amp; connect
-            </button>
+              {loading ? (
+                <div className="h-24 bg-[var(--bg-warm)] animate-pulse rounded" />
+              ) : (
+                connector.fields.map((f) => (
+                  <div key={f.name}>
+                    <label htmlFor={f.name} className="block text-xs text-[var(--text-soft)] mb-1.5">
+                      {f.label}{' '}
+                      {f.required ? (
+                        <span className="text-[var(--accent)]">*</span>
+                      ) : (
+                        <span className="text-[var(--text-muted)]">(optional)</span>
+                      )}
+                    </label>
+                    <input
+                      id={f.name}
+                      type={f.secret ? 'password' : 'text'}
+                      value={values[f.name] ?? ''}
+                      onChange={(e) => set(f.name, e.target.value)}
+                      placeholder={f.secret && keySet ? '•••• set — leave blank to keep' : f.placeholder}
+                      autoComplete="off"
+                      className="w-full bg-[var(--bg-warm)] border border-[var(--border)] text-[var(--text)] font-mono text-[13px] px-3 py-2.5 rounded focus:outline-none focus:border-[var(--accent)]"
+                    />
+                    {f.hint && <p className="text-[11.5px] text-[var(--text-muted)] mt-1.5">{f.hint}</p>}
+                  </div>
+                ))
+              )}
 
-            {saved && (
-              <p className="flex items-center gap-2 text-[13px] text-emerald-500">
-                <CheckCircle2 className="h-4 w-4" />
-                Saved. NovoMCP picks it up on the next engine start; press Recheck to refresh status.
-              </p>
-            )}
-          </form>
+              {err && (
+                <p className="flex items-start gap-1.5 text-[13px] text-[var(--destructive)]">
+                  <AlertTriangle className="h-4 w-4 mt-px shrink-0" />
+                  {err}
+                </p>
+              )}
+
+              <button
+                type="submit"
+                disabled={saving || loading}
+                className="mt-1 inline-flex items-center justify-center gap-2 bg-[var(--accent)] text-white font-medium text-sm px-4 py-2.5 rounded hover:brightness-105 transition disabled:opacity-60"
+              >
+                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                Save &amp; connect
+              </button>
+
+              {saved && (
+                <p className="flex items-center gap-2 text-[13px] text-emerald-500">
+                  <CheckCircle2 className="h-4 w-4" />
+                  Saved. NovoMCP picks it up on the next engine start; press Recheck to refresh status.
+                </p>
+              )}
+            </form>
+          )}
 
           <a
             href={`https://docs.novomcp.com/${connector.guide}`}
