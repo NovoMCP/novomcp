@@ -2479,7 +2479,12 @@
 <h3 id="audit-sink">Audit sink<a class="headerlink" href="#audit-sink" title="Permanent link">&para;</a></h3>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-14-1"><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>tail<span class="w"> </span>-3<span class="w"> </span>~/.novo/audit.jsonl
 </span></code></pre></div>
-<p>Every tool call is logged as a JSON-lines row. Structure: <code>event</code>, <code>timestamp</code>, <code>payload</code> (tool, funnel_id, success, duration, surface).</p>
+<p>Every tool call is logged as a JSON-lines row: <code>ts</code>, <code>event</code>, and a <code>payload</code> with the tool, its run (<code>funnel_id</code>), success, duration, and:</p>
+<ul>
+<li><code>arguments</code>: what was run, enough to repeat the call. Keys that look like secrets (API keys, tokens, passwords) are stored as <code>&lt;redacted&gt;</code>; a very large value, such as a long SMILES list, keeps only its length and a sample.</li>
+<li><code>outcome</code>: a short result. For <code>check_compliance</code>, the verdict and its flags; for property and ADMET tools, the headline numbers.</li>
+</ul>
+<p>The file is the whole record: copy it to keep or share a history. In the dashboard, <strong>Activity</strong> lists every call, filters by tool, result or run, opens a call to copy it and run it again, and downloads the history as a CSV for a spreadsheet or as the raw log for scripts. For analysis, load the file directly, for example <code>pandas.read_json("~/.novo/audit.jsonl", lines=True)</code>.</p>
 <h2 id="the-web-dashboard">The web dashboard<a class="headerlink" href="#the-web-dashboard" title="Permanent link">&para;</a></h2>
 <p>The engine is headless — a REST/MCP backend. The <strong>web dashboard</strong> (Next.js) is the visual surface: molecule profiles, live engine/service status, and the config screens for LLM keys, compliance, observability, and data connectors.</p>
 <p>The engine and the dashboard are <strong>two separate processes</strong>. The dashboard's server-side routes proxy to the engine at <code>NOVOMCP_ENGINE_URL</code> (default <code>http://localhost:8018</code>); the browser only ever talks to the dashboard.</p>
