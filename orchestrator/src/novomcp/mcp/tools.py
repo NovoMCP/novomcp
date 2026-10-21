@@ -2945,14 +2945,16 @@ TOOL_LOCAL_REQUIREMENTS: Dict[str, list] = {
     "stratify_patients": ["omics"],
     "validate_target":   ["omics"],
 
-    # Funnel-persistence tools — need audit/credit-ledger backend.
-    # Roadmap: v1.8.x reference implementation.
-    "save_funnel_stage":    ["env:FUNNEL_BACKEND_URL"],
+    # Funnel-persistence tools — need audit/credit-ledger backend. On a local
+    # engine, save_funnel_stage / get_funnel_audit / list_funnels keep runs in
+    # the local audit file instead (see _local_audit_records); the rest still
+    # need the backend.
+    "save_funnel_stage":    ["backend_or_local"],
     "save_funnel_context":  ["env:FUNNEL_BACKEND_URL"],
     "save_funnel_memory":   ["env:FUNNEL_BACKEND_URL"],
     "search_prior_runs":    ["env:FUNNEL_BACKEND_URL"],
-    "list_funnels":         ["env:FUNNEL_BACKEND_URL"],
-    "get_funnel_audit":     ["env:FUNNEL_BACKEND_URL"],
+    "list_funnels":         ["backend_or_local"],
+    "get_funnel_audit":     ["backend_or_local"],
     "get_funnel_context":   ["env:FUNNEL_BACKEND_URL"],
     "get_pipeline_audit":   ["env:FUNNEL_BACKEND_URL"],
 
@@ -4295,7 +4297,11 @@ class MCPToolExecutor:
                 except Exception as e:
                     logger.debug(f"Audit emit failed: {e}")
 
-            if effective_funnel_id and tool_name not in FUNNEL_AUTOLOG_SKIP:
+            # Auto-log only to a funnel backend. On a local engine the tool_call
+            # audit entry above already is the run's exploration step (with its
+            # arguments and outcome); logging it again through the local
+            # save_funnel_stage would duplicate every call in the run's trail.
+            if effective_funnel_id and tool_name not in FUNNEL_AUTOLOG_SKIP and self.dashboard_url:
                 try:
                     event_payload = _sanitize_for_json({
                         "funnel_id": effective_funnel_id,
@@ -6511,19 +6517,136 @@ class MCPToolExecutor:
                 usage={"queries": 0, "tool": "get_pipeline_audit"}
             )
 
+    # ---- local funnel store ---------------------------------------------
+    # Without a funnel backend, a run's audit trail lives in the local audit
+    # file (FileAuditSink, ~/.novo/audit.jsonl): its tool calls are the
+    # exploration steps (tool_call events, with arguments and outcome), and
+    # save_funnel_stage adds checkpoint rows (funnel_stage events) for the
+    # human decisions and the final summary. get_funnel_audit merges the two
+    # in time order, in the shape the hosted backend returns.
+
+    def _local_audit_path(self) -> Optional[str]:
+        audit = getattr(getattr(self, "spine", None), "audit", None)
+        path = getattr(audit, "path", None)
+        return str(path) if path else None
+
+    def _local_audit_records(self) -> List[Dict[str, Any]]:
+        path = self._local_audit_path()
+        if not path or not os.path.exists(path):
+            return []
+        records = []
+        with open(path, "r", encoding="utf-8") as f:
+            for line in f:
+                try:
+                    rec = json.loads(line)
+                except ValueError:
+                    continue
+                if isinstance(rec, dict) and isinstance(rec.get("payload"), dict):
+                    records.append(rec)
+        return records
+
+    @staticmethod
+    def _local_stage_from_record(rec: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        p = rec["payload"]
+        if rec.get("event") == "funnel_stage":
+            return {**p, "timestamp": p.get("timestamp") or rec.get("ts")}
+        if rec.get("event") == "tool_call" and p.get("tool") not in FUNNEL_AUTOLOG_SKIP and p.get("tool") != "list_funnels":
+            tool = p.get("tool") or "unknown"
+            return {
+                "event_type": "exploration",
+                "stage_name": tool,
+                "stage_label": tool.replace("_", " ").title(),
+                "tool_name": tool,
+                "tool_arguments": p.get("arguments"),
+                "results_summary": p.get("outcome") if p.get("success", True) else {"error": p.get("error")},
+                "success": p.get("success", True),
+                "execution_time_ms": p.get("execution_time_ms"),
+                "timestamp": rec.get("ts"),
+            }
+        return None
+
+    def _local_funnel_stages(self, funnel_id: str) -> List[Dict[str, Any]]:
+        stages = []
+        for rec in self._local_audit_records():
+            if rec["payload"].get("funnel_id") != funnel_id:
+                continue
+            st = self._local_stage_from_record(rec)
+            if st is not None:
+                stages.append(st)
+        return sorted(stages, key=lambda st: str(st.get("timestamp") or ""))
+
+    def _local_funnel_summaries(self) -> List[Dict[str, Any]]:
+        runs: Dict[str, Dict[str, Any]] = {}
+        for rec in self._local_audit_records():
+            fid = rec["payload"].get("funnel_id")
+            st = self._local_stage_from_record(rec)
+            if st is None or not fid:
+                continue
+            ts = str(st.get("timestamp") or "")
+            run = runs.setdefault(fid, {
+                "funnel_id": fid, "started_at": ts, "last_activity": ts,
+                "stage_count": 0, "checkpoints": 0, "tool_calls": 0, "last_stage": None,
+            })
+            run["stage_count"] += 1
+            run["tool_calls" if st.get("event_type") == "exploration" else "checkpoints"] += 1
+            run["started_at"] = min(run["started_at"], ts)
+            if ts >= run["last_activity"]:
+                run["last_activity"], run["last_stage"] = ts, st.get("stage_label")
+        return sorted(runs.values(), key=lambda r: r["last_activity"], reverse=True)
+
+    async def _save_funnel_stage_locally(self, args: Dict[str, Any], funnel_id: str, context: Optional[Dict[str, Any]]) -> ToolResult:
+        payload = {k: v for k, v in args.items() if v is not None}
+        payload["funnel_id"] = funnel_id
+        payload.setdefault("event_type", "checkpoint")
+        if not payload.get("stage_name"):
+            payload["stage_name"] = payload.get("tool_name") or "unknown"
+        if not payload.get("stage_label"):
+            payload["stage_label"] = str(payload["stage_name"]).replace("_", " ").title()
+        if payload.get("stage_index") is None:
+            prior = [st for st in self._local_funnel_stages(funnel_id) if st.get("event_type") != "exploration"]
+            payload["stage_index"] = len(prior) + 1
+        if isinstance(payload.get("tool_arguments"), dict):
+            payload["tool_arguments"] = _audit_arguments(payload["tool_arguments"])
+        # Same format as the audit sink's own `ts`, so the run's steps sort as one timeline.
+        payload["timestamp"] = datetime.utcnow().isoformat() + "Z"
+        try:
+            from .spine import User as _SpineUser
+            ctx = context or {}
+            await self.spine.audit.emit(
+                "funnel_stage",
+                _sanitize_for_json(payload),
+                user=_SpineUser(user_id=ctx.get("user_id") or "local", org_id=ctx.get("org_id") or "local"),
+            )
+        except Exception as e:
+            return ToolResult(success=False, error=f"Failed to save funnel stage locally: {e}",
+                              usage={"queries": 0, "tool": "save_funnel_stage"})
+        return ToolResult(
+            success=True,
+            data={
+                "saved": True,
+                "funnel_id": funnel_id,
+                "stage_index": payload["stage_index"],
+                "stored_in": self._local_audit_path(),
+                "_reminder": "Tool calls passed this funnel_id are already in the run's trail; save stages for decisions and the final summary.",
+            },
+            usage={"queries": 0, "tool": "save_funnel_stage"},
+        )
+
     async def _execute_save_funnel_stage(self, args: Dict[str, Any], context: Dict[str, Any] = None) -> ToolResult:
         """Save a single event entry to the funnel audit log."""
         funnel_id = args.get("funnel_id") or (context or {}).get("funnel_id")
         if not funnel_id:
             return ToolResult(success=False, error="funnel_id is required (pass explicitly or via session)")
         if not self.dashboard_url:
-            # Local mode: managed backend unwired. Raw tool calls are still
-            # audited via the local audit sink (~/.novo/audit.jsonl by default).
-            return ToolResult(
-                success=False,
-                error="save_funnel_stage requires a funnel-persistence backend (set FUNNEL_BACKEND_URL). In local mode, raw tool calls are still audited via the local audit sink — see NOVO_AUDIT_PATH.",
-                usage={"queries": 0, "tool": "save_funnel_stage"},
-            )
+            # Local engine: keep the stage in the local audit file, beside the
+            # tool calls it summarizes.
+            if self._local_audit_path() is None:
+                return ToolResult(
+                    success=False,
+                    error="save_funnel_stage needs a funnel backend (FUNNEL_BACKEND_URL) or the local file audit sink (NOVO_AUDIT=local).",
+                    usage={"queries": 0, "tool": "save_funnel_stage"},
+                )
+            return await self._save_funnel_stage_locally(args, funnel_id, context)
 
         try:
             payload = {**args}
@@ -6626,6 +6749,26 @@ class MCPToolExecutor:
             return ToolResult(success=False, error="funnel_id is required")
 
         event_type = args.get("event_type", "all")
+
+        if not self.dashboard_url:
+            if self._local_audit_path() is None:
+                return ToolResult(success=False, error="get_funnel_audit needs a funnel backend or the local file audit sink (NOVO_AUDIT=local).")
+            stages = self._local_funnel_stages(funnel_id)
+            if event_type and event_type != "all":
+                stages = [st for st in stages if st.get("event_type") == event_type]
+            if not stages:
+                return ToolResult(success=False, error=f"Funnel {funnel_id} not found")
+            return ToolResult(
+                success=True,
+                data={
+                    "funnel_id": funnel_id,
+                    "stages": stages,
+                    "stage_count": len(stages),
+                    "total_credits": sum(float(st.get("credits_consumed") or 0) for st in stages),
+                    **({"event_type_filter": event_type} if event_type and event_type != "all" else {}),
+                },
+                usage={"queries": 0, "tool": "get_funnel_audit"},
+            )
 
         try:
             params = {}
@@ -7078,6 +7221,13 @@ class MCPToolExecutor:
         limit = args.get("limit", 15)
         target_gene = args.get("target_gene")
         outcome = args.get("outcome")
+        if not self.dashboard_url and self._local_audit_path() is not None:
+            funnels = self._local_funnel_summaries()[: max(1, int(limit or 15))]
+            return ToolResult(
+                success=True,
+                data={"funnels": funnels, "total": len(funnels)},
+                usage={"queries": 0, "tool": "list_funnels"},
+            )
 
         try:
             params: Dict[str, Any] = {"limit": limit}
