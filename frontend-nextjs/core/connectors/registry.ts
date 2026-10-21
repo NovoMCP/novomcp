@@ -189,7 +189,7 @@ export const CONNECTORS: Connector[] = [
 
   // ── Data connectors ─────────────────────────────────────────────
   {
-    id: 'snowflake', category: 'data', monogram: 'SF', name: 'Snowflake', beta: true, billedBy: 'Snowflake',
+    id: 'snowflake', category: 'data', monogram: 'SF', name: 'Snowflake', billedBy: 'Snowflake',
     role: 'Warehouse export & import',
     what: 'Send NovoMCP results and audit trails to Snowflake, and pull compound tables back in.',
     use: 'Land ADMET / docking results and run histories next to the rest of your data.',
@@ -206,7 +206,7 @@ export const CONNECTORS: Connector[] = [
     ],
   },
   {
-    id: 'databricks', category: 'data', monogram: 'DB', name: 'Databricks', beta: true, billedBy: 'Databricks',
+    id: 'databricks', category: 'data', monogram: 'DB', name: 'Databricks', billedBy: 'Databricks',
     role: 'Lakehouse export & import',
     what: 'Send NovoMCP results and audit trails to a Databricks SQL warehouse, and pull compound tables back in.',
     use: 'A two-way pipeline with your lakehouse.',
