@@ -96,22 +96,33 @@ class WarehouseConnector(BaseConnector):
         except Exception:
             return False
 
-    def _insert(self, statement: str, columns: List[str], rows: List[Dict[str, Any]]) -> Tuple[int, int, Optional[str]]:
+    def _insert(self, parts: List[str], columns: List[str], rows: List[Dict[str, Any]]) -> Tuple[int, int, Optional[str]]:
+        one_row = sql.insert_sql(self.dialect, parts, columns)
+        values = [[sql.bind_value(r.get(c)) for c in columns] for r in rows]
         written = failed = 0
         first_error: Optional[str] = None
+        if self.dialect.multirow_params:
+            per_statement = max(1, self.dialect.multirow_params // max(1, len(columns)))
+        else:
+            per_statement = 0
         cur = self._get_connection().cursor()
         try:
-            for start in range(0, len(rows), WRITE_BATCH):
-                batch = [[sql.bind_value(r.get(c)) for c in columns] for r in rows[start:start + WRITE_BATCH]]
+            for start in range(0, len(values), per_statement or WRITE_BATCH):
+                batch = values[start:start + (per_statement or WRITE_BATCH)]
                 try:
-                    cur.executemany(statement, batch)
+                    if per_statement:
+                        # Many rows in one statement: one round trip per batch.
+                        cur.execute(sql.insert_sql(self.dialect, parts, columns, rows=len(batch)),
+                                    [v for row in batch for v in row])
+                    else:
+                        cur.executemany(one_row, batch)
                     written += len(batch)
                     continue
                 except Exception:
                     pass
-                for values in batch:
+                for row in batch:  # retry row by row so one bad row doesn't sink the batch
                     try:
-                        cur.execute(statement, values)
+                        cur.execute(one_row, row)
                         written += 1
                     except Exception as e:
                         failed += 1
@@ -146,7 +157,7 @@ class WarehouseConnector(BaseConnector):
                 created = True
             elif mode == WriteMode.REPLACE:
                 self._run(f"TRUNCATE TABLE {self.dialect.table(parts)}")
-            written, failed, first_error = self._insert(sql.insert_sql(self.dialect, parts, columns), columns, rows)
+            written, failed, first_error = self._insert(parts, columns, rows)
             return ExportResult(
                 success=failed == 0,
                 rows_written=written,
