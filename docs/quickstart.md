@@ -181,7 +181,12 @@ Returns server info, capabilities, and the funnel-id instructions blurb. This is
 tail -3 ~/.novo/audit.jsonl
 ```
 
-Every tool call is logged as a JSON-lines row. Structure: `event`, `timestamp`, `payload` (tool, funnel_id, success, duration, surface).
+Every tool call is logged as a JSON-lines row: `ts`, `event`, and a `payload` with the tool, its run (`funnel_id`), success, duration, and:
+
+- `arguments`: what was run, enough to repeat the call. Keys that look like secrets (API keys, tokens, passwords) are stored as `<redacted>`; a very large value, such as a long SMILES list, keeps only its length and a sample.
+- `outcome`: a short result. For `check_compliance`, the verdict and its flags; for property and ADMET tools, the headline numbers.
+
+The file is the whole record: copy it to keep or share a history. In the dashboard, **Activity** lists every call, filters by tool, result or run, opens a call to copy it and run it again, and downloads the history as a CSV for a spreadsheet or as the raw log for scripts. For analysis, load the file directly, for example `pandas.read_json("~/.novo/audit.jsonl", lines=True)`.
 
 ## The web dashboard
 

@@ -24,6 +24,7 @@ import hashlib
 import logging
 import os
 import json
+import re
 import time
 from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Any, Optional
@@ -131,6 +132,68 @@ def _redact_arguments(args: Dict[str, Any]) -> Dict[str, Any]:
         else:
             out[k] = v
     return out
+
+
+_SECRET_ARG_KEY = re.compile(r"api[_-]?key|token|secret|password|authorization|credential", re.I)
+
+
+def _audit_arguments(args: Dict[str, Any]) -> Dict[str, Any]:
+    """Tool arguments for the local audit log, whole enough to repeat the call.
+
+    Keys that look like secrets are replaced with "<redacted>". Any other value
+    is kept as given unless its JSON passes 4 KB, in which case it gets
+    _redact_arguments' summary (a long SMILES list keeps its length and a sample).
+    """
+    out: Dict[str, Any] = {}
+    for k, v in (args or {}).items():
+        if _SECRET_ARG_KEY.search(str(k)):
+            out[k] = "<redacted>"
+            continue
+        try:
+            size = len(json.dumps(v, default=str))
+        except Exception:
+            size = 1 << 30
+        out[k] = v if size <= 4096 else _redact_arguments({k: v})[k]
+    return _sanitize_for_json(out)
+
+
+def _flag_list(value: Any) -> List[str]:
+    if isinstance(value, list):
+        return [str(f) for f in value if f]
+    if isinstance(value, str) and value.strip():
+        return [f.strip() for f in re.split(r"[,;]", value) if f.strip()]
+    return []
+
+
+def _audit_outcome(tool_name: str, data: Any) -> Optional[Dict[str, Any]]:
+    """A short, readable result for the local audit log.
+
+    check_compliance: the verdict and its flags, read from the configured
+    service's report (nested under "compliance"); the flag list is the field
+    whose name ends in "_flags". A few tools: their headline numbers
+    (_extract_audit_summary). Anything else: up to 12 top-level scalar fields.
+    """
+    if not isinstance(data, dict):
+        return None
+    if tool_name == "check_compliance":
+        report = data.get("compliance") if isinstance(data.get("compliance"), dict) else data
+        base = report.get("base_compliance") if isinstance(report.get("base_compliance"), dict) else {}
+        flags: List[str] = []
+        for source in (base, report):
+            key = next((k for k in source if str(k).endswith("_flags")), None)
+            if key:
+                flags = _flag_list(source[key])
+                break
+        status = report.get("overall_status") or report.get("status") or base.get("status")
+        return {"status": status, "flags": flags}
+    key_results, flags = MCPToolExecutor._extract_audit_summary(tool_name, data)
+    if key_results or flags:
+        return {**key_results, **({"flags": flags} if flags else {})}
+    scalars = {
+        k: v for k, v in data.items()
+        if isinstance(v, (int, float, bool)) or (isinstance(v, str) and len(v) <= 120)
+    }
+    return dict(list(scalars.items())[:12]) or None
 
 
 # Semaphore to cap concurrent autolog HTTP calls. managed backend uses a
@@ -4221,6 +4284,11 @@ class MCPToolExecutor:
                             "execution_time_ms": execution_time_ms,
                             "surface": surface,
                             "error": (result.error or "")[:200] if not result.success else None,
+                            # What was run and what came back, so a run can be
+                            # reviewed, exported from the dashboard's Activity
+                            # page, and repeated.
+                            "arguments": _audit_arguments(arguments),
+                            "outcome": _audit_outcome(tool_name, result.data) if result.success else None,
                         },
                         user=_audit_user,
                     )

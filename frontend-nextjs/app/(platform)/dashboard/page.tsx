@@ -218,9 +218,9 @@ export default function DashboardPage() {
         <div className="bg-[var(--card)] border border-[var(--border)] rounded-lg overflow-hidden">
           <div className="px-5 py-3.5 border-b border-[var(--border)] flex items-center justify-between">
             <h2 className="text-[11px] uppercase tracking-wider text-[var(--text-muted)]">Recent activity</h2>
-            <span className="text-[11px] font-mono text-[var(--text-muted)]">
-              {audit?.audit_path?.replace(/^.*\/\.novo/, '~/.novo') ?? ''}
-            </span>
+            <Link href="/activity" className="text-[12.5px] text-[var(--accent)] hover:underline">
+              View all and download →
+            </Link>
           </div>
           <div className="px-5 py-1">
             {loading ? (
