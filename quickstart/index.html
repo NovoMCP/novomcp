@@ -2454,7 +2454,7 @@
 </span><span id="__span-11-2"><a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="w">  </span>-H<span class="w"> </span><span class="s1">'Authorization: Bearer x'</span><span class="w"> </span><span class="se">\</span>
 </span><span id="__span-11-3"><a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a><span class="w">  </span><span class="p">|</span><span class="w"> </span>python3<span class="w"> </span>-m<span class="w"> </span>json.tool
 </span></code></pre></div>
-<p><code>LocalAuthGate</code> accepts any bearer token — <code>x</code> works fine. Returns the 15 always-available tools; the other 55 in the 69-tool catalog appear as you wire their backing services (see <a href="../tool-availability/">tool-availability.md</a>).</p>
+<p><code>LocalAuthGate</code> accepts any bearer token — <code>x</code> works fine. Returns the 18 always-available tools; the other 55 in the 69-tool catalog appear as you wire their backing services (see <a href="../tool-availability/">tool-availability.md</a>).</p>
 <h3 id="get-a-molecule-profile-aspirin">Get a molecule profile (aspirin)<a class="headerlink" href="#get-a-molecule-profile-aspirin" title="Permanent link">&para;</a></h3>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>curl<span class="w"> </span>-s<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://localhost:8018/mcp/tools/get_molecule_profile<span class="w"> </span><span class="se">\</span>
 </span><span id="__span-12-2"><a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a><span class="w">  </span>-H<span class="w"> </span><span class="s1">'Authorization: Bearer x'</span><span class="w"> </span><span class="se">\</span>
@@ -2484,7 +2484,7 @@
 <li><code>arguments</code>: what was run, enough to repeat the call. Keys that look like secrets (API keys, tokens, passwords) are stored as <code>&lt;redacted&gt;</code>; a very large value, such as a long SMILES list, keeps only its length and a sample.</li>
 <li><code>outcome</code>: a short result. For <code>check_compliance</code>, the verdict and its flags; for property and ADMET tools, the headline numbers.</li>
 </ul>
-<p>The file is the whole record: copy it to keep or share a history. In the dashboard, <strong>Activity</strong> lists every call, filters by tool, result or run, opens a call to copy it and run it again, and downloads the history as a CSV for a spreadsheet or as the raw log for scripts. For analysis, load the file directly, for example <code>pandas.read_json("~/.novo/audit.jsonl", lines=True)</code>.</p>
+<p>The file is the whole record: copy it to keep or share a history. In the dashboard, <strong>Activity</strong> lists every call, filters by tool, result or run, opens a call to copy it and run it again, and downloads the history as a CSV for a spreadsheet or as the raw log for scripts. Its <strong>Runs</strong> tab shows each run as a timeline: the calls it made, plus the stages a discovery funnel saved with <code>save_funnel_stage</code> (molecules in and out, what was filtered and why, and the human decisions). Those stages are kept in the same file, as <code>funnel_stage</code> events. For analysis, load the file directly, for example <code>pandas.read_json("~/.novo/audit.jsonl", lines=True)</code>.</p>
 <h2 id="the-web-dashboard">The web dashboard<a class="headerlink" href="#the-web-dashboard" title="Permanent link">&para;</a></h2>
 <p>The engine is headless — a REST/MCP backend. The <strong>web dashboard</strong> (Next.js) is the visual surface: molecule profiles, live engine/service status, and the config screens for LLM keys, compliance, observability, and data connectors.</p>
 <p>The engine and the dashboard are <strong>two separate processes</strong>. The dashboard's server-side routes proxy to the engine at <code>NOVOMCP_ENGINE_URL</code> (default <code>http://localhost:8018</code>); the browser only ever talks to the dashboard.</p>
@@ -2509,7 +2509,7 @@
 </div>
 </div>
 </div>
-<p>Once connected, the dashboard shows <strong>Tools available: 15 of 69</strong> — the 15 that work with nothing wired, out of the full catalog. That count climbs as you <a href="../deploying-services/">deploy services</a>; the dashboard lists which env var unlocks each capability. See <a href="../tool-availability/">Tool availability</a> for the full map.</p>
+<p>Once connected, the dashboard shows <strong>Tools available: 18 of 69</strong> — the 18 that work with nothing wired, out of the full catalog. That count climbs as you <a href="../deploying-services/">deploy services</a>; the dashboard lists which env var unlocks each capability. See <a href="../tool-availability/">Tool availability</a> for the full map.</p>
 <h3 id="what-runs-where">What runs where<a class="headerlink" href="#what-runs-where" title="Permanent link">&para;</a></h3>
 <table>
 <thead>

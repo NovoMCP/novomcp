@@ -1838,15 +1838,15 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#out-of-the-box-tools-15" class="md-nav__link">
+  <a href="#out-of-the-box-tools-18" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Out-of-the-box tools (15)
+        Out-of-the-box tools (18)
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Out-of-the-box tools (15)">
+    <nav class="md-nav" aria-label="Out-of-the-box tools (18)">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -2130,15 +2130,15 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#out-of-the-box-tools-15" class="md-nav__link">
+  <a href="#out-of-the-box-tools-18" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Out-of-the-box tools (15)
+        Out-of-the-box tools (18)
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Out-of-the-box tools (15)">
+    <nav class="md-nav" aria-label="Out-of-the-box tools (18)">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -2350,13 +2350,14 @@
 </tbody>
 </table>
 <p>Once you set the env var for a hidden tool's dependency, it appears in <code>tools/list</code> on the next <code>initialize</code> handshake. No restart required for MCP clients if they refresh their tool list.</p>
-<h2 id="out-of-the-box-tools-15">Out-of-the-box tools (15)<a class="headerlink" href="#out-of-the-box-tools-15" title="Permanent link">&para;</a></h2>
+<h2 id="out-of-the-box-tools-18">Out-of-the-box tools (18)<a class="headerlink" href="#out-of-the-box-tools-18" title="Permanent link">&para;</a></h2>
 <p>Install the engine (<code>pip install -r requirements.txt &amp;&amp; python main_https.py</code>), and you get:</p>
 <ul>
 <li><strong>RDKit-backed cheminformatics on user-supplied SMILES</strong> — <code>calculate_properties</code>, <code>get_molecule_info</code>, <code>get_molecule_profile</code> (basic path), <code>batch_profile</code>, <code>screen_library</code></li>
 <li><strong>Public-API integrations</strong> (open APIs, no keys required) — <code>search_chembl</code>, <code>search_clinical_trials</code>, <code>search_biorxiv</code>, <code>search_literature</code> (PubMed; <code>PINECONE_API_KEY</code> adds a curated semantic index on top). Transient network failures possible; these hit external services.</li>
 <li><strong>MD pre-flight (RCSB structure classification)</strong> — <code>audit_system</code></li>
 <li><strong>Job tracking</strong> — <code>get_job_status</code>, <code>cancel_job</code></li>
+<li><strong>Run audit trails</strong> — <code>save_funnel_stage</code>, <code>get_funnel_audit</code>, <code>list_funnels</code>. A run's tool calls and its saved stages are kept in the local audit file (<code>~/.novo/audit.jsonl</code>); the dashboard's Activity → Runs shows them as a timeline.</li>
 <li><strong>Platform meta</strong> — <code>get_platform_info</code></li>
 <li><strong>Autonomous modes</strong> — <code>run_materials_ag</code> (<code>mgm</code>), which returns the materials screening protocol or a setup guide, and <code>run_novo_ag</code> (<code>agm</code>). In v1 with no compute stack wired, it returns a setup-guide message pointing to which services unlock the full funnel plus a manual-workflow recipe using the always-available tools. Once you configure <code>NOVOMCP_DB_HOST</code> + <code>ADDIE_MODELS_URL</code> + <code>AUTODOCK_GPU_URL</code> + <code>GROMACS_MD_URL</code>, it runs the full 11-stage funnel.</li>
 </ul>
@@ -2430,7 +2431,7 @@
 </table>
 <h3 id="funnel-persistence-tools">Funnel-persistence tools<a class="headerlink" href="#funnel-persistence-tools" title="Permanent link">&para;</a></h3>
 <p>Requires: <code>FUNNEL_BACKEND_URL</code> pointing at an audit/usage-ledger service.</p>
-<p>Unlocks: <code>save_funnel_stage</code>, <code>save_funnel_context</code>, <code>save_funnel_memory</code>, <code>search_prior_runs</code>, <code>list_funnels</code>, <code>get_funnel_audit</code>, <code>get_funnel_context</code>, <code>get_pipeline_audit</code>, <code>get_credit_usage</code>, <code>generate_upload_url</code>, <code>get_file_status</code>, <code>list_files</code>, <code>list_jobs</code>, <code>get_job_status</code>, <code>cancel_job</code>.</p>
+<p>Unlocks: <code>save_funnel_context</code>, <code>save_funnel_memory</code>, <code>search_prior_runs</code>, <code>get_funnel_context</code>, <code>get_pipeline_audit</code>, <code>get_credit_usage</code>, <code>generate_upload_url</code>, <code>get_file_status</code>, <code>list_files</code>, <code>list_jobs</code>. With a backend set, <code>save_funnel_stage</code>, <code>get_funnel_audit</code>, <code>list_funnels</code>, <code>get_job_status</code> and <code>cancel_job</code> use it too; without one, a local engine keeps runs and jobs locally (see Out-of-the-box tools).</p>
 <p>Wire your own backend via the pluggable spine (<code>NOVO_AUDIT=custom</code>).</p>
 <h3 id="compliance-hook">Compliance hook<a class="headerlink" href="#compliance-hook" title="Permanent link">&para;</a></h3>
 <p>Requires: <code>NOVOMCP_COMPLIANCE_URL</code> pointing at a compliance service: NovoMCP's, at <code>https://api.novomcp.com/v1/compliance</code> (set <code>NOVOMCP_COMPLIANCE_API_KEY</code> to your API key; each check is billed to its account), or any compatible service.</p>
