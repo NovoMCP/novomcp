@@ -27,7 +27,7 @@ export interface Connector {
   uses: string; // how NovoMCP uses it (which tools it unlocks)
   guide: string; // path under https://docs.novomcp.com/
   urlEnv?: string; // service category: the engine env var it writes
-  paidApi?: boolean; // used only by paid-API tools; the open-source engine has no tool for it
+  planned?: boolean; // saves settings, but nothing in the open-source engine uses them yet
   fields: Field[];
 }
 
@@ -188,11 +188,11 @@ export const CONNECTORS: Connector[] = [
 
   // ── Data connectors ─────────────────────────────────────────────
   {
-    id: 'snowflake', category: 'data', monogram: 'SF', name: 'Snowflake', paidApi: true,
+    id: 'snowflake', category: 'data', monogram: 'SF', name: 'Snowflake', planned: true,
     role: 'Warehouse export',
     what: 'Push NovoMCP results into a Snowflake warehouse.',
     use: 'Land ADMET / docking results next to the rest of your data.',
-    uses: 'Registers a Snowflake destination for push_to_destination, a paid-API tool at api.novomcp.com. The open-source engine does not include it, so on a self-hosted install this saves settings nothing uses yet.',
+    uses: 'Registers a Snowflake destination for exporting results. Export from a self-hosted install is planned and will be free; Snowflake bills its own usage under your account with them. Until it ships, settings saved here are not used.',
     guide: 'optional-data-services/',
     fields: [
       { name: 'account', label: 'Account', placeholder: 'xy12345.us-east-1', required: true, bucket: 'config' },
@@ -203,11 +203,11 @@ export const CONNECTORS: Connector[] = [
     ],
   },
   {
-    id: 'databricks', category: 'data', monogram: 'DB', name: 'Databricks', paidApi: true,
+    id: 'databricks', category: 'data', monogram: 'DB', name: 'Databricks', planned: true,
     role: 'Lakehouse SQL',
     what: 'Read from and write to a Databricks SQL warehouse.',
     use: 'Bidirectional pipeline with your lakehouse.',
-    uses: 'Registers a Databricks destination for push_to_destination, a paid-API tool at api.novomcp.com. The open-source engine does not include it, so on a self-hosted install this saves settings nothing uses yet.',
+    uses: 'Registers a Databricks destination for exporting results. Export from a self-hosted install is planned and will be free; Databricks bills its own usage under your account with them. Until it ships, settings saved here are not used.',
     guide: 'optional-data-services/',
     fields: [
       { name: 'server_hostname', label: 'Server hostname', placeholder: 'dbc-xxxx.cloud.databricks.com', required: true, bucket: 'config' },
