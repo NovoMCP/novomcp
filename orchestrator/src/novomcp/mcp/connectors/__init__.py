@@ -9,9 +9,12 @@ from typing import Any, Dict
 
 from .base import (
     BaseConnector,
+    ConnectorTimeout,
     ConnectorType,
+    ExportIdentity,
     ExportResult,
     NormalizedType,
+    ReadResult,
     SchemaColumn,
     TargetSchema,
     WriteMode,
@@ -62,9 +65,12 @@ def get_connector(
 
 __all__ = [
     "BaseConnector",
+    "ConnectorTimeout",
     "ConnectorType",
+    "ExportIdentity",
     "ExportResult",
     "NormalizedType",
+    "ReadResult",
     "SchemaColumn",
     "TargetSchema",
     "WriteMode",

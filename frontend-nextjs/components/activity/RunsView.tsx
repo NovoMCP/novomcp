@@ -2,6 +2,7 @@
 
 import { Fragment, useEffect, useState } from 'react';
 import { ChevronDown, ChevronRight, Download, FlaskConical, Loader2, UserCheck } from 'lucide-react';
+import SendToWarehouse from './SendToWarehouse';
 
 // Runs: one row per run (everything filed under a funnel_id). Open a run for
 // its timeline: the tool calls it made (exploration) and the stages the model
@@ -126,6 +127,7 @@ function RunTimeline({ runId, onShowCalls }: { runId: string; onShowCalls: (runI
           >
             <Download className="h-3.5 w-3.5" /> Download run
           </a>
+          <SendToWarehouse payload={{ kind: 'run', runId }} defaultTable="novomcp_run_audit" variant="link" />
         </div>
       </div>
       <div className="bg-[var(--card)] border border-[var(--border)] rounded-md overflow-x-auto">

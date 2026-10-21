@@ -27,7 +27,7 @@ export interface Connector {
   uses: string; // how NovoMCP uses it (which tools it unlocks)
   guide: string; // path under https://docs.novomcp.com/
   urlEnv?: string; // service category: the engine env var it writes
-  planned?: boolean; // saves settings, but nothing in the open-source engine uses them yet
+  beta?: boolean; // works, but not yet verified against a live account
   billedBy?: string; // a paid third-party API: the provider bills its usage to the user's own account
   fields: Field[];
 }
@@ -189,31 +189,34 @@ export const CONNECTORS: Connector[] = [
 
   // ── Data connectors ─────────────────────────────────────────────
   {
-    id: 'snowflake', category: 'data', monogram: 'SF', name: 'Snowflake', planned: true, billedBy: 'Snowflake',
-    role: 'Warehouse export',
-    what: 'Push NovoMCP results into a Snowflake warehouse.',
-    use: 'Land ADMET / docking results next to the rest of your data.',
-    uses: 'Registers a Snowflake destination for exporting results. Export from a self-hosted install is planned and will be free; Snowflake bills its own usage under your account with them. Until it ships, settings saved here are not used.',
+    id: 'snowflake', category: 'data', monogram: 'SF', name: 'Snowflake', beta: true, billedBy: 'Snowflake',
+    role: 'Warehouse export & import',
+    what: 'Send NovoMCP results and audit trails to Snowflake, and pull compound tables back in.',
+    use: 'Land ADMET / docking results and run histories next to the rest of your data.',
+    uses: 'Unlocks push_to_destination and pull_from_source (restart your MCP client to see them), and Send to warehouse on the Activity page. Tables are created if missing. Free from a self-hosted install; Snowflake bills its own usage under your account.',
     guide: 'optional-data-services/',
     fields: [
       { name: 'account', label: 'Account', placeholder: 'xy12345.us-east-1', required: true, bucket: 'config' },
       { name: 'warehouse', label: 'Warehouse', placeholder: 'COMPUTE_WH', bucket: 'config' },
-      { name: 'database', label: 'Database', placeholder: 'optional', bucket: 'config' },
+      { name: 'database', label: 'Database', placeholder: 'NOVOMCP', required: true, bucket: 'config', hint: 'Where new tables are created.' },
+      { name: 'schema', label: 'Schema', placeholder: 'PUBLIC (default)', bucket: 'config' },
+      { name: 'role', label: 'Role', placeholder: 'optional', bucket: 'config' },
       { name: 'username', label: 'Username', placeholder: 'svc_novomcp', required: true, bucket: 'credentials' },
       { name: 'password', label: 'Password', placeholder: '••••', required: true, secret: true, bucket: 'credentials' },
     ],
   },
   {
-    id: 'databricks', category: 'data', monogram: 'DB', name: 'Databricks', planned: true, billedBy: 'Databricks',
-    role: 'Lakehouse SQL',
-    what: 'Read from and write to a Databricks SQL warehouse.',
-    use: 'Bidirectional pipeline with your lakehouse.',
-    uses: 'Registers a Databricks destination for exporting results. Export from a self-hosted install is planned and will be free; Databricks bills its own usage under your account with them. Until it ships, settings saved here are not used.',
+    id: 'databricks', category: 'data', monogram: 'DB', name: 'Databricks', beta: true, billedBy: 'Databricks',
+    role: 'Lakehouse export & import',
+    what: 'Send NovoMCP results and audit trails to a Databricks SQL warehouse, and pull compound tables back in.',
+    use: 'A two-way pipeline with your lakehouse.',
+    uses: 'Unlocks push_to_destination and pull_from_source (restart your MCP client to see them), and Send to warehouse on the Activity page. Tables are created if missing. Free from a self-hosted install; Databricks bills its own usage under your account.',
     guide: 'optional-data-services/',
     fields: [
       { name: 'server_hostname', label: 'Server hostname', placeholder: 'dbc-xxxx.cloud.databricks.com', required: true, bucket: 'config' },
       { name: 'http_path', label: 'HTTP path', placeholder: '/sql/1.0/warehouses/xxxx', required: true, bucket: 'config' },
-      { name: 'catalog', label: 'Catalog', placeholder: 'optional', bucket: 'config' },
+      { name: 'catalog', label: 'Catalog', placeholder: 'main (default)', bucket: 'config' },
+      { name: 'schema', label: 'Schema', placeholder: 'default (default)', bucket: 'config' },
       { name: 'access_token', label: 'Access token', placeholder: 'dapi…', required: true, secret: true, bucket: 'credentials' },
     ],
   },

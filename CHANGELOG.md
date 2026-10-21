@@ -4,6 +4,13 @@ All notable changes to NovoMCP are recorded here. The format is [Keep a Changelo
 
 ## [Unreleased]
 
+### Added
+- Snowflake and Databricks on a self-hosted install (beta). Save a connection on the dashboard's Connections page and the engine lists `push_to_destination` (results or a run's audit trail to a table, created if missing) and `pull_from_source` (read a table, run tools over each SMILES, optionally push the enriched rows back). The Activity page gets **Send to warehouse** for filtered calls or one run. Exports and pipelines are recorded in the local audit log; nothing is metered.
+
+### Fixed
+- Databricks queries now use the `?` placeholder the current `databricks-sql-connector` expects.
+- The pull pipeline no longer fails when a row has no exclusion reason.
+
 ## [1.4.3] - 2026-08-03
 
 ### Fixed
