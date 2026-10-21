@@ -209,7 +209,10 @@ export default function ConnectionsPage() {
                 </div>
               </div>
               <div className="flex items-center justify-between mt-auto">
-                <StatusPill tone={st.tone} label={st.label} />
+                <span className="flex items-center gap-1.5">
+                  <StatusPill tone={st.tone} label={st.label} />
+                  {c.paidApi && <PaidTag />}
+                </span>
                 <span className="text-xs text-[var(--accent)] opacity-0 group-hover:opacity-100 transition-opacity">
                   Configure →
                 </span>
@@ -243,6 +246,15 @@ function Monogram({ text, size = 'sm' }: { text: string; size?: 'sm' | 'lg' }) {
     >
       {text}
     </div>
+  );
+}
+
+// Marks a connector only paid-API tools use (api.novomcp.com).
+function PaidTag() {
+  return (
+    <span className="inline-flex items-center text-[11px] px-2 py-0.5 rounded-full border border-[var(--accent)]/30 text-[var(--accent)]">
+      Paid API
+    </span>
   );
 }
 
@@ -338,7 +350,10 @@ function Detail({
                 {connector.name}
               </h2>
               <div className="mt-2">
-                <StatusPill tone={status.tone} label={status.label} />
+                <span className="flex items-center gap-1.5">
+                  <StatusPill tone={status.tone} label={status.label} />
+                  {connector.paidApi && <PaidTag />}
+                </span>
               </div>
             </div>
           </div>
