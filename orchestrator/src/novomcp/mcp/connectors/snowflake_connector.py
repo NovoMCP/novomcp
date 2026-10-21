@@ -8,15 +8,14 @@ and data writing via parameterized INSERT or write_pandas().
 import logging
 from typing import Any, Dict, List, Optional, Tuple
 
+from . import sql
 from .base import (
-    BaseConnector,
     ConnectorType,
-    ExportResult,
     NormalizedType,
     SchemaColumn,
     TargetSchema,
-    WriteMode,
 )
+from .warehouse import WarehouseConnector
 
 logger = logging.getLogger(__name__)
 
@@ -64,10 +63,16 @@ def _normalize_type(sf_type: str) -> NormalizedType:
     return _TYPE_MAP.get(base, NormalizedType.STRING)
 
 
-class SnowflakeConnector(BaseConnector):
-    """Snowflake data warehouse connector."""
+class SnowflakeConnector(WarehouseConnector):
+    """Snowflake data warehouse connector. Reads and writes come from
+    WarehouseConnector; this class connects and discovers tables."""
 
     connector_type = ConnectorType.SNOWFLAKE
+    dialect = sql.SNOWFLAKE
+    container_key = "database"
+    default_container = None
+    default_schema = "PUBLIC"
+    location_label = "SNOWFLAKE"
 
     def __init__(self, config: Dict[str, Any], credentials: Dict[str, Any]):
         super().__init__(config, credentials)
@@ -177,67 +182,6 @@ class SnowflakeConnector(BaseConnector):
         except Exception as e:
             logger.error(f"Snowflake schema discovery failed: {e}")
             return []
-
-    async def write_data(
-        self,
-        target: str,
-        data: List[Dict[str, Any]],
-        mode: WriteMode = WriteMode.APPEND,
-    ) -> ExportResult:
-        if not data:
-            return ExportResult(success=True, rows_written=0, target_location=target)
-
-        try:
-            from .base import validate_sql_identifier
-            conn = self._get_connection()
-            cur = conn.cursor()
-            database = validate_sql_identifier(self.config.get("database", ""), "database")
-            schema = validate_sql_identifier(self.config.get("schema", "PUBLIC"), "schema")
-            validate_sql_identifier(target, "target table")
-            full_target = f"{database}.{schema}.{target}"
-
-            if mode == WriteMode.REPLACE:
-                cur.execute(f"TRUNCATE TABLE IF EXISTS {full_target}")
-
-            # Get column names from first row
-            columns = list(data[0].keys())
-            for col in columns:
-                validate_sql_identifier(col, "column")
-            col_list = ", ".join(columns)
-            placeholders = ", ".join(["%s"] * len(columns))
-
-            rows_written = 0
-            rows_failed = 0
-
-            # Batch insert
-            for row in data:
-                try:
-                    values = tuple(row.get(col) for col in columns)
-                    cur.execute(
-                        f"INSERT INTO {full_target} ({col_list}) VALUES ({placeholders})",
-                        values,
-                    )
-                    rows_written += 1
-                except Exception as e:
-                    logger.warning(f"Row insert failed: {e}")
-                    rows_failed += 1
-
-            cur.close()
-
-            return ExportResult(
-                success=rows_failed == 0,
-                rows_written=rows_written,
-                rows_failed=rows_failed,
-                target_location=f"SNOWFLAKE:{full_target}",
-            )
-
-        except Exception as e:
-            logger.error(f"Snowflake write failed: {e}")
-            return ExportResult(
-                success=False,
-                error=str(e),
-                target_location=f"SNOWFLAKE:{target}",
-            )
 
     @staticmethod
     def get_config_schema() -> dict:

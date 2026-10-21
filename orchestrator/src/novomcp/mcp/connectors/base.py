@@ -5,11 +5,12 @@ Defines the abstract BaseConnector interface that all connector adapters
 (Snowflake, Databricks, Google Sheets, Airtable, Benchling) must implement.
 """
 
+import asyncio
 import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Awaitable, Dict, List, Optional, Tuple, TypeVar
 
 _SAFE_ID = re.compile(r'^[A-Za-z_][A-Za-z0-9_]{0,127}$')
 
@@ -19,6 +20,17 @@ def validate_sql_identifier(name: str, label: str = "identifier") -> str:
     if not _SAFE_ID.match(name):
         raise ValueError(f"Invalid SQL {label}: {name!r}")
     return name
+
+
+T = TypeVar("T")
+
+
+class ConnectorTimeout(Exception):
+    """A connector call ran past its time budget."""
+
+    def __init__(self, connector_type: str, operation: str, timeout: float):
+        self.connector_type, self.operation, self.timeout = connector_type, operation, timeout
+        super().__init__(f"{connector_type} {operation} took longer than {timeout:g}s")
 
 
 class ConnectorType(str, Enum):
@@ -64,6 +76,38 @@ class TargetSchema:
 
 
 @dataclass
+class ExportIdentity:
+    """Who exported a set of rows. Written into each row so the destination
+    table itself records where its rows came from."""
+    user_id: str = ""
+    user_email: str = ""
+    org_id: str = ""
+    export_id: str = ""
+    source_tool: str = ""
+    exported_at: str = ""
+
+    @staticmethod
+    def inject_columns(rows: List[Dict[str, Any]], identity: "ExportIdentity") -> List[Dict[str, Any]]:
+        for row in rows:
+            row["_exported_by"] = identity.user_email or identity.user_id
+            row["_export_id"] = identity.export_id
+            row["_exported_at"] = identity.exported_at
+        return rows
+
+
+@dataclass
+class ReadResult:
+    """Rows read from a source table."""
+    success: bool
+    columns: List[str] = field(default_factory=list)
+    rows: List[Dict[str, Any]] = field(default_factory=list)
+    row_count: int = 0
+    total_available: Optional[int] = None
+    truncated: bool = False
+    error: Optional[str] = None
+
+
+@dataclass
 class ExportResult:
     """Result of a data export operation."""
     success: bool
@@ -84,6 +128,11 @@ class BaseConnector(ABC):
 
     connector_type: ConnectorType
 
+    # Time budgets (seconds) for each kind of call.
+    DISCOVER_TIMEOUT = 30
+    READ_TIMEOUT = 120
+    WRITE_TIMEOUT = 300
+
     def __init__(self, config: Dict[str, Any], credentials: Dict[str, Any]):
         """
         Initialize connector with non-secret config and credentials.
@@ -92,8 +141,14 @@ class BaseConnector(ABC):
             config: Non-secret configuration (account, warehouse, spreadsheet_id, etc.)
             credentials: Secret credentials from the configured secret store
         """
-        self.config = config
-        self.credentials = credentials
+        self.config = config or {}
+        self.credentials = credentials or {}
+
+    async def _with_timeout(self, coro: Awaitable[T], timeout: float, operation: str) -> T:
+        try:
+            return await asyncio.wait_for(coro, timeout=timeout)
+        except asyncio.TimeoutError as e:
+            raise ConnectorTimeout(self.connector_type.value, operation, timeout) from e
 
     @abstractmethod
     async def test_connection(self) -> Tuple[bool, Optional[str]]:
@@ -121,6 +176,7 @@ class BaseConnector(ABC):
         target: str,
         data: List[Dict[str, Any]],
         mode: WriteMode = WriteMode.APPEND,
+        identity: Optional[ExportIdentity] = None,
     ) -> ExportResult:
         """
         Write data to a specific target.
@@ -129,6 +185,7 @@ class BaseConnector(ABC):
             target: Target identifier (table name, sheet name, entity type)
             data: List of row dicts to write
             mode: Write mode (append, replace, upsert)
+            identity: Who is exporting; connectors that support it add it to each row
 
         Returns:
             ExportResult with write metrics
@@ -154,6 +211,28 @@ class BaseConnector(ABC):
         Used to validate credentials before storing in Key Vault.
         """
         ...
+
+    async def read_data(
+        self,
+        table: str,
+        columns: Optional[List[str]] = None,
+        filters: Optional[List[Dict[str, Any]]] = None,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> ReadResult:
+        """Read rows from a table. Only warehouse connectors can read."""
+        raise NotImplementedError(f"The {self.connector_type.value} connector can't read data")
+
+    async def count_rows(self, table: str, filters: Optional[List[Dict[str, Any]]] = None) -> int:
+        """Count rows in a table. Only warehouse connectors can read."""
+        raise NotImplementedError(f"The {self.connector_type.value} connector can't read data")
+
+    async def discover_target_schema(self, target: str) -> Optional[TargetSchema]:
+        """The schema of one target, if it exists."""
+        for s in await self.discover_schema():
+            if s.name.lower() == target.lower():
+                return s
+        return None
 
     async def close(self):
         """Close any open connections. Override in subclasses as needed."""

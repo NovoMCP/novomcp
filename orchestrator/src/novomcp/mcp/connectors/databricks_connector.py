@@ -8,15 +8,14 @@ via Unity Catalog, and data writing via parameterized INSERT.
 import logging
 from typing import Any, Dict, List, Optional, Tuple
 
+from . import sql
 from .base import (
-    BaseConnector,
     ConnectorType,
-    ExportResult,
     NormalizedType,
     SchemaColumn,
     TargetSchema,
-    WriteMode,
 )
+from .warehouse import WarehouseConnector
 
 logger = logging.getLogger(__name__)
 
@@ -52,10 +51,15 @@ def _normalize_type(db_type: str) -> NormalizedType:
     return _TYPE_MAP.get(base, NormalizedType.STRING)
 
 
-class DatabricksConnector(BaseConnector):
+class DatabricksConnector(WarehouseConnector):
     """Databricks SQL warehouse / Unity Catalog connector."""
 
     connector_type = ConnectorType.DATABRICKS
+    dialect = sql.DATABRICKS
+    container_key = "catalog"
+    default_container = "main"
+    default_schema = "default"
+    location_label = "DATABRICKS"
 
     def __init__(self, config: Dict[str, Any], credentials: Dict[str, Any]):
         super().__init__(config, credentials)
@@ -70,7 +74,7 @@ class DatabricksConnector(BaseConnector):
         self._conn = sql.connect(
             server_hostname=self.config["server_hostname"],
             http_path=self.config["http_path"],
-            access_token=self.credentials["access_token"],
+            access_token=self.credentials.get("access_token") or self.credentials.get("token"),
             catalog=self.config.get("catalog"),
             schema=self.config.get("schema"),
             # Bound socket connect/send/recv so an unreachable or firewalled
@@ -101,13 +105,13 @@ class DatabricksConnector(BaseConnector):
             schema = validate_sql_identifier(self.config.get("schema", "default"), "schema")
 
             # catalog is an identifier (can't be bound) and is validated above;
-            # schema is a value, so bind it with a parameter like the Snowflake
-            # adapter does rather than interpolating it as a literal.
+            # schema is a value, so it is bound (native ? parameter, as the
+            # databricks-sql-connector expects) rather than written in.
             cur.execute(
                 f"""
                 SELECT TABLE_NAME, COLUMN_NAME, DATA_TYPE, IS_NULLABLE
                 FROM {catalog}.INFORMATION_SCHEMA.COLUMNS
-                WHERE TABLE_SCHEMA = %s
+                WHERE TABLE_SCHEMA = ?
                 ORDER BY TABLE_NAME, ORDINAL_POSITION
                 """,
                 [schema],
@@ -142,65 +146,6 @@ class DatabricksConnector(BaseConnector):
         except Exception as e:
             logger.error(f"Databricks schema discovery failed: {e}")
             return []
-
-    async def write_data(
-        self,
-        target: str,
-        data: List[Dict[str, Any]],
-        mode: WriteMode = WriteMode.APPEND,
-    ) -> ExportResult:
-        if not data:
-            return ExportResult(success=True, rows_written=0, target_location=target)
-
-        try:
-            from .base import validate_sql_identifier
-            conn = self._get_connection()
-            cur = conn.cursor()
-            catalog = validate_sql_identifier(self.config.get("catalog", "main"), "catalog")
-            schema = validate_sql_identifier(self.config.get("schema", "default"), "schema")
-            validate_sql_identifier(target, "target table")
-            full_target = f"{catalog}.{schema}.{target}"
-
-            if mode == WriteMode.REPLACE:
-                cur.execute(f"TRUNCATE TABLE {full_target}")
-
-            columns = list(data[0].keys())
-            for col in columns:
-                validate_sql_identifier(col, "column")
-            col_list = ", ".join(columns)
-
-            rows_written = 0
-            rows_failed = 0
-
-            for row in data:
-                try:
-                    values = [row.get(col) for col in columns]
-                    placeholders = ", ".join(["%s"] * len(columns))
-                    cur.execute(
-                        f"INSERT INTO {full_target} ({col_list}) VALUES ({placeholders})",
-                        values,
-                    )
-                    rows_written += 1
-                except Exception as e:
-                    logger.warning(f"Row insert failed: {e}")
-                    rows_failed += 1
-
-            cur.close()
-
-            return ExportResult(
-                success=rows_failed == 0,
-                rows_written=rows_written,
-                rows_failed=rows_failed,
-                target_location=f"DATABRICKS:{full_target}",
-            )
-
-        except Exception as e:
-            logger.error(f"Databricks write failed: {e}")
-            return ExportResult(
-                success=False,
-                error=str(e),
-                target_location=f"DATABRICKS:{target}",
-            )
 
     @staticmethod
     def get_config_schema() -> dict:

@@ -146,7 +146,7 @@ The 69 tools group into these categories (each with per-tool descriptions in the
 - **Funnel persistence** — `save_funnel_stage`, `save_funnel_context`, `save_funnel_memory`, `get_funnel_context`, `get_funnel_audit`, `list_funnels`, `get_pipeline_audit`
 - **File intelligence** — `generate_upload_url`, `get_file_status`, `list_files`
 - **Discovery tools** — `explore_chemical_space`, `drill_into_cluster`, `vector_search`, `compare_candidates`
-- **Enterprise integrations** — `push_to_destination`, `pull_from_source`
+- **Data warehouses** — `push_to_destination`, `pull_from_source` (once a Snowflake or Databricks connection is saved)
 - **Platform + audit** — `get_platform_info`, `audit_system`, `get_credit_usage`
 
 GPU-marked tools return `service unavailable` in local mode unless you deploy the corresponding compute service. See [Deploying services](deploying-services/README.md).

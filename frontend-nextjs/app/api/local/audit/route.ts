@@ -1,7 +1,5 @@
 import { NextResponse } from 'next/server';
-import { promises as fs } from 'fs';
-import path from 'path';
-import os from 'os';
+import { AUDIT_PATH, matchesCall, readAuditLines, type Line } from '@/core/audit/localAudit';
 
 // Reads ~/.novo/audit.jsonl (the FileAuditSink default location the engine
 // writes to). No managed backend needed: users see their own tool-call history.
@@ -15,41 +13,8 @@ import os from 'os';
 //   format=jsonl  every matching line, unchanged, as a download
 // The dashboard calls it with just ?limit=6.
 
-const AUDIT_PATH = process.env.NOVO_AUDIT_PATH || path.join(os.homedir(), '.novo', 'audit.jsonl');
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 500;
-
-interface Entry {
-  ts?: string;
-  event?: string;
-  user?: string | null;
-  org?: string | null;
-  payload?: {
-    tool?: string;
-    funnel_id?: string | null;
-    success?: boolean;
-    execution_time_ms?: number;
-    surface?: string;
-    error?: string | null;
-    arguments?: Record<string, unknown>;
-    outcome?: Record<string, unknown> | null;
-  };
-}
-
-interface Line {
-  raw: string;
-  entry: Entry;
-}
-
-function matches(line: Line, f: { tool: string; status: string; run: string; q: string }): boolean {
-  const p = line.entry.payload ?? {};
-  if (f.tool && p.tool !== f.tool) return false;
-  if (f.status === 'ok' && p.success === false) return false;
-  if (f.status === 'error' && p.success !== false) return false;
-  if (f.run && p.funnel_id !== f.run) return false;
-  if (f.q && !line.raw.toLowerCase().includes(f.q)) return false;
-  return true;
-}
 
 // One spreadsheet row per call. SMILES gets its own column because it's what
 // people sort and search by; arguments and outcome stay JSON so nothing is lost.
@@ -97,25 +62,12 @@ export async function GET(req: Request) {
   };
   const format = params.get('format');
 
-  let lines: Line[] = [];
-  let error: string | null = null;
-  try {
-    const contents = await fs.readFile(AUDIT_PATH, 'utf-8');
-    for (const raw of contents.split('\n')) {
-      if (!raw.trim()) continue;
-      try {
-        lines.push({ raw, entry: JSON.parse(raw) });
-      } catch {
-        // skip malformed line
-      }
-    }
-  } catch (e: unknown) {
-    const err = e as { code?: string; message?: string };
-    error = err.code === 'ENOENT' ? 'no_audit_yet' : err.message || 'read_failed';
-  }
+  const read = await readAuditLines();
+  let lines: Line[] = read.lines;
+  const error = read.error;
 
   const tools = Array.from(new Set(lines.map((l) => l.entry.payload?.tool).filter(Boolean) as string[])).sort();
-  lines = lines.filter((l) => matches(l, filters)).reverse(); // newest first
+  lines = lines.filter((l) => matchesCall(l, filters)).reverse(); // newest first
 
   if (format === 'csv' || format === 'jsonl') {
     const stamp = new Date().toISOString().slice(0, 10);

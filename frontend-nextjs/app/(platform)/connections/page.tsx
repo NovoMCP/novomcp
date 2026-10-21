@@ -211,7 +211,7 @@ export default function ConnectionsPage() {
               <div className="flex items-center justify-between mt-auto">
                 <span className="flex items-center gap-1.5">
                   <StatusPill tone={st.tone} label={st.label} />
-                  {c.planned && <PlannedTag />}
+                  {c.beta && <BetaTag />}
                   {c.billedBy && <BilledTag />}
                 </span>
                 <span className="text-xs text-[var(--accent)] opacity-0 group-hover:opacity-100 transition-opacity">
@@ -250,11 +250,15 @@ function Monogram({ text, size = 'sm' }: { text: string; size?: 'sm' | 'lg' }) {
   );
 }
 
-// Marks a connector whose settings nothing uses yet (its feature is planned).
-function PlannedTag() {
+// Marks a connector that works but hasn't yet been verified against a live
+// account.
+function BetaTag() {
   return (
-    <span className="inline-flex items-center text-[11px] px-2 py-0.5 rounded-full border border-[var(--accent)]/30 text-[var(--accent)]">
-      Planned
+    <span
+      className="inline-flex items-center text-[11px] px-2 py-0.5 rounded-full border border-[var(--accent)]/30 text-[var(--accent)]"
+      title="Works, but not yet verified against a live account"
+    >
+      Beta
     </span>
   );
 }
@@ -363,7 +367,7 @@ function Detail({
               <div className="mt-2">
                 <span className="flex items-center gap-1.5">
                   <StatusPill tone={status.tone} label={status.label} />
-                  {connector.planned && <PlannedTag />}
+                  {connector.beta && <BetaTag />}
                   {connector.billedBy && <BilledTag />}
                 </span>
               </div>

@@ -142,6 +142,23 @@ export PINECONE_LITERATURE_INDEX=novomcp-literature-v2
 export PINECONE_PATENTS_INDEX=novomcp-patents-v1
 ```
 
+### Data warehouses — Snowflake, Databricks
+
+Tools that need it: `push_to_destination`, `pull_from_source`. Also **Send to warehouse** on the dashboard's Activity page.
+
+Add the connection on the dashboard's **Connections** page (Data connectors), then **Test** it. The engine reads it from `~/.novo/connectors.json` (the dashboard and engine share this folder in both compose files), so there's nothing to export.
+
+- **Snowflake:** account, database, and optionally warehouse, schema (default `PUBLIC`) and role; a username and password.
+- **Databricks:** server hostname, HTTP path, and optionally catalog (default `main`) and schema (default `default`); a personal access token.
+
+What it does:
+
+- **Push** writes rows to `table`, `schema.table` or `database.schema.table`, creating the table from the rows if it doesn't exist. Each row also gets `_exported_by`, `_export_id` and `_exported_at`. Ask your MCP client to "send these results to Snowflake", or to export a run's audit trail by its run id. Exports are recorded in the local audit log.
+- **Pull** reads a table (up to 10,000 rows), with filters but no raw SQL. `execute_pipeline` runs `predict_admet`, `check_compliance`, `optimize_molecule` or `calculate_properties` over each row's SMILES and can push the enriched rows to another table.
+- **Activity → Send to warehouse** writes the filtered calls (`novomcp_activity`) or one run's timeline (`novomcp_run_audit`).
+
+Table and column names are checked against a strict pattern and every value is bound as a parameter. Nothing is metered by NovoMCP; Snowflake and Databricks bill their own usage on your account. This is in beta until it has been run against live accounts.
+
 ## What's not optional
 
 The following are self-contained in the engine and require no external services beyond what's listed in `requirements.txt`:

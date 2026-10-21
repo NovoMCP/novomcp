@@ -620,13 +620,42 @@ MCP_TOOLS = {
     "push_to_destination": {
         "name": "push_to_destination",
         "title": "Push to Destination",
-        "description": "Push tool results to a connected destination such as Google Sheets or BigQuery.",
+        "description": "Push tool results, or a run's audit trail, to a connected data warehouse (Snowflake, Databricks). Actions: list_connections, discover_schema (tables at the destination), preview_mapping (how fields will land), export (write rows; creates the table if it doesn't exist).",
         "inputSchema": {
             "type": "object",
             "properties": {
                 "action": {
                     "type": "string",
+                    "enum": ["list_connections", "discover_schema", "preview_mapping", "export"],
                     "description": "Action: list_connections, discover_schema, preview_mapping, or export"
+                },
+                "connection_id": {
+                    "type": "string",
+                    "description": "Connection id or name from list_connections (optional when only one is saved)"
+                },
+                "data": {
+                    "description": "Rows to write: an object or a list of objects, usually a tool's results"
+                },
+                "source_tool": {
+                    "type": "string",
+                    "description": "The tool that produced the data (e.g. predict_admet); picks the field mapping and the default table name novomcp_<source_tool>"
+                },
+                "funnel_id": {
+                    "type": "string",
+                    "description": "Export this run's audit trail (its calls and saved stages) instead of data"
+                },
+                "target": {
+                    "type": "string",
+                    "description": "Destination table: table, schema.table or database.schema.table"
+                },
+                "write_mode": {
+                    "type": "string",
+                    "enum": ["append", "replace"],
+                    "description": "append (default) adds rows; replace empties the table first"
+                },
+                "target_filter": {
+                    "type": "string",
+                    "description": "discover_schema: only tables whose name contains this"
                 }
             },
             "required": ["action"]
@@ -673,7 +702,7 @@ MCP_TOOLS = {
                 },
                 "limit": {
                     "type": "integer",
-                    "description": "Max rows to return (Enterprise limit: 10,000)"
+                    "description": "Max rows to return (up to 10,000)"
                 },
                 "smiles_column": {
                     "type": "string",
@@ -2933,12 +2962,14 @@ def rest_tool_visible(tool_name: str, user_tier: str) -> bool:
 #   "env:VARNAME"    → hidden if os.getenv(VARNAME) is empty
 #   "file:PATH"      → hidden if the file doesn't exist
 #   "backend_or_local" → FUNNEL_BACKEND_URL set, or a local engine (NOVO_AUTH=local)
+#   "data_connections" → BRIDGE_URL set, or a data connection saved locally
 #   "any"            → always available (no dependency)
 TOOL_LOCAL_REQUIREMENTS: Dict[str, list] = {
-    # Enterprise data connectors — subscription-only, hidden from OSS entirely.
-    # Roadmap: never (kept as hosted-only tools).
-    "push_to_destination": ["env:NEVER_SHIP_IN_OSS"],
-    "pull_from_source":    ["env:NEVER_SHIP_IN_OSS"],
+    # Data connectors — a bridge service (BRIDGE_URL), or on a self-hosted
+    # engine, a Snowflake/Databricks connection saved on the dashboard's
+    # Connections page (run in-process by connectors/local_bridge.py).
+    "push_to_destination": ["data_connections"],
+    "pull_from_source":    ["data_connections"],
 
     # Omics tools — need Postgres + omics schema loaded. Roadmap: v1.1.x SQLite bundle.
     "target_discovery": ["omics"],
@@ -3064,6 +3095,11 @@ def _requirement_met(req: str) -> bool:
         return True
     if req == "backend_or_local":
         return bool(os.getenv("FUNNEL_BACKEND_URL", "").strip()) or not surfaces_split()
+    if req == "data_connections":
+        if os.getenv("BRIDGE_URL", "").strip():
+            return True
+        from .connectors import local_bridge
+        return local_bridge.available()
     if req.startswith("env:"):
         names = [n.strip() for n in req[4:].split("|") if n.strip()]
         return any(os.getenv(n, "").strip() for n in names)
@@ -9432,12 +9468,64 @@ class MCPToolExecutor:
     # Dispatches to individual handlers based on "action" parameter
     # =========================================================================
 
+    # ---- data bridge ----------------------------------------------------
+    # With BRIDGE_URL set, connector work goes to that service. On a
+    # self-hosted engine without one, connectors/local_bridge.py does the same
+    # work in-process against the connections saved on the dashboard, and
+    # exports and pipelines are recorded in the local audit file.
+
+    def _local_bridge_available(self) -> bool:
+        from .connectors import local_bridge
+        return local_bridge.available()
+
+    async def _bridge_post(self, path: str, json: Dict[str, Any], headers: Optional[Dict[str, str]] = None,
+                           timeout: float = 60.0) -> httpx.Response:
+        if self.bridge_url:
+            return await self.client.post(f"{self.bridge_url}{path}", json=json, headers=headers, timeout=timeout)
+        from .connectors import local_bridge
+        try:
+            data = await local_bridge.handle(path, _sanitize_for_json(json))
+        except asyncio.TimeoutError:
+            return httpx.Response(504, json={"success": False, "error": "The data connection did not respond in time."})
+        if path == "/export":
+            await self._record_local(
+                "data_export",
+                {
+                    "connection_id": (data.get("details") or {}).get("connection_id") or json.get("connection_id"),
+                    "connector_type": (data.get("details") or {}).get("connector_type"),
+                    "source_tool": json.get("source_tool"),
+                    "funnel_id": json.get("funnel_id"),
+                    "target_location": data.get("target_location"),
+                    "write_mode": json.get("write_mode", "append"),
+                    "rows_written": data.get("rows_written", 0),
+                    "rows_failed": data.get("rows_failed", 0),
+                    "success": bool(data.get("success")),
+                    "error": data.get("error"),
+                    "export_id": (data.get("details") or {}).get("export_id"),
+                },
+                json,
+            )
+        return httpx.Response(200, json=_sanitize_for_json(data))
+
+    async def _record_local(self, event: str, payload: Dict[str, Any], who: Optional[Dict[str, Any]] = None) -> None:
+        """Write an event to the local audit sink (no-op without one)."""
+        try:
+            from .spine import User as _SpineUser
+            who = who or {}
+            await self.spine.audit.emit(
+                event,
+                _sanitize_for_json(payload),
+                user=_SpineUser(user_id=who.get("user_id") or "local", org_id=who.get("org_id") or "local"),
+            )
+        except Exception as e:
+            logger.warning(f"Local audit of {event} failed: {e}")
+
     async def _execute_push_to_destination(self, arguments: Dict[str, Any], context: Dict[str, Any] = None) -> ToolResult:
         """Unified data export tool — dispatches to list/discover/preview/export handlers."""
-        if not self.bridge_url:
+        if not self.bridge_url and not self._local_bridge_available():
             return ToolResult(
                 success=False,
-                error="Data connectors (push_to_destination / pull_from_source) require a bridge service — set BRIDGE_URL to enable them. See the roadmap at https://docs.novomcp.com/",
+                error="No data connection. Add Snowflake or Databricks on the dashboard's Connections page (or set BRIDGE_URL to use a bridge service).",
             )
 
         action = arguments.get("action")
@@ -9463,6 +9551,22 @@ class MCPToolExecutor:
     async def _execute_list_connections(self, arguments: Dict[str, Any], context: Dict[str, Any] = None) -> ToolResult:
         """List configured export connections for the user's organization."""
         context = context or {}
+        if not self.bridge_url:
+            from .connectors import local_bridge
+            conns = [local_bridge.describe(c) for c in local_bridge.load_connections()]
+            if arguments.get("connector_type"):
+                conns = [c for c in conns if c["connector_type"] == str(arguments["connector_type"]).lower()]
+            return ToolResult(
+                success=True,
+                data={
+                    "connections": conns,
+                    "count": len(conns),
+                    "available_types": ["snowflake", "databricks"],
+                    "stored_in": local_bridge.connections_path(),
+                    **({} if conns else {"message": "No data connections saved. Add Snowflake or Databricks on the dashboard's Connections page."}),
+                },
+                usage={"tool": "list_connections"},
+            )
         org_id = context.get("org_id")
         if not org_id:
             return ToolResult(success=False, error="Organization context required")
@@ -9534,12 +9638,12 @@ class MCPToolExecutor:
             return ToolResult(success=False, error="Organization context required")
 
         connection_id = arguments.get("connection_id")
-        if not connection_id:
+        if not connection_id and self.bridge_url:  # a local engine can pick the only saved one
             return ToolResult(success=False, error="connection_id is required")
 
         try:
-            resp = await self.client.post(
-                f"{self.bridge_url}/discover-schema",
+            resp = await self._bridge_post(
+                "/discover-schema",
                 json={
                     "connection_id": connection_id,
                     "org_id": org_id,
@@ -9574,12 +9678,12 @@ class MCPToolExecutor:
         data = arguments.get("data")
         source_tool = arguments.get("source_tool")
 
-        if not all([connection_id, data, source_tool]):
+        if not all([connection_id or not self.bridge_url, data, source_tool]):
             return ToolResult(success=False, error="connection_id, data, and source_tool are required")
 
         try:
-            resp = await self.client.post(
-                f"{self.bridge_url}/preview-mapping",
+            resp = await self._bridge_post(
+                "/preview-mapping",
                 json={
                     "connection_id": connection_id,
                     "org_id": org_id,
@@ -9776,16 +9880,28 @@ class MCPToolExecutor:
         connection_id = arguments.get("connection_id")
         data = arguments.get("data")
         source_tool = arguments.get("source_tool")
+        funnel_id = arguments.get("funnel_id")
 
-        if not all([connection_id, data, source_tool]):
-            return ToolResult(success=False, error="connection_id, data, and source_tool are required")
+        if funnel_id and not data:
+            # A run's audit trail: its tool calls and saved stages, one row each.
+            if self.dashboard_url:
+                return ToolResult(success=False, error="Exporting a run's audit trail by funnel_id works on a self-hosted engine; pass data instead")
+            data = [dict(st, funnel_id=funnel_id) for st in self._local_funnel_stages(funnel_id)]
+            if not data:
+                return ToolResult(success=False, error=f"Funnel {funnel_id} not found")
+            source_tool = source_tool or "funnel_audit"
+            arguments = {**arguments, "target": arguments.get("target") or "novomcp_run_audit"}
+
+        # A local engine picks the connection when only one is saved.
+        if not all([connection_id or not self.bridge_url, data, source_tool]):
+            return ToolResult(success=False, error="connection_id, data (or funnel_id), and source_tool are required")
 
         # Auto-enrich sparse data (e.g. just SMILES) by re-running the source tool
         data = await self._enrich_export_data(data, source_tool)
 
         try:
-            resp = await self.client.post(
-                f"{self.bridge_url}/export",
+            resp = await self._bridge_post(
+                "/export",
                 json={
                     "connection_id": connection_id,
                     "org_id": org_id,
@@ -9796,6 +9912,7 @@ class MCPToolExecutor:
                     "mapping_id": arguments.get("mapping_id"),
                     "write_mode": arguments.get("write_mode", "append"),
                     "target": arguments.get("target"),
+                    "funnel_id": funnel_id,
                 },
                 headers={"X-Bridge-Key": self.bridge_key},
                 timeout=120.0,
@@ -9852,10 +9969,10 @@ class MCPToolExecutor:
 
     async def _execute_pull_from_source(self, arguments: Dict[str, Any], context: Dict[str, Any] = None) -> ToolResult:
         """Unified pull-from-source tool — dispatches to preview/pull/estimate/execute handlers."""
-        if not self.bridge_url:
+        if not self.bridge_url and not self._local_bridge_available():
             return ToolResult(
                 success=False,
-                error="Data connectors (push_to_destination / pull_from_source) require a bridge service — set BRIDGE_URL to enable them. See the roadmap at https://docs.novomcp.com/",
+                error="No data connection. Add Snowflake or Databricks on the dashboard's Connections page (or set BRIDGE_URL to use a bridge service).",
             )
 
         action = arguments.get("action")
@@ -9893,8 +10010,8 @@ class MCPToolExecutor:
 
         try:
             # 1. Discover schema (reuse existing bridge endpoint)
-            schema_resp = await self.client.post(
-                f"{self.bridge_url}/discover-schema",
+            schema_resp = await self._bridge_post(
+                "/discover-schema",
                 json={
                     "connection_id": connection_id,
                     "org_id": org_id,
@@ -9909,8 +10026,8 @@ class MCPToolExecutor:
             connector_type = schema_data.get("connector_type", "unknown")
 
             # 2. Count rows
-            count_resp = await self.client.post(
-                f"{self.bridge_url}/count-rows",
+            count_resp = await self._bridge_post(
+                "/count-rows",
                 json={
                     "connection_id": connection_id,
                     "org_id": org_id,
@@ -9924,8 +10041,8 @@ class MCPToolExecutor:
             total_rows = count_data.get("row_count", 0)
 
             # 3. Sample rows (limit=5)
-            sample_resp = await self.client.post(
-                f"{self.bridge_url}/read-data",
+            sample_resp = await self._bridge_post(
+                "/read-data",
                 json={
                     "connection_id": connection_id,
                     "org_id": org_id,
@@ -9989,8 +10106,8 @@ class MCPToolExecutor:
         requested_limit = min(arguments.get("limit", 100), max_rows)
 
         try:
-            resp = await self.client.post(
-                f"{self.bridge_url}/read-data",
+            resp = await self._bridge_post(
+                "/read-data",
                 json={
                     "connection_id": connection_id,
                     "org_id": org_id,
@@ -10063,8 +10180,8 @@ class MCPToolExecutor:
 
         try:
             # Count rows with filters
-            count_resp = await self.client.post(
-                f"{self.bridge_url}/count-rows",
+            count_resp = await self._bridge_post(
+                "/count-rows",
                 json={
                     "connection_id": connection_id,
                     "org_id": org_id,
@@ -10175,8 +10292,8 @@ class MCPToolExecutor:
 
         try:
             # 1. Pull data from source
-            pull_resp = await self.client.post(
-                f"{self.bridge_url}/read-data",
+            pull_resp = await self._bridge_post(
+                "/read-data",
                 json={
                     "connection_id": connection_id,
                     "org_id": org_id,
@@ -10305,8 +10422,8 @@ class MCPToolExecutor:
             # 4. Push to destination (optional)
             if dest_connection_id and enriched_rows:
                 try:
-                    push_resp = await self.client.post(
-                        f"{self.bridge_url}/export",
+                    push_resp = await self._bridge_post(
+                        "/export",
                         json={
                             "connection_id": dest_connection_id,
                             "org_id": org_id,
@@ -10332,36 +10449,45 @@ class MCPToolExecutor:
                 "included": sum(1 for a in molecule_audit_log if a["disposition"] == "included"),
                 "excluded": sum(1 for a in molecule_audit_log if a["disposition"] == "excluded"),
                 "invalid_smiles": sum(1 for a in molecule_audit_log if not a["valid"]),
-                "compliance_blocks": sum(1 for a in molecule_audit_log if a.get("exclusion_reason", "").startswith("compliance_block")),
+                "compliance_blocks": sum(1 for a in molecule_audit_log if (a.get("exclusion_reason") or "").startswith("compliance_block")),
                 "processing_errors": processing_errors,
             }
 
             # 6. Record audit trail (with per-molecule log)
-            try:
-                await self.client.post(
-                    f"{self.dashboard_url}/mcp/record-pipeline",
-                    json={
-                        "pipeline_id": pipeline_id,
-                        "org_id": org_id,
-                        "user_id": context.get("user_id"),
-                        "source_connection_id": connection_id,
-                        "source_table": table,
-                        "rows_pulled": len(rows),
-                        "processing_tools": ",".join(processing_tools),
-                        "rows_processed": rows_processed,
-                        "processing_errors": processing_errors,
-                        "dest_connection_id": dest_connection_id,
-                        "dest_table": dest_table,
-                        "rows_pushed": rows_pushed,
-                        "status": "completed",
-                        "molecule_audit_log": molecule_audit_log,
-                        "audit_summary": audit_summary,
-                    },
-                    headers={"X-API-Key": self.dashboard_api_key},
-                    timeout=30.0,
-                )
-            except Exception as e:
-                logger.warning(f"Failed to record pipeline audit: {e}")
+            if not self.dashboard_url:
+                await self._record_local("data_pipeline", {
+                    "pipeline_id": pipeline_id, "source_connection_id": connection_id, "source_table": table,
+                    "rows_pulled": len(rows), "processing_tools": processing_tools, "rows_processed": rows_processed,
+                    "processing_errors": processing_errors, "dest_connection_id": dest_connection_id,
+                    "dest_table": dest_table, "rows_pushed": rows_pushed, "status": "completed",
+                    "audit_summary": audit_summary, "molecule_audit_log": molecule_audit_log,
+                }, context)
+            else:
+                try:
+                    await self.client.post(
+                        f"{self.dashboard_url}/mcp/record-pipeline",
+                        json={
+                            "pipeline_id": pipeline_id,
+                            "org_id": org_id,
+                            "user_id": context.get("user_id"),
+                            "source_connection_id": connection_id,
+                            "source_table": table,
+                            "rows_pulled": len(rows),
+                            "processing_tools": ",".join(processing_tools),
+                            "rows_processed": rows_processed,
+                            "processing_errors": processing_errors,
+                            "dest_connection_id": dest_connection_id,
+                            "dest_table": dest_table,
+                            "rows_pushed": rows_pushed,
+                            "status": "completed",
+                            "molecule_audit_log": molecule_audit_log,
+                            "audit_summary": audit_summary,
+                        },
+                        headers={"X-API-Key": self.dashboard_api_key},
+                        timeout=30.0,
+                    )
+                except Exception as e:
+                    logger.warning(f"Failed to record pipeline audit: {e}")
 
             # 7. Build response
             result_data = {
@@ -10402,28 +10528,35 @@ class MCPToolExecutor:
 
         except Exception as e:
             # Record failed pipeline
-            try:
-                await self.client.post(
-                    f"{self.dashboard_url}/mcp/record-pipeline",
-                    json={
-                        "pipeline_id": pipeline_id,
-                        "org_id": org_id,
-                        "user_id": context.get("user_id"),
-                        "source_connection_id": connection_id,
-                        "source_table": table,
-                        "rows_pulled": 0,
-                        "processing_tools": ",".join(processing_tools),
-                        "rows_processed": rows_processed,
-                        "processing_errors": processing_errors,
-                        "total_credits": 0,
-                        "status": "failed",
-                        "error_message": str(e)[:500],
-                    },
-                    headers={"X-API-Key": self.dashboard_api_key},
-                    timeout=10.0,
-                )
-            except Exception:
-                pass
+            if not self.dashboard_url:
+                await self._record_local("data_pipeline", {
+                    "pipeline_id": pipeline_id, "source_connection_id": connection_id, "source_table": table,
+                    "processing_tools": processing_tools, "rows_processed": rows_processed,
+                    "processing_errors": processing_errors, "status": "failed", "error_message": str(e)[:500],
+                }, context)
+            else:
+                try:
+                    await self.client.post(
+                        f"{self.dashboard_url}/mcp/record-pipeline",
+                        json={
+                            "pipeline_id": pipeline_id,
+                            "org_id": org_id,
+                            "user_id": context.get("user_id"),
+                            "source_connection_id": connection_id,
+                            "source_table": table,
+                            "rows_pulled": 0,
+                            "processing_tools": ",".join(processing_tools),
+                            "rows_processed": rows_processed,
+                            "processing_errors": processing_errors,
+                            "total_credits": 0,
+                            "status": "failed",
+                            "error_message": str(e)[:500],
+                        },
+                        headers={"X-API-Key": self.dashboard_api_key},
+                        timeout=10.0,
+                    )
+                except Exception:
+                    pass
             logger.error(f"pull_pipeline failed: {e}")
             return ToolResult(success=False, error=str(e))
 

@@ -931,6 +931,39 @@ async def local_connector_execute(request: Request):
         except Exception:
             pass
 
+@app.post("/local/connectors/export")
+async def local_connector_export(request: Request):
+    """Dashboard export (Activity page): write rows to a saved data connection.
+
+    Takes {connection_id, rows, source_tool, target, write_mode, funnel_id}.
+    The engine reads the connection from the shared connections file and
+    runs the same export as push_to_destination, so the rows carry the same
+    export columns and the export is recorded in the local audit file.
+    """
+    if os.getenv("NOVO_AUTH", "local").lower() == "hosted":
+        raise HTTPException(status_code=404, detail="Not available under a hosted spine")
+    body = await request.json()
+    rows = body.get("rows")
+    if not isinstance(rows, list) or not rows:
+        return JSONResponse({"success": False, "error": "rows_required", "detail": "Nothing to export"}, status_code=400)
+    req = {
+        "connection_id": body.get("connection_id"),
+        "data": rows,
+        "source_tool": body.get("source_tool") or "audit",
+        "target": body.get("target"),
+        "write_mode": body.get("write_mode") or "append",
+        "funnel_id": body.get("funnel_id"),
+        "user_id": "local",
+        "org_id": "local",
+    }
+    from novomcp.mcp.router import _tool_executor
+    if _tool_executor is not None:
+        resp = await _tool_executor._bridge_post("/export", req)
+        return JSONResponse(resp.json(), status_code=resp.status_code)
+    from novomcp.mcp.connectors import local_bridge
+    return JSONResponse(await local_bridge.export(req))
+
+
 # Root endpoint - handles both browser visitors and API clients
 @app.get("/")
 async def root(request: Request):

@@ -3,6 +3,7 @@
 import { Fragment, useCallback, useEffect, useState } from 'react';
 import { Download, Search, Loader2, ChevronDown, ChevronRight, Copy, Check, X } from 'lucide-react';
 import RunsView from '@/components/activity/RunsView';
+import SendToWarehouse from '@/components/activity/SendToWarehouse';
 
 // Activity — every tool call this install has run, read from the engine's
 // local audit log (~/.novo/audit.jsonl). Filter it, open a call to see exactly
@@ -133,6 +134,7 @@ export default function ActivityPage() {
           >
             <Download className="h-4 w-4" /> Raw log
           </a>
+          <SendToWarehouse payload={{ kind: 'calls', filters }} defaultTable="novomcp_activity" />
         </div>
       </div>
 

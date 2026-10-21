@@ -82,9 +82,11 @@ Requires: `NOVOMCP_COMPLIANCE_URL` pointing at a compliance service: NovoMCP's, 
 
 Unlocks: `check_compliance` — a generic, unbranded hook that forwards the molecule + context to your configured service.
 
-### Enterprise data connectors
+### Data warehouses — Snowflake, Databricks (beta)
 
-Hidden from OSS entirely. `push_to_destination`, `pull_from_source` (Snowflake, Databricks, BigQuery, Supabase) are hosted-only tools; no OSS user should see them in `tools/list`.
+Requires: a Snowflake or Databricks connection saved on the dashboard's **Connections** page (stored in `~/.novo/connectors.json`; set `NOVO_CONNECTORS_PATH` to move it).
+
+Unlocks: `push_to_destination` (send results, or a run's audit trail, to a table; the table is created if missing) and `pull_from_source` (read a compound table, run tools over it, and optionally push the enriched rows back). Restart your MCP client after saving the connection so it picks the tools up. See [Optional data services](optional-data-services.md#data-warehouses-snowflake-databricks).
 
 ### Materials Project — user brings API key
 
