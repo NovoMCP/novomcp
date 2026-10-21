@@ -2374,7 +2374,7 @@
 <li><strong>Pull</strong> reads a table (up to 10,000 rows), with filters but no raw SQL. <code>execute_pipeline</code> runs <code>predict_admet</code>, <code>check_compliance</code>, <code>optimize_molecule</code> or <code>calculate_properties</code> over each row's SMILES and can push the enriched rows to another table.</li>
 <li><strong>Activity → Send to warehouse</strong> writes the filtered calls (<code>novomcp_activity</code>) or one run's timeline (<code>novomcp_run_audit</code>).</li>
 </ul>
-<p>Table and column names are checked against a strict pattern and every value is bound as a parameter. Nothing is metered by NovoMCP; Snowflake and Databricks bill their own usage on your account. This is in beta until it has been run against live accounts.</p>
+<p>Table and column names are checked against a strict pattern and every value is bound as a parameter. Nothing is metered by NovoMCP; Snowflake and Databricks bill their own usage on your account. Verified against live Snowflake and Databricks accounts (export, preview, and a pull pipeline that pushes enriched rows back).</p>
 <h2 id="whats-not-optional">What's not optional<a class="headerlink" href="#whats-not-optional" title="Permanent link">&para;</a></h2>
 <p>The following are self-contained in the engine and require no external services beyond what's listed in <code>requirements.txt</code>:</p>
 <ul>
