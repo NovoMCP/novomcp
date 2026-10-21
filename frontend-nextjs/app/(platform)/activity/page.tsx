@@ -4,6 +4,7 @@ import { Fragment, useCallback, useEffect, useState } from 'react';
 import { Download, Search, Loader2, ChevronDown, ChevronRight, Copy, Check, X } from 'lucide-react';
 import RunsView from '@/components/activity/RunsView';
 import SendToWarehouse from '@/components/activity/SendToWarehouse';
+import { describeDataEvent } from '@/components/activity/dataEvents';
 
 // Activity — every tool call this install has run, read from the engine's
 // local audit log (~/.novo/audit.jsonl). Filter it, open a call to see exactly
@@ -23,6 +24,7 @@ interface Entry {
     error?: string | null;
     arguments?: Record<string, unknown>;
     outcome?: Record<string, unknown> | null;
+    [key: string]: unknown;
   };
 }
 
@@ -233,7 +235,8 @@ export default function ActivityPage() {
                 <tbody>
                   {entries.map((e, i) => {
                     const p = e.payload ?? {};
-                    const failed = p.success === false;
+                    const dv = describeDataEvent(e.event, p);
+                    const failed = dv ? dv.failed : p.success === false;
                     const isOpen = open === i;
                     return (
                       <Fragment key={`${e.ts}-${i}`}>
@@ -251,13 +254,19 @@ export default function ActivityPage() {
                             <span
                               className={`inline-block h-1.5 w-1.5 rounded-full mr-2 align-middle ${failed ? 'bg-amber-500' : 'bg-emerald-500'}`}
                             />
-                            {p.tool ?? e.event}
+                            {dv ? dv.label : p.tool ?? e.event}
                           </td>
                           <td className="px-3 py-2.5 font-mono text-[12.5px] text-[var(--text-soft)] max-w-[260px] truncate">
-                            {inputOf(p.arguments)}
+                            {dv ? dv.input : inputOf(p.arguments)}
                           </td>
                           <td className="px-3 py-2.5 text-[var(--text-soft)] max-w-[280px] truncate">
-                            {failed ? <span className="text-amber-500">{p.error || 'failed'}</span> : outcomeOf(p.outcome)}
+                            {failed ? (
+                              <span className="text-amber-500">{dv ? dv.result : p.error || 'failed'}</span>
+                            ) : dv ? (
+                              dv.result
+                            ) : (
+                              outcomeOf(p.outcome)
+                            )}
                           </td>
                           <td className="px-3 py-2.5">
                             {p.funnel_id && (
@@ -312,6 +321,29 @@ export default function ActivityPage() {
 }
 
 function Details({ entry }: { entry: Entry }) {
+  const dv = describeDataEvent(entry.event, entry.payload ?? {});
+  if (dv) return <DataEventDetails fields={dv.fields} />;
+  return <CallDetails entry={entry} />;
+}
+
+// An export or pipeline: what moved where, and the export id that matches the
+// _export_id column on the rows it wrote.
+function DataEventDetails({ fields }: { fields: [string, string][] }) {
+  return (
+    <dl className="grid gap-x-6 gap-y-2 sm:grid-cols-2 text-sm">
+      {fields.map(([k, v]) => (
+        <div key={k} className="min-w-0">
+          <dt className="text-[11px] uppercase tracking-wider text-[var(--text-muted)]">{k}</dt>
+          <dd className={`break-words ${k === 'Error' ? 'text-amber-500' : 'text-[var(--text)]'} ${/id$|Connection|Table/.test(k) ? 'font-mono text-xs' : ''}`}>
+            {v}
+          </dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
+function CallDetails({ entry }: { entry: Entry }) {
   const p = entry.payload ?? {};
   const [copied, setCopied] = useState(false);
   const args = p.arguments ? Object.fromEntries(Object.entries(p.arguments).filter(([k]) => k !== 'funnel_id')) : null;
