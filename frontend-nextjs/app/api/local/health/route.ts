@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { engineConfigLookup } from '@/core/secrets/localStore';
+import { readConnections } from '@/core/secrets/connectorStore';
 
 const NOVOMCP_ENGINE_URL = process.env.NOVOMCP_ENGINE_URL || 'http://localhost:8018';
 
@@ -10,6 +11,11 @@ const NOVOMCP_ENGINE_URL = process.env.NOVOMCP_ENGINE_URL || 'http://localhost:8
 // whole endpoint, so the dashboard can render partial state.
 export async function GET() {
   const lookup = await engineConfigLookup();
+  // Data connections aren't wired by env var — they're saved on the Connections
+  // page — so the dashboard has to read them from the same store Connections
+  // writes, or it under-counts what the user has set up.
+  const connections = await readConnections().catch(() => []);
+  const hasConnection = (type: string) => connections.some((c) => c.type === type);
   const [health, tools, openapi, updateStatus] = await Promise.all([
     fetch(`${NOVOMCP_ENGINE_URL}/health`, { cache: 'no-store' })
       .then((r) => (r.ok ? r.json() : null))
@@ -58,6 +64,8 @@ export async function GET() {
       omics: !!lookup('NOVOMCP_DB_HOST'),
       literature: !!lookup('PINECONE_API_KEY'),
       materials: !!lookup('MP_API_KEY'),
+      snowflake: hasConnection('snowflake'),
+      databricks: hasConnection('databricks'),
     },
   });
 }
