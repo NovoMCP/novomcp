@@ -305,7 +305,7 @@ Expected on the first tool call. Claude mints a `funnel_id` automatically per se
 
 If the server connects but no tools show:
 
-- Check the engine log for the `tools/list` request — if it arrives and returns 11+ tools (11 on a fresh install; more as backing services are wired), the client is filtering somewhere
+- Check the engine log for the `tools/list` request — if it arrives and returns 18+ tools (18 on a fresh install; more as backing services are wired), the client is filtering somewhere
 - In Claude Desktop, try **Settings → Developer → Restart connectors** if available
 - Verify with a direct curl: `curl -X POST http://localhost:8018/mcp/ -H 'Authorization: Bearer x' -H 'Content-Type: application/json' -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}' | python3 -m json.tool`
 
