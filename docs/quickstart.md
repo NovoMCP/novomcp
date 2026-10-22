@@ -144,7 +144,7 @@ curl -s http://localhost:8018/mcp/tools \
   | python3 -m json.tool
 ```
 
-`LocalAuthGate` accepts any bearer token — `x` works fine. Returns the 18 always-available tools; the other 55 in the 69-tool catalog appear as you wire their backing services (see [tool-availability.md](tool-availability.md)).
+`LocalAuthGate` accepts any bearer token — `x` works fine. Returns the 18 always-available tools; the other 51 in the 69-tool catalog appear as you wire their backing services (see [tool-availability.md](tool-availability.md)).
 
 ### Get a molecule profile (aspirin)
 
@@ -223,7 +223,7 @@ Once connected, the dashboard shows **Tools available: 18 of 69** — the 18 tha
 
 | | Where it runs | How you connect it |
 |---|---|---|
-| Engine, RDKit properties, the 14 default tools | Your machine | Nothing to do |
+| Engine, RDKit properties, the 18 default tools | Your machine | Nothing to do |
 | Compute services: ADMET, docking, MD, QM, NN potentials, properties, structure, molecule index | Your hardware, or a DGX Spark ([Novo Station](novo-station-dgx-spark.md), which runs all of them plus the dashboard) | **Connections → Self-hosted compute**: the service's URL |
 | Compliance screening (closed source) | The paid API, api.novomcp.com | **Connections → NovoMCP compliance**: `https://api.novomcp.com/v1/compliance` and your API key; each check is billed to that key's account |
 | LLM, data connectors, observability | The provider you choose | **Connections**, under each category |

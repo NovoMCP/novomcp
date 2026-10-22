@@ -112,10 +112,10 @@ The alternative would be to always show the full 69 tools and return "service un
 Hidden-until-wired means:
 - **Users see a working demo, not a lot of gray options.** First impressions matter.
 - **`tools/list` is the truth.** Every tool in it works. LLM clients that pick tools autonomously (Claude, Cursor, Zed) never try something that will fail.
-- **Progressive disclosure.** As users add services, tools appear. The 11-tool starter set grows into the full catalog only when they've earned it by configuring what backs it.
+- **Progressive disclosure.** As users add services, tools appear. The 18-tool starter set grows into the full catalog only when they've earned it by configuring what backs it.
 
 ## Related
 
-- [Quickstart](quickstart.md) — get the 11 default tools running
+- [Quickstart](quickstart.md) — get the 18 default tools running
 - [Deploying services](deploying-services/README.md) — wire up compute services to unlock more tools
 - [Optional data services](optional-data-services.md) — data + auxiliary services
