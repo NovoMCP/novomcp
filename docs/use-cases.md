@@ -17,7 +17,7 @@ You hit a compound in a paper or a database and want its druglikeness picture wi
 
 > "What's the molecular profile of aspirin?"
 
-The `get_molecule_profile` tool returns molecular weight, LogP, TPSA, QED, hydrogen-bond donors/acceptors, rotatable bonds, aromatic rings, and Lipinski pass/fail — computed on the fly via RDKit, no data download required. This is one of the 11 tools that work fully local out of the box.
+The `get_molecule_profile` tool returns molecular weight, LogP, TPSA, QED, hydrogen-bond donors/acceptors, rotatable bonds, aromatic rings, and Lipinski pass/fail — computed on the fly via RDKit, no data download required. This is one of the 18 tools that work fully local out of the box.
 
 ## Workflow 2 — Triage a shortlist
 

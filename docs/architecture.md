@@ -69,6 +69,6 @@ Out of the 69-tool catalog, **18 tools work fully local** the moment the engine 
 ## Next
 
 - **[Quickstart](quickstart.md)** — boot the engine and run the first calls
-- **[Tool availability](tool-availability.md)** — the 11-local map and what each service adds
+- **[Tool availability](tool-availability.md)** — the 18-local map and what each service adds
 - **[Deploying services](deploying-services/README.md)** — wire up ADMET, docking, MD, structure prediction, QM
 - **[Configuring LLM providers](configuring-llm.md)** — enable intent recognition and planning
