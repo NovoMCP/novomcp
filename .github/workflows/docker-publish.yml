@@ -99,6 +99,12 @@ jobs:
     # Native builds take ~3-5 min; this is a backstop, not a budget.
     timeout-minutes: 30
     steps:
+      # linux/amd64 -> linux-amd64: usable in a cache scope and an artifact name.
+      - name: Slash-free platform name
+        run: echo "PLATFORM_PAIR=${PLATFORM//\//-}" >> "$GITHUB_ENV"
+        env:
+          PLATFORM: ${{ matrix.platform }}
+
       - uses: actions/checkout@v4
 
       - name: Log in to GHCR
@@ -128,21 +134,26 @@ jobs:
           file: frontend-nextjs/Dockerfile
           platforms: ${{ matrix.platform }}
           labels: ${{ steps.meta.outputs.labels }}
-          outputs: type=image,push-by-digest=true,name-canonical=true,push=true
-          cache-from: type=gha,scope=web-${{ matrix.platform }}
-          cache-to: type=gha,mode=max,scope=web-${{ matrix.platform }}
+          # name= is required: push-by-digest pushes no tag, so without it
+          # buildx has no repository to push to ("tag is needed when pushing
+          # to registry").
+          outputs: type=image,name=ghcr.io/${{ github.repository_owner }}/web,push-by-digest=true,name-canonical=true,push=true
+          cache-from: type=gha,scope=web-${{ env.PLATFORM_PAIR }}
+          cache-to: type=gha,mode=max,scope=web-${{ env.PLATFORM_PAIR }}
 
-      # Hand the digest to the merge job. Artifact names must be unique per
-      # matrix leg, hence the slash-free platform name.
+      # The filename IS the digest, bare: the merge step rebuilds the reference
+      # as web@sha256:<filename>, so the sha256: prefix has to come off here or
+      # it ends up doubled.
       - name: Export digest
         run: |
           mkdir -p /tmp/digests
-          touch "/tmp/digests/${{ steps.build.outputs.digest }}"
+          digest='${{ steps.build.outputs.digest }}'
+          touch "/tmp/digests/${digest#sha256:}"
 
       - name: Upload digest
         uses: actions/upload-artifact@v4
         with:
-          name: digest-web-${{ strategy.job-index }}
+          name: digest-web-${{ env.PLATFORM_PAIR }}
           path: /tmp/digests/*
           if-no-files-found: error
           retention-days: 1
