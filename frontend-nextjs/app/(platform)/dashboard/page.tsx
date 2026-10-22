@@ -6,7 +6,7 @@ import Link from 'next/link';
 // OSS Control Panel dashboard. Reads local /api/local/health and
 // /api/local/audit (which read the engine + ~/.novo/audit.jsonl directly, no
 // managed backend needed). Leads with a status hero — engine health and how
-// much of the 68-tool catalog is unlocked — then capability tiles, recent
+// much of the 69-tool catalog is unlocked — then capability tiles, recent
 // activity, and first-run actions. Every surface uses the marketplace's visual
 // language so the app reads as one product.
 
@@ -39,6 +39,8 @@ const CAPABILITIES: Record<string, { short: string; mono: string }> = {
   omics: { short: 'Omics', mono: 'OM' },
   literature: { short: 'Literature', mono: 'LI' },
   materials: { short: 'Materials', mono: 'MP' },
+  snowflake: { short: 'Snowflake', mono: 'SF' },
+  databricks: { short: 'Databricks', mono: 'DB' },
 };
 
 export default function DashboardPage() {
@@ -62,7 +64,7 @@ export default function DashboardPage() {
   const onCount = providers.filter(([, on]) => on).length;
   const ordered = [...providers].sort((a, b) => Number(b[1]) - Number(a[1]));
   const visible = health?.tools_visible ?? null;
-  const total = health?.tools_total ?? 68;
+  const total = health?.tools_total ?? 69;
   const pct = visible != null ? Math.round((visible / total) * 100) : 0;
   // First run: engine is up but the user hasn't done anything yet (no audit
   // history). Surface a welcome with the two things worth doing first.
