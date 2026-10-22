@@ -18,6 +18,12 @@ permissions:
   contents: read
   packages: write   # push to GHCR under the NovoMCP org
 
+env:
+  # Lowercase literal, not github.repository_owner: that is "NovoMCP", and a
+  # registry reference must be lowercase. metadata-action lowercases what it
+  # is given, but a raw interpolation into buildx or a shell line does not.
+  WEB_IMAGE: ghcr.io/novomcp/web
+
 jobs:
   image:
     runs-on: ubuntu-latest
@@ -119,7 +125,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/${{ github.repository_owner }}/web
+          images: ${{ env.WEB_IMAGE }}
 
       - name: Set up Buildx
         uses: docker/setup-buildx-action@v3
@@ -137,7 +143,7 @@ jobs:
           # name= is required: push-by-digest pushes no tag, so without it
           # buildx has no repository to push to ("tag is needed when pushing
           # to registry").
-          outputs: type=image,name=ghcr.io/${{ github.repository_owner }}/web,push-by-digest=true,name-canonical=true,push=true
+          outputs: type=image,name=${{ env.WEB_IMAGE }},push-by-digest=true,name-canonical=true,push=true
           cache-from: type=gha,scope=web-${{ env.PLATFORM_PAIR }}
           cache-to: type=gha,mode=max,scope=web-${{ env.PLATFORM_PAIR }}
 
@@ -186,7 +192,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/${{ github.repository_owner }}/web
+          images: ${{ env.WEB_IMAGE }}
           tags: |
             type=raw,value=latest,enable={{is_default_branch}}
             type=sha,format=short,enable={{is_default_branch}}
@@ -198,7 +204,7 @@ jobs:
         working-directory: /tmp/digests
         run: |
           docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
-            $(printf 'ghcr.io/${{ github.repository_owner }}/web@sha256:%s ' *)
+            $(printf '${{ env.WEB_IMAGE }}@sha256:%s ' *)
 
       - name: Inspect
-        run: docker buildx imagetools inspect ghcr.io/${{ github.repository_owner }}/web:latest
+        run: docker buildx imagetools inspect ${{ env.WEB_IMAGE }}:latest
