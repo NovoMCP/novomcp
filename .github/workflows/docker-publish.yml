@@ -78,11 +78,25 @@ jobs:
           cache-to: type=gha,mode=max
 
   # The web dashboard, as ghcr.io/novomcp/web. compose.spark.yml runs it on the
-  # Spark, so it's multi-arch like the engine. Same tags as the engine image.
+  # Spark, so it's multi-arch like the engine.
+  #
+  # Each architecture builds on its own NATIVE runner rather than emulating
+  # arm64 with QEMU on an amd64 box. A Next.js build is CPU-bound JavaScript,
+  # the worst case for emulation: it ran 5-20x slower and intermittently blew
+  # past the 30-minute limit (run #54). Each job pushes an untagged image by
+  # digest; web-manifest then joins the two digests into one tag list, so
+  # `docker pull` still resolves the caller's arch from a single manifest.
   web:
-    runs-on: ubuntu-latest
-    # A normal build takes ~10 min; the emulated arm64 build occasionally
-    # hangs, and without a limit it would block for GitHub's 6-hour default.
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux/amd64
+            runner: ubuntu-latest
+          - platform: linux/arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    # Native builds take ~3-5 min; this is a backstop, not a budget.
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
@@ -93,6 +107,69 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Labels only; the tags are applied once, by web-manifest.
+      - name: Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/web
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # Push by digest only: no tags here, because a tag pushed from two jobs
+      # would race, each overwriting the other's single-arch image.
+      - name: Build and push by digest
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: frontend-nextjs
+          file: frontend-nextjs/Dockerfile
+          platforms: ${{ matrix.platform }}
+          labels: ${{ steps.meta.outputs.labels }}
+          outputs: type=image,push-by-digest=true,name-canonical=true,push=true
+          cache-from: type=gha,scope=web-${{ matrix.platform }}
+          cache-to: type=gha,mode=max,scope=web-${{ matrix.platform }}
+
+      # Hand the digest to the merge job. Artifact names must be unique per
+      # matrix leg, hence the slash-free platform name.
+      - name: Export digest
+        run: |
+          mkdir -p /tmp/digests
+          touch "/tmp/digests/${{ steps.build.outputs.digest }}"
+
+      - name: Upload digest
+        uses: actions/upload-artifact@v4
+        with:
+          name: digest-web-${{ strategy.job-index }}
+          path: /tmp/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  # Joins the per-arch digests into one multi-arch manifest and applies the
+  # tags the single-arch pushes deliberately skipped.
+  web-manifest:
+    runs-on: ubuntu-latest
+    needs: web
+    timeout-minutes: 10
+    steps:
+      - name: Download digests
+        uses: actions/download-artifact@v4
+        with:
+          path: /tmp/digests
+          pattern: digest-web-*
+          merge-multiple: true
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
 
       - name: Docker metadata
         id: meta
@@ -106,24 +183,11 @@ jobs:
             type=semver,pattern={{major}}.{{minor}}
             type=semver,pattern={{major}}
 
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-        with:
-          platforms: arm64
+      - name: Create manifest list and push
+        working-directory: /tmp/digests
+        run: |
+          docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+            $(printf 'ghcr.io/${{ github.repository_owner }}/web@sha256:%s ' *)
 
-      - name: Set up Buildx
-        uses: docker/setup-buildx-action@v3
-
-      # node:20-alpine publishes arm64, and the dashboard has no native
-      # modules, so the emulated arm64 build is just slower, not different.
-      - name: Build and push
-        uses: docker/build-push-action@v6
-        with:
-          context: frontend-nextjs
-          file: frontend-nextjs/Dockerfile
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha,scope=web
-          cache-to: type=gha,mode=max,scope=web
+      - name: Inspect
+        run: docker buildx imagetools inspect ghcr.io/${{ github.repository_owner }}/web:latest
