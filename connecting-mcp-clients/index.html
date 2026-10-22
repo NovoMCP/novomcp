@@ -2733,7 +2733,7 @@
 <h3 id="tools-not-appearing">Tools not appearing<a class="headerlink" href="#tools-not-appearing" title="Permanent link">&para;</a></h3>
 <p>If the server connects but no tools show:</p>
 <ul>
-<li>Check the engine log for the <code>tools/list</code> request — if it arrives and returns 11+ tools (11 on a fresh install; more as backing services are wired), the client is filtering somewhere</li>
+<li>Check the engine log for the <code>tools/list</code> request — if it arrives and returns 18+ tools (18 on a fresh install; more as backing services are wired), the client is filtering somewhere</li>
 <li>In Claude Desktop, try <strong>Settings → Developer → Restart connectors</strong> if available</li>
 <li>Verify with a direct curl: <code>curl -X POST http://localhost:8018/mcp/ -H 'Authorization: Bearer x' -H 'Content-Type: application/json' -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}' | python3 -m json.tool</code></li>
 </ul>
